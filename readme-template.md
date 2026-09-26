@@ -1,15 +1,20 @@
-# YOUR PRODUCT/TEAM NAME
-​
-> _Note:_ This document is intended to be relatively short. Be concise and precise. Assume the reader has no prior knowledge of your application and is non-technical. 
+# Live SWOT
 ​
 ## Partner Intro
- * Include the names, emails, titles, primary or secondary point of contact at the partner organization
- * Provide a short description about the partner organization. (2-4 lines)
+Our partner is SCADABLE. Ali Rahbar is a co-founder and our primary contact 
+(a.rahbar@scadable.com), he led our kickoff call. Hossein Molavi is also a co-founder 
+(h.molavi@scadable.com), cc'd on scheduling, we haven't confirmed a secondary point of 
+contact yet.
+
+SCADABLE is an AI compliance company. They help startups and small and medium businesses 
+handle SOC 2 and HIPAA compliance automatically using AI agents, so they can pass audits 
+and sell to bigger customers without spending hundreds of hours doing the work manually.
 
 ## Description about the project
-Keep this section very brief.
- * Provide a high-level description of your application and it's value from an end-user's perspective
- * What is the problem you're trying to solve? Is there any context required to understand **why** the application solves this problem?
+SCADABLE tracks competitors manually today, which is slow and easy to fall behind on. 
+Live SWOT automates this by researching competitors and organizing the findings into a 
+live SWOT analysis, so the founders and sales team can quickly see how they compare and 
+answer competitor questions without doing the research themselves.
 ​
 ## Key Features
  * Describe the key features in the application that the user can access.
