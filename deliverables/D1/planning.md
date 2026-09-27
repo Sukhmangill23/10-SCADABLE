@@ -103,24 +103,41 @@ Describe meetings (and other events) you are planning to have.
   
 #### Q9: How will you organize your team?
 
-List/describe the artifacts you will produce to organize your team. (We strongly recommend that you use standard collaboration tools like Linear.app, Jira, Slack, Discord, GitHub.)       
-
- * Artifacts can be To-Do lists, Task boards, schedule(s), meeting minutes, etc.
- * We want to understand:
-   * How do you keep track of what needs to get done? (You must grant your TA and partner access to systems you use to manage work)
-   * **How do you prioritize tasks?**
-   * How do tasks get assigned to team members?
-   * How do you determine the status of work from inception to completion?
+- **GitHub Issues/Project Board**
+  - Track tasks, bugs, priorities, assignees, deadlines, and status.
+  - TA and partner will have access to monitor progress.
+- **GitHub branches and pull requests**
+  - Each technical task will have its own branch.
+  - Pull requests will be used for code review and tracking completed work.
+- **Discord**
+  - Main platform for team communication, updates, roadblocks, task coordination, and meeting scheduling.
+- **Meeting minutes**
+  - Shared Google Doc documenting decisions, action items, owners, and deadlines.
+- **Task prioritization**
+  - Based on project requirements, deadlines, and partner feedback.
+  - Core-functionality tasks for the MVP will be prioritized first.
+- **Task assignment**
+  - Assigned based on each member’s project role, skills, workload, and availability.
+- **Task status**
+  - Tracked as: **Backlog → In Progress → Review → Complete**.
+  - Progress will also be visible through commits, branches, pull requests, and Discord updates.
 
 #### Q10: What are the rules regarding how your team works?
 
-**Communications:**
- * What is the expected frequency? What methods/channels will be used? 
- * If you have a partner project, what is your process for communicating with your partner? Who is responsible?
- 
-**Collaboration:**
- * How are people held accountable for attending meetings, completing action items? What is your process?
- * How will you address the issue if one person doesn't contribute or is not responsive?
+**Communication**
+- Discord will be used daily for updates, questions, roadblocks, and task coordination.
+- We will hold approximately **1–2 team calls per week** for progress updates and next steps.
+- Our partner will be contacted through **WhatsApp** for direct communication.
+- We will meet with the partner **weekly or biweekly** to review requirements, progress, and feedback.
+- One team member will act as the main partner contact and share relevant updates with the team.
+
+**Collaboration and Accountability**
+- Every task will have a clear owner and expected completion date.
+- Team members should notify the group in advance if they cannot attend a meeting.
+- If someone falls behind:
+  - Discuss the issue directly and identify any blockers.
+  - Redistribute work if needed to avoid blocking the project.
+- If missed work or lack of communication continues, the issue will be documented and discussed with the **TA/course staff** if it cannot be resolved internally.
 
 ## Organisation Details
 
