@@ -125,16 +125,12 @@ List/describe the artifacts you will produce to organize your team. (We strongly
 ## Organisation Details
 
 #### Q11. How does your team fit within the overall team organisation of the partner?
-* Given the team structure of your partner, what role do you think your team will play?
-* Examples include product development that includes developing new features, or quality assurance that includes developing features that test the product reliability, or software maintenance that includes fixing crucial bugs in the product.
-* Provide examples of why you think you fit this role.
+
+Our team will primarily play a product development role within SCADABLE by designing and building a new internal competitor-tracking platform from scratch. We will be responsible for the full development process, including the frontend, backend, database, data collection, change detection, integrating APIs and testing. Although the platform will initially be separate from SCADABLE’s existing product and repositories, it is being built specifically for their founders and sales team, with each team member owning a distinct part of the system and receiving regular feedback and code review from the founder.
 
 #### Q12. How does your project fit within the overall product from the partner?
-* Look at the big picture of the product and think about how your project fits into this product.
-* Is your project the first step towards building this product? Is it the first prototype? Are you developing the frontend of a product whose backend is developed by the partner? Are you building the release pipelines for a product that is developed by the partner? Are you building a core feature set and take full ownership of these features?
-* You should also provide details of who else is contributing to what parts of the product, if you have this information. This is more important if the project that you will be working on has strong coupling with parts that will be contributed to by members other than your team (e.g., from a partner).
-* You can be creative for these questions and even use a graphical or pictorial representation to demonstrate the fit.
-* Briefly specify what your partner considers a success for this project. Do they want you to build specific features? Publish a usable product? Just a prototype? Be as specific as you can be at this point.
+
+Our project is a standalone internal platform that our team will build end to end, rather than a feature within SCADABLE’s existing product. The system will track around ten real competitors, display changes across sources such as websites, job postings, press releases and reviews, and ideally allow users to add new competitors for automatic monitoring. By the end of the term, SCADABLE expects a functional and usable product with a frontend, backend, database, scheduled data collection, reliable change detection and source-linked information. In the future, the platform may be integrated with SCADABLE’s internal AI agent infrastructure.
 
 ## Potential Risks
 
