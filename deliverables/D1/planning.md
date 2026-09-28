@@ -4,37 +4,41 @@
 
 ## Product Details
  
-#### Q1: What is the product?
+### Q1: What is the product?
 
- > Short (1 - 2 min' read)
- * Start with a single sentence, high-level description of the product.
- * Be clear - Describe the problem you are solving in simple terms.
- * Specify if you have a partner, who they are (role/title), and the organization information.
- * Be concrete. For example:
-    * What are you planning to build? Is it a website, mobile app, browser extension, command-line app, etc.?      
-    * When describing the problem/need, give concrete examples of common use cases.
-    * Assume the reader knows nothing about the partner or the problem domain and provide the necessary context. 
- * Focus on *what* your product does, and avoid discussing *how* you're going to implement it.      
-   For example: This is not the time or the place to talk about which programming language and/or framework you are planning to use.
- * **Feel free (and very much encouraged) to include useful diagrams, mock-ups and/or links**.
+**Single sentence, high-level description of the product.**  
+We are developing an internal tool that tracks competitors’ online activities such as job listings, reviews, and website changes, and keeps records of the changes over time.
+
+**Problem we are solving in simple terms.**  
+To better understand industry trends and stay competitive, SCADABLE needs to know exactly what other companies in the space are doing and charging. This allows the team to position the company clearly for customers and investors, while avoiding being blindsided by new features or pricing updates from competitors.
+
+**Partner**  
+Our partner is Ali Rahbar, founder of SCADABLE, a company that provides software for cybersecurity and regulatory compliance. They have already served many businesses.
+
+**What our product is**  
+We are planning to build an internal website that tracks competitor activity, including site updates, job listings, and customer reviews. This tool solves the problem of trying to keep up with fast industry changes by hand. 
+
+For example, a competitor like Carbide might post new job listings for frontend developers. This implies they could be planning an overhaul of their interface, prompting SCADABLE to review its own user interface to make sure it stays competitive. Another use case involves customer feedback. If a customer leaves a negative review about a competitor, the tool flags that review for the sales team. The sales team can then highlight those specific weak points during pitches to show why SCADABLE is the better alternative.
 
 
-#### Q2: Who are your target users?
+### Q2: Who are your target users?
 
-  > Short (1 - 2 min' read max)
- * Be specific (e.g. a 'a third-year university student taking CSC301 and studying Computer Science' and not 'a student')
- * **Feel free to use personas. You can create your personas as part of this Markdown file, or add a link to an external site (for example, [Xtensio](https://xtensio.com/user-persona/)).**
+The primary target users are the founders at SCADABLE, who manage strategic positioning, fundraising, and enterprise sales.
+* **Pain point:** Currently, they audit competitor websites, public pricing tables, and job boards manually each week. This process is time-consuming, repetitive, and pulls attention away from other core work.
+* **Goal using the tool:** Their goal is to replace manual research with a reliable, scheduled system the whole team trusts. They will use a weekly dashboard covering roughly 10 competitors to catch pricing updates, feature rollouts, and hiring trends without opening dozens of tabs by hand.
 
-#### Q3: Why would your users choose your product? What are they using today to solve their problem/need?
+The secondary target users are the sales team members, who prepare for client calls and product demos.
+* **Pain point:** They currently lack a fast way to check what competitors are claiming or charging right before getting on a call.
+* **Goal using the tool:** Quickly check how direct competitors position their pricing and feature sets before sales conversations, giving them the facts needed to address customer questions and objections.
 
-> Short (1 - 2 min' read max)
- * We want you to "connect the dots" for us - Why does your product (as described in your answer to Q1) fits the needs of your users (as described in your answer to Q2)?
- * Explain the benefits of your product explicitly & clearly. For example:
-    * Save users time (how and how much?)
-    * Allow users to discover new information (which information? And, why couldn't they discover it before?)
-    * Provide users with more accurate and/or informative data (what kind of data? Why is it useful to them?)
-    * Does this application exist in another form? If so, how does your differ and provide value to the users?
-    * How does this align with your partner's organization's values/mission/mandate?
+
+### Q3: Why would your users choose your product? What are they using today to solve their problem/need?
+
+The main benefit of this product is saving time for both the founders and the sales team. Today, the founders try to solve this by manually visiting competitor sites every week. Automating this work and putting the results into a clear dashboard will save them several hours each week, removing the need to search competitor sites manually.
+
+This product also provides more accurate and complete information than manual checking. When checking pages by hand, it is easy to miss subtle edits, removed features, or newly posted job roles. By pulling data automatically on a schedule, the tool catches patterns and changes that a person might overlook.
+
+This directly supports SCADABLE’s broader goals. Keeping track of competitors' moves helps the company price its services competitively and spot unmet customer needs, making it much easier to position SCADABLE as the more reliable, cost-effective compliance choice.
 
 #### Q4: What are the user stories that make up the Minumum Viable Product (MVP)?
 
