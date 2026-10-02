@@ -48,7 +48,11 @@ Add a competitor
 
 Research a competitor
 - As a founder, I want the app to research a competitor in order to build a profile without collecting information manually.
+<<<<<<< HEAD
+- Acceptance criteria: Adding a competitor starts a research run. The app saves a company summary, findings, source links, and the research date. If research fails, the app shows the error and keeps any information already collected.
+=======
 - Acceptance criteria: Adding a competitor starts a research run. The app saves a company summary, findings, source links, and the research date. If research fails, the app shows the error and keeps any information already collected. Each research run appears in the agent runs view.
+>>>>>>> main
 
 View the overall SWOT
 - As a founder, I want to see a SWOT overview of all tracked competitors in order to understand the competitive landscape.
@@ -64,12 +68,33 @@ Compare competitive signals
 
 Refresh research weekly
 - As a founder, I want competitor research to refresh weekly in order to keep the SWOT current.
+<<<<<<< HEAD
+- Acceptance criteria: Each tracked competitor is researched at least once every seven days while the scheduled process is running. A successful run updates the profile and overview. A failed run is visible and does not delete the last successful findings.
+=======
 - Acceptance criteria: Each tracked competitor is researched at least once every seven days while the scheduled process is running. A successful run updates the profile and overview. A failed run is visible and does not delete the last successful findings. Scheduled runs appear in the agent runs view.
+>>>>>>> main
 
 See what changed
 - As a sales team member, I want to see new or changed findings after a refresh in order to update our talking points.
 - Acceptance criteria: New or changed findings are marked on the competitor profile with their source and detection date. Findings from the first research run are labelled as initial findings.
 
+<<<<<<< HEAD
+
+#### Q5: Have you decided on how you will build it? Share what you know now or tell us the options you are considering.
+
+We have a proposed stack based on the kickoff discussion, but have not finalized every tool. We plan to use Next.js with TypeScript for the web app, Python for the research and AI workflows, and PostgreSQL to store competitors, sources, findings, scores, and research history. This matches the industry partner’s preferred frontend and backend languages and their requirement to use Postgres.
+
+We plan to deploy the Next.js app on Vercel. The Python service and PostgreSQL database will need separate hosting; we are still deciding on a provider. A scheduled job will trigger research for each tracked competitor once a week.
+
+The app will have three main parts:
+- Web app: lets users add competitors, view the overall SWOT, and open individual competitor profiles.
+- Research service: gathers public information, uses an AI model to summarize and classify findings, and records the sources behind them.
+- Database: stores competitor profiles, findings, scores, source links, and past research runs.
+
+The web app will request data from the backend, which will read and write to Postgres. When a user adds a competitor, the backend will queue an initial research run. The weekly scheduled job will use the same research workflow to update existing competitors.
+
+We expect to use the OpenAI API for summarizing research and generating SWOT findings. The industry partner has offered to provide an API key when we are ready to test. We may also use third-party search or news APIs to find public updates, but have not selected one yet. We will review costs and source quality before making that decision. Gemini credits were discussed as a possibility, but Gemini is not currently part of the planned MVP stack.
+=======
 Connect our product features repository
 - As a founder, I want to connect a GitHub repository containing our product features through a GitHub App in order to let our agents access and edit them.
 - Acceptance criteria: An authorized user can install the GitHub App and select a repository. The app shows the connected repository and connection status. Agents can read and propose edits to product feature files within the granted permissions. Missing permissions or connection failures show a clear error.
@@ -103,6 +128,7 @@ For the GitHub integration, an authorized user will install the GitHub App and s
 The agent runs view will show both research and repository-editing runs. Users will be able to open a run to inspect its steps, results, errors, and associated competitor or pull request. We plan to collect usage and cost information from the AI provider and record cache hits and misses where supported. Costs for active runs will be labelled as provisional, and unavailable metrics will be shown as unavailable.
 
 We expect to use the OpenAI API for summarizing research, generating SWOT findings, and supporting proposed product feature edits. The industry partner has offered to provide an API key when we are ready to test. We may also use third-party search or news APIs to find public updates, but have not selected one yet. We will review costs and source quality before making that decision. Gemini credits were discussed as a possibility, but Gemini is not currently part of the planned MVP stack.
+>>>>>>> main
 
 
 ----
@@ -206,18 +232,37 @@ Our project is a standalone internal platform that our team will build end to en
 ## Potential Risks
 
 #### Q13. What are some potential risks to your project?
-* Now that you have defined your project, what risks can you identify that might impact it?
-* Some examples of risks at this planning stage could include:
-  * Uncertainties regarding a specific feature
-  * Misaligned expectations or conflicts
-  * Lack of clarity in execution or decision-making
-  * Limited access to data, systems, or other dependencies
-  * User stories that are too abstract or too simple
-* For each risk, provide a brief bullet point and then explain the risk in detail. 
+* Risk: unclear criteria for SWOT analysis between SCADABLE and competitors based on the competitor's type
+  Explanation: companies work very differently from each other, many have a different workflow, regulations, administrative setup, 
+  and what they actually do (product vs service) so actually determining what should pose as something to go on the SWOT analysis has
+  to be done wisely. 
+
+* Risk: unclear how to conduct indirect SWOT analysis
+  Explanation: many competitors have partners or pending partnerships, and there's a chance those partners can do something that will 
+  pose a positive and/or negative effect to SCADABLE then conducting an analysis on that basis has to be done differently. For example, 
+  if SCADABLE's rival's partner rolls out a new feature specifically for the rival to scale up more efficiently then that is a major threat to SCADABLE.
+
+* Risk: Determining the SWOT and each component's significance is unclear
+  Explanation: If the tool is not configured with a clear set of rules to identify what the potential strength, weakness, 
+  opportunity, or threat is, and how significant each of those components are to SCADABLE then it can either disregard, or
+  overweigh or undermine the SWOT analysis because of the lack of criteria provided to it.
+
+* Risk: internal work experience analysis
+  Explanation: often times there are employees who post about their appreciation or complaints for their employers, from 
+  their support for the company's new change, to internal and stiff politics which drive them away from the company. This is an 
+  underappreciated and very significant perspective to analyze, because companies don't disclose their internal issues as much as 
+  their employees do, and often times they give information that allows for more research into that company for a clearer SWOT analysis.
+
+* Risk: hallucination and/or unsupported data
+* Explanation: If the LLM hallucinates and comes up with "fake" data then that can be significantly misleading for any company. 
+  The point of the tool is to provide an analysis using verified and supported data sources and to make connections. And it should 
+  take into consideration the verity of the sources the data was extracted from to provide analysis based on the level of confidence 
+  of data it received from those sources.
 
 #### Q14. What are some potential mitigation strategies for the risks you identified?
-* Examples of mitigation strategies:
-  * More communication with the partner might help with improving clarity.
-  * Adding more details for an user story might make it less abstract.
-  * Adding an extra user story might increase the project complexity, making it less simple.
-* It's ok if you are unable to find mitigation strategies for all the risks right now.
+* Communication: continuously discuss examples of SWOT analysis scenarios with Ali to establish a criteria on HOW to do the SWOT 
+analysis across different types of companies, workforce, and partners or indirect competitors. 
+* Prompt evaluation: run a verification script that tests whether the information gathered for the analysis actually came from verified sources.
+* Provide info on what sources to get data from, and indicate confidence: provide a preset list of sources to analyze daily or 
+instruct the LLM to gather information from the official sources and provide confidence in that information by providing the 
+exact source as well as a confidence score based on certain credibility criteria.
