@@ -48,11 +48,7 @@ Add a competitor
 
 Research a competitor
 - As a founder, I want the app to research a competitor in order to build a profile without collecting information manually.
-<<<<<<< HEAD
-- Acceptance criteria: Adding a competitor starts a research run. The app saves a company summary, findings, source links, and the research date. If research fails, the app shows the error and keeps any information already collected.
-=======
 - Acceptance criteria: Adding a competitor starts a research run. The app saves a company summary, findings, source links, and the research date. If research fails, the app shows the error and keeps any information already collected. Each research run appears in the agent runs view.
->>>>>>> main
 
 View the overall SWOT
 - As a founder, I want to see a SWOT overview of all tracked competitors in order to understand the competitive landscape.
@@ -68,33 +64,12 @@ Compare competitive signals
 
 Refresh research weekly
 - As a founder, I want competitor research to refresh weekly in order to keep the SWOT current.
-<<<<<<< HEAD
-- Acceptance criteria: Each tracked competitor is researched at least once every seven days while the scheduled process is running. A successful run updates the profile and overview. A failed run is visible and does not delete the last successful findings.
-=======
 - Acceptance criteria: Each tracked competitor is researched at least once every seven days while the scheduled process is running. A successful run updates the profile and overview. A failed run is visible and does not delete the last successful findings. Scheduled runs appear in the agent runs view.
->>>>>>> main
 
 See what changed
 - As a sales team member, I want to see new or changed findings after a refresh in order to update our talking points.
 - Acceptance criteria: New or changed findings are marked on the competitor profile with their source and detection date. Findings from the first research run are labelled as initial findings.
 
-<<<<<<< HEAD
-
-#### Q5: Have you decided on how you will build it? Share what you know now or tell us the options you are considering.
-
-We have a proposed stack based on the kickoff discussion, but have not finalized every tool. We plan to use Next.js with TypeScript for the web app, Python for the research and AI workflows, and PostgreSQL to store competitors, sources, findings, scores, and research history. This matches the industry partner’s preferred frontend and backend languages and their requirement to use Postgres.
-
-We plan to deploy the Next.js app on Vercel. The Python service and PostgreSQL database will need separate hosting; we are still deciding on a provider. A scheduled job will trigger research for each tracked competitor once a week.
-
-The app will have three main parts:
-- Web app: lets users add competitors, view the overall SWOT, and open individual competitor profiles.
-- Research service: gathers public information, uses an AI model to summarize and classify findings, and records the sources behind them.
-- Database: stores competitor profiles, findings, scores, source links, and past research runs.
-
-The web app will request data from the backend, which will read and write to Postgres. When a user adds a competitor, the backend will queue an initial research run. The weekly scheduled job will use the same research workflow to update existing competitors.
-
-We expect to use the OpenAI API for summarizing research and generating SWOT findings. The industry partner has offered to provide an API key when we are ready to test. We may also use third-party search or news APIs to find public updates, but have not selected one yet. We will review costs and source quality before making that decision. Gemini credits were discussed as a possibility, but Gemini is not currently part of the planned MVP stack.
-=======
 Connect our product features repository
 - As a founder, I want to connect a GitHub repository containing our product features through a GitHub App in order to let our agents access and edit them.
 - Acceptance criteria: An authorized user can install the GitHub App and select a repository. The app shows the connected repository and connection status. Agents can read and propose edits to product feature files within the granted permissions. Missing permissions or connection failures show a clear error.
@@ -128,7 +103,6 @@ For the GitHub integration, an authorized user will install the GitHub App and s
 The agent runs view will show both research and repository-editing runs. Users will be able to open a run to inspect its steps, results, errors, and associated competitor or pull request. We plan to collect usage and cost information from the AI provider and record cache hits and misses where supported. Costs for active runs will be labelled as provisional, and unavailable metrics will be shown as unavailable.
 
 We expect to use the OpenAI API for summarizing research, generating SWOT findings, and supporting proposed product feature edits. The industry partner has offered to provide an API key when we are ready to test. We may also use third-party search or news APIs to find public updates, but have not selected one yet. We will review costs and source quality before making that decision. Gemini credits were discussed as a possibility, but Gemini is not currently part of the planned MVP stack.
->>>>>>> main
 
 
 ----
