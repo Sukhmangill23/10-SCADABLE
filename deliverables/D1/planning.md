@@ -20,6 +20,10 @@ We are planning to build an internal website that tracks competitor activity, in
 
 For example, a competitor like Carbide might post new job listings for frontend developers. This implies they could be planning an overhaul of their interface, prompting SCADABLE to review its own user interface to make sure it stays competitive. Another use case involves customer feedback. If a customer leaves a negative review about a competitor, the tool flags that review for the sales team. The sales team can then highlight those specific weak points during pitches to show why SCADABLE is the better alternative.
 
+### Mock-up
+
+An interactive prototype of Live SWOT can be viewed here: [Final Prototype](https://csc301-2026-f.github.io/10-SCADABLE/deliverables/D1/mockups/final-prototype.html).
+
 
 ### Q2: Who are your target users?
 
@@ -104,6 +108,13 @@ The agent runs view will show both research and repository-editing runs. Users w
 
 We expect to use the OpenAI API for summarizing research, generating SWOT findings, and supporting proposed product feature edits. The industry partner has offered to provide an API key when we are ready to test. We may also use third-party search or news APIs to find public updates, but have not selected one yet. We will review costs and source quality before making that decision. Gemini credits were discussed as a possibility, but Gemini is not currently part of the planned MVP stack.
 
+### Architecture
+
+The diagram below shows the major components of Live SWOT and how they interact.
+<img width="1448" height="1086" alt="image" src="https://github.com/user-attachments/assets/41ffb3f1-7a04-4b5d-a4a9-d58e2257ee13" />
+
+
+
 
 ----
 ## Intellectual Property Confidentiality Agreement 
@@ -119,6 +130,9 @@ We expect to use the OpenAI API for summarizing research, generating SWOT findin
 **Your partner cannot ask you to sign any legal agreements or documents pertaining to non-disclosure, confidentiality, IP ownership, etc.**
 
 Briefly describe which option you have agreed to.
+
+Our partner agreed that we may freely use and share the software and code created for this project, including uploading it to GitHub or other publicly available platforms. No additional confidentiality restrictions were requested.
+
 
 ----
 
