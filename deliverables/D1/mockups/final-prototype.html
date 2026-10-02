@@ -703,6 +703,55 @@ tr.clickable:hover{
   gap:16px;
 }
 
+.profile-grid .full-width{
+  grid-column:1 / -1;
+}
+
+.github-sync-grid{
+  display:grid;
+  grid-template-columns:repeat(4,minmax(0,1fr));
+  gap:12px;
+  margin:12px 0 14px;
+}
+
+.github-sync-item{
+  border:1px solid var(--line);
+  background:#fff;
+  padding:12px;
+}
+
+.github-sync-item span{
+  display:block;
+  color:var(--sub);
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.05em;
+  font-weight:650;
+  margin-bottom:5px;
+}
+
+.github-sync-item b{
+  font-size:12px;
+  color:var(--ink);
+}
+
+.sync-flow{
+  display:flex;
+  align-items:center;
+  flex-wrap:wrap;
+  gap:8px;
+  font-size:11px;
+  color:var(--sub);
+}
+
+.sync-flow strong{
+  color:var(--ink);
+}
+
+.sync-arrow{
+  color:#8d8791;
+}
+
 .profile-list{
   margin:0;
   padding-left:17px;
@@ -901,6 +950,10 @@ tr.clickable:hover{
   .detail-grid,
   .profile-grid{
     grid-template-columns:1fr;
+  }
+
+  .github-sync-grid{
+    grid-template-columns:1fr 1fr;
   }
 
   .swot-item{
@@ -1366,6 +1419,48 @@ tr.clickable:hover{
             <li>Combines information from multiple sources into one dashboard</li>
             <li>Focuses on turning competitor activity into actionable insights</li>
           </ul>
+
+        </div>
+
+        <div class="card full-width">
+
+          <h2>GitHub product feature sync</h2>
+
+          <p style="font-size:12px;color:var(--sub);margin:0 0 12px;line-height:1.55;">
+            Our product features are maintained in a connected GitHub repository. When the feature file changes,
+            a webhook notifies the backend so the updated product information can be used in the next competitor
+            comparison and SWOT evaluation.
+          </p>
+
+          <div class="github-sync-grid">
+            <div class="github-sync-item">
+              <span>Repository</span>
+              <b>scadable/product-features</b>
+            </div>
+            <div class="github-sync-item">
+              <span>Tracked file</span>
+              <b>features.md</b>
+            </div>
+            <div class="github-sync-item">
+              <span>Status</span>
+              <b style="color:#376d55;">Connected</b>
+            </div>
+            <div class="github-sync-item">
+              <span>Last synced</span>
+              <b>12 minutes ago</b>
+            </div>
+          </div>
+
+          <div class="sync-flow">
+            <strong>Recent change:</strong>
+            <span>Added “Automated Evidence Collection”</span>
+            <span class="sync-arrow">→</span>
+            <span>Webhook received</span>
+            <span class="sync-arrow">→</span>
+            <span>Product baseline updated</span>
+            <span class="sync-arrow">→</span>
+            <span>SWOT comparison queued</span>
+          </div>
 
         </div>
 
