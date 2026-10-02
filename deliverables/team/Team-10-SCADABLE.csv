@@ -1,6 +1,8 @@
-Member number (1-6), utorid, Student name, Githubid, Role(s), Status,
-1, shethja1, Jaynik Sheth, Jaynik-S, TBD, enrolled
-2, yaacoub8, Houssam Yaacoub, houssamyaacoub, TBD, enrolled
-3, gillsu27, Sukhmandeep Gill, Sukhmangill23, TBD, enrolled
-4, huss1167, Ibraheem Hussain, Ibraheem-21, TBD, enrolled
-5, khancha6, Yash Khanchandani, yashk-44, TBD, enrolled
+Member number,utorid,Student name,Githubid,Role(s),Status
+1,elmancye,Essam Elmancy,essamelmancy,Backend Developer,enrolled
+2,gillsu27,Sukhmandeep Gill,Sukhmangill23,Backend Developer,enrolled
+3,huss1167,Ibraheem Hussain,Ibraheem-21,Frontend Developer,enrolled
+4,khancha6,Yash Khanchandani,yashk-44,LLM Integration Developer & Backend Developer,enrolled
+5,qures607,Saad Qureshi,Saadq817,Full-stack Developer & Partner Liaison & Team Coordinator,enrolled
+6,shethja1,Jaynik Sheth,Jaynik-S,Full-stack Developer & LLM Integration Developer,enrolled
+7,yaacoub8,Houssam Yaacoub,houssamyaacoub,Full-stack Developer & LLM Integration Developer,enrolled
