@@ -83,7 +83,9 @@ For D2, we want to get the main workflow working:
 
 ### Jaynik
 - Contribution:
-  - type here
+  - Organized team workflow and established project standards
+  - Worked on questions 9 to 10 in the planning.md file
+  - Redesigned the entire mockup/prototype UI to align with partner branding, styling standards, and colour palette
 
 ### Ibraheem
 - Contribution:
