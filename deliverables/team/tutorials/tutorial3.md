@@ -1,0 +1,90 @@
+# Weekly Tutorial Update
+
+## D2 Goal
+
+For D2, we want to get the main workflow working:
+
+**Add competitor → Research competitor → Show results**
+
+## Tech Stack
+
+- Frontend: Next.js + Vercel
+- Backend: FastAPI
+- Database: PostgreSQL
+- AI: OpenAI API
+- Backend / DB Hosting: TBD
+- Scraping / Retrieval: TBD
+
+## Team Split
+
+### Backend / Database
+- Sukhman
+- Houssam
+- Essam
+- Tasks:
+  - FastAPI
+  - PostgreSQL
+  - backend endpoints
+  - save competitor/research data
+  - trigger research workflow
+
+### Research / AI
+- Yash
+- Jaynik
+- Tasks:
+  - scraping / retrieval
+  - OpenAI workflow
+  - generate findings / SWOT output
+
+### Frontend
+- Ibraheem
+- Saad
+- Tasks:
+  - Next.js pages
+  - connect frontend to backend
+  - display competitor results
+
+## Things to Finalize
+- scraping / retrieval tool
+- backend / database hosting
+- final task split if needed
+
+## Later Work
+- GitHub integration
+- agent run monitoring
+
+## Individual Contributions (From the Past Week)
+
+### Saad
+- Contribution:
+  - Took notes from partner meeting and created transcript (meeting minutes)
+  - Worked on questions 6 to 8 in the planning.md file
+  - Worked on and tested prototype
+  - Set up and created slides for the demo
+  - Worked on Team-10-SCADABLE.csv 
+  - Communicated with partner, discussed features, scope, and mockup
+  
+
+### Houssam
+- Contribution:
+  - type here
+
+### Sukhman
+- Contribution:
+  - type here
+    
+### Essam
+- Contribution:
+  - type here
+
+### Yash
+- Contribution:
+  - type here   
+
+### Jaynik
+- Contribution:
+  - type here
+
+### Ibraheem
+- Contribution:
+  - type here
