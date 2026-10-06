@@ -89,4 +89,6 @@ For D2, we want to get the main workflow working:
 
 ### Ibraheem
 - Contribution:
-  - type here
+  - Worked on defining project scope and organization within partner company
+  - Worked on questions 11 and 12 in the planning.md file
+  - Researched possible frontend and data scraping tools
