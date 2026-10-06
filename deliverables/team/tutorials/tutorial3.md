@@ -67,7 +67,10 @@ For D2, we want to get the main workflow working:
 
 ### Houssam
 - Contribution:
-  - type here
+  - Defined the problem we are solving, project goals, and target users
+  - Completed questions 1-3
+  - Worked on the presentation slides
+  - Made the WhatsApp group which is our main mode of communication with the partner
 
 ### Sukhman
 - Contribution:
