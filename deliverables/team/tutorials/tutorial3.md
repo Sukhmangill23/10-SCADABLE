@@ -71,7 +71,11 @@ For D2, we want to get the main workflow working:
 
 ### Sukhman
 - Contribution:
-  - type here
+  - Worked on the mockup/prototype
+  - Added the architecture diagram for Q5 in planning.md
+  - Worked on the README
+  - Helped with the tutorial/demo slides
+  - Helped finalize the D2 tech stack with the partner
     
 ### Essam
 - Contribution:
