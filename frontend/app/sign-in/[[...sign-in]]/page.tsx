@@ -11,15 +11,23 @@ export default function SignInPage() {
       <DevDashboardBypass />
       <div className={styles.copy}>
         <p className={styles.eyebrow}>Live SWOT</p>
-        <h1>Welcome back</h1>
+        <h1>Sign in</h1>
         <p className={styles.sub}>
           {clerkEnabled
-            ? "Sign in to view competitors, SWOT, and agent runs."
+            ? "Access is invite-only for SCADABLE and the course team. Use the invitation email if you do not have an account yet."
             : "Clerk keys are not configured. Use “Go to dashboard” (top right) to explore without signing in."}
         </p>
       </div>
       {clerkEnabled ? (
-        <SignIn forceRedirectUrl="/competitors" signUpUrl="/sign-up" />
+        <SignIn
+          forceRedirectUrl="/overview"
+          // No public sign-up entry from this page — invites arrive by email only
+          appearance={{
+            elements: {
+              footerAction: { display: "none" },
+            },
+          }}
+        />
       ) : (
         <div className={styles.fallbackCard}>
           <p>

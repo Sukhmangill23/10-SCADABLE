@@ -3,7 +3,6 @@
 import {
   Show,
   SignInButton,
-  SignUpButton,
   UserButton,
 } from "@clerk/nextjs";
 import Link from "next/link";
@@ -21,7 +20,7 @@ const NAV = [
 function titleForPath(pathname: string): string {
   if (pathname.startsWith("/competitors/")) return "Competitor profile";
   if (pathname.startsWith("/runs/")) return "Agent run";
-  if (pathname.startsWith("/sign-up")) return "Sign up";
+  if (pathname.startsWith("/sign-up")) return "Accept invite";
   if (pathname.startsWith("/sign-in")) return "Sign in";
   const match = NAV.find((item) => item.href === pathname);
   return match?.label ?? "Live SWOT";
@@ -58,15 +57,10 @@ export function AppShell({ children, clerkEnabled }: Props) {
               <>
                 <Show when="signed-out">
                   <SignInButton mode="redirect">
-                    <button type="button" className={styles.authBtnSecondary}>
+                    <button type="button" className={styles.authBtnPrimary}>
                       Sign in
                     </button>
                   </SignInButton>
-                  <SignUpButton mode="redirect">
-                    <button type="button" className={styles.authBtnPrimary}>
-                      Sign up
-                    </button>
-                  </SignUpButton>
                 </Show>
                 <Show when="signed-in">
                   <UserButton />

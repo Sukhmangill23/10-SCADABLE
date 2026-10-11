@@ -65,16 +65,20 @@ Mocks are **on by default** (`NEXT_PUBLIC_USE_MOCKS` unset or not `"false"`).
 
 Clerk is wired via `@clerk/nextjs`, `ClerkProvider`, and `proxy.ts` middleware.
 
-- Unauthenticated users are sent to **`/sign-up`**
-- Signed-in users land on `/competitors`
-- Keys live in `.env.local` (created by `npx clerk init` — do not commit)
-- Later you can claim the Clerk app with `npx clerk auth login`
+- Clerk app: **LIVE SWOT**
+- **Invite-only** (`sign_up_mode: restricted`) — public self sign-up is closed
+- Unauthenticated users are sent to **`/sign-in`** only (no “Access restricted” sign-up page)
+- **`/sign-up`** only appears from an invitation email link (ticket query param)
+- Signed-in users land on `/overview`
+- Keys live in `.env.local` (do not commit)
+- Access / invite docs: [docs/auth-access.md](./docs/auth-access.md)
 
-**Go to dashboard (dev bypass):** Always shown on `/sign-up` and `/sign-in`. Works whether or not Clerk keys are configured — it sets a short-lived cookie and opens `/overview` without signing in. Available in `next dev`, or when `ALLOW_DEV_DASHBOARD_BYPASS=true`. Do not enable that env in real production.
+**Go to dashboard (dev bypass):** Always shown on auth pages. Sets a short-lived cookie and opens `/overview` without signing in. Available in `next dev`, or when `ALLOW_DEV_DASHBOARD_BYPASS=true`. Never enable that in real production.
 
 ```bash
 npx -y clerk@latest doctor
 ```
+
 
 ## API modules
 

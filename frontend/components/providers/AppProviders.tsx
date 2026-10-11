@@ -23,9 +23,9 @@ export function AppProviders({ children, clerkEnabled }: Props) {
 
   return (
     <ClerkProvider
-      signInFallbackRedirectUrl="/competitors"
-      signUpFallbackRedirectUrl="/competitors"
-      afterSignOutUrl="/sign-up"
+      signInFallbackRedirectUrl="/overview"
+      signUpFallbackRedirectUrl="/overview"
+      afterSignOutUrl="/sign-in"
     >
       {body}
     </ClerkProvider>

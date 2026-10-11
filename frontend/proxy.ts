@@ -4,6 +4,7 @@ import {
   DEV_DASHBOARD_BYPASS_COOKIE,
   isDevDashboardBypassAllowed,
 } from "@/lib/auth/bypass";
+import { hasClerkInviteTicket } from "@/lib/auth/invite";
 
 const clerkEnabled = Boolean(
   process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY?.trim(),
@@ -22,17 +23,30 @@ function hasDevDashboardBypass(request: NextRequest) {
   );
 }
 
+function isBareSignUp(request: NextRequest) {
+  const { pathname, searchParams } = request.nextUrl;
+  return pathname.startsWith("/sign-up") && !hasClerkInviteTicket(searchParams);
+}
+
 const withClerk = clerkMiddleware(async (auth, request) => {
+  // Never show the restricted public sign-up page — invites only via email link
+  if (isBareSignUp(request)) {
+    return NextResponse.redirect(new URL("/sign-in", request.url));
+  }
+
   if (isPublicRoute(request) || hasDevDashboardBypass(request)) {
     return;
   }
 
   await auth.protect({
-    unauthenticatedUrl: new URL("/sign-up", request.url).toString(),
+    unauthenticatedUrl: new URL("/sign-in", request.url).toString(),
   });
 });
 
-function passthrough(_request: NextRequest) {
+function passthrough(request: NextRequest) {
+  if (isBareSignUp(request)) {
+    return NextResponse.redirect(new URL("/sign-in", request.url));
+  }
   return NextResponse.next();
 }
 

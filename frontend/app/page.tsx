@@ -4,14 +4,14 @@ import { isClerkConfigured } from "@/lib/auth/config";
 
 export default async function HomePage() {
   if (!isClerkConfigured()) {
-    redirect("/competitors");
+    redirect("/overview");
   }
 
   const { userId } = await auth();
 
   if (!userId) {
-    redirect("/sign-up");
+    redirect("/sign-in");
   }
 
-  redirect("/competitors");
+  redirect("/overview");
 }
