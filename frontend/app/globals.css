@@ -1,0 +1,51 @@
+@import "../styles/tokens.css";
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  min-width: 320px;
+  font-family: var(--font-sans);
+  background: var(--canvas);
+  color: var(--ink);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+}
+
+button {
+  color: inherit;
+  cursor: pointer;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+::selection {
+  background: #dcd5ef;
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid #5a4b86;
+  outline-offset: 2px;
+}
+
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #c9c2bf transparent;
+}
