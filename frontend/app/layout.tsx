@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
-import { AppShell } from "@/components/layout/AppShell";
-import { QueryProvider } from "@/lib/providers/QueryProvider";
+import { AppProviders } from "@/components/providers/AppProviders";
+import { isClerkConfigured } from "@/lib/auth/config";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -24,12 +24,12 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const clerkEnabled = isClerkConfigured();
+
   return (
     <html lang="en">
       <body className={`${geistSans.variable} ${geistMono.variable}`}>
-        <QueryProvider>
-          <AppShell>{children}</AppShell>
-        </QueryProvider>
+        <AppProviders clerkEnabled={clerkEnabled}>{children}</AppProviders>
       </body>
     </html>
   );

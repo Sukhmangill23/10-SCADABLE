@@ -8,7 +8,7 @@ This folder is the shared foundation on branch `frontend/base`. Feature work bra
 
 | Person | Owns |
 | --- | --- |
-| **FE A** | Sign-in (Clerk later), competitors list + profile, agent runs |
+| **FE A** | Auth (Clerk), competitors list + profile, agent runs |
 | **FE B** | SWOT overview, Our Company page, Vercel deployment (when ready) |
 
 Do not edit each other’s feature folders without syncing.
@@ -58,9 +58,23 @@ Mocks are **on by default** (`NEXT_PUBLIC_USE_MOCKS` unset or not `"false"`).
 
 ## What’s intentionally not here yet
 
-- **Clerk** — no package, no provider, no keys. `/sign-in` is a stub only.
 - **Vercel** — no project config beyond a normal Next.js app. When deploying, set the Vercel **Root Directory** to `frontend`.
 - Real page UIs (list tables, SWOT grid, charts, run details) — build those on feature branches.
+
+## Auth (Clerk)
+
+Clerk is wired via `@clerk/nextjs`, `ClerkProvider`, and `proxy.ts` middleware.
+
+- Unauthenticated users are sent to **`/sign-up`**
+- Signed-in users land on `/competitors`
+- Keys live in `.env.local` (created by `npx clerk init` — do not commit)
+- Later you can claim the Clerk app with `npx clerk auth login`
+
+**Go to dashboard (dev bypass):** Always shown on `/sign-up` and `/sign-in`. Works whether or not Clerk keys are configured — it sets a short-lived cookie and opens `/overview` without signing in. Available in `next dev`, or when `ALLOW_DEV_DASHBOARD_BYPASS=true`. Do not enable that env in real production.
+
+```bash
+npx -y clerk@latest doctor
+```
 
 ## API modules
 
