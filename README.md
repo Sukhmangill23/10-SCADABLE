@@ -47,6 +47,91 @@ We chose this workflow because our project has several connected components and 
 
 We will keep naming and file structure consistent with the part of the project being worked on, and avoid making unrelated changes in the same pull request. Each pull request should be small enough for another team member to review and understand before it is merged into `main`.
 
+## Python research scaffold
+
+This is the initial scraping and LLM foundation. Crawling, cleaning, extraction,
+analysis, and comparison methods deliberately raise `NotImplementedError`.
+The OpenAI wrapper is usable independently, but the pipeline is not yet a working
+research application. There is no API server, database, scheduler, or frontend integration.
+
+### Setup
+
+Use Python 3.11 or newer from the repository root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e ".[dev]"
+Copy-Item .env.example .env
+python -m pytest
+```
+
+On macOS/Linux, activate with `source .venv/bin/activate` and copy the environment
+file with `cp .env.example .env`.
+
+Core dependencies are Pydantic for typed contracts, pydantic-settings for
+environment configuration, and the OpenAI Python SDK. Development dependencies
+are pytest and httpx for offline HTTP transport tests. Crawler SDKs are deferred
+until adapters are implemented; no browser installation is needed for this scaffold.
+
+### Structure and contracts
+
+| Location | Responsibility |
+| --- | --- |
+| `src/config.py` | `Settings`: environment variables and optional local `.env` |
+| `src/models/crawl_result.py` | `CompetitorURL`, `ScrapedContent`, and `CrawlResult` |
+| `src/crawling/base.py` | Async `BaseCrawler.crawl()` contract |
+| `src/crawling/firecrawl.py`, `crawl4ai.py` | Independent provider placeholders |
+| `src/crawling/manager.py` | `create_crawler(settings)` provider selection |
+| `src/processing/cleaner.py` | `clean_content(page)` placeholder |
+| `src/llm/client.py` | Reusable async OpenAI client and structured-output helper |
+| `src/llm/schemas.py` | Extraction, company analysis, comparison, and SWOT contracts |
+| `src/llm/prompts/` | Placeholder instructions by task |
+| `src/llm/analyzer.py` | Extraction, competitor, SCADABLE, and comparison placeholders |
+| `src/pipeline.py` | `run_pipeline()` component wiring |
+| `tests/` | Offline configuration, model, provider, SDK, and pipeline checks |
+
+The editable install makes modules importable as `crawling`, `llm`, `models`,
+`processing`, `config`, and `pipeline`; `src` is the source directory, not an import prefix.
+
+Set `CRAWLER_PROVIDER` to `firecrawl` (default) or `crawl4ai`. Provider selection
+does not start a crawl. `FIRECRAWL_API_KEY` is reserved for its future adapter.
+`OPENAI_API_KEY` and `OPENAI_MODEL` must be nonempty when constructing
+`OpenAIClient`; select a model supporting Responses API structured outputs.
+`OPENAI_TIMEOUT_SECONDS` defaults to 30. Environment variables override `.env`.
+Importing modules or running tests requires no real credentials.
+
+The wrapper follows the official
+[Responses API structured-output interface](https://developers.openai.com/api/docs/guides/structured-outputs?api-mode=responses).
+Calling `generate_structured()` explicitly makes an API request; analyzer
+placeholders do not call it yet. Close the client with `await client.close()`
+after use, including when a component raises an error.
+Crawler URLs are validated as HTTP URLs. LLM output source URLs use plain strings
+to avoid unsupported URI format constraints in structured-output schemas.
+
+### Pipeline and next steps
+
+The skeleton passes data through:
+
+```text
+CompetitorURL → crawler.crawl() → CrawlResult.pages → clean_content()
+             → AnalysisInput → extract_information() → ExtractedInformation
+             → analyze_competitor() → CompanyAnalysis
+```
+
+Construct components with `Settings()`, `create_crawler(settings)`, and
+`Analyzer(OpenAIClient(settings))`, then call
+`await run_pipeline(competitor, crawler=crawler, analyzer=analyzer)`.
+This currently stops at the crawler's `NotImplementedError`. The pipeline accepts
+components explicitly so each module can be implemented and verified independently.
+Tests substitute offline components to check the handoffs without implementing
+production scraping or analysis.
+
+Next, team members can implement either adapter and add its SDK dependency,
+implement content cleaning, refine schemas and prompts, and connect analyzer
+methods to the wrapper. Agree on traversal limits, extraction criteria,
+missing-content handling, and comparison requirements before implementing those TODOs.
+
 ## Licenses
 
 Our partner stated that he is comfortable with the team freely using and sharing the work created for this project, and did not request any additional confidentiality restrictions.

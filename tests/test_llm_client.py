@@ -1,0 +1,94 @@
+"""Exercise SDK structured parsing against an in-memory HTTP transport."""
+
+import asyncio
+import json
+
+import httpx
+import pytest
+from openai import AsyncOpenAI
+
+import llm.client as client_module
+from config import Settings
+from llm.schemas import CompanyAnalysis, ExtractedInformation, SWOTAnalysis
+
+
+@pytest.mark.parametrize("schema", [ExtractedInformation, CompanyAnalysis])
+def test_output_urls_use_supported_json_schema_strings(schema):
+    items = schema.model_json_schema()["properties"]["source_urls"]["items"]
+    assert items["type"] == "string"
+    assert "format" not in items
+
+
+@pytest.mark.parametrize("has_output", [True, False])
+def test_responses_structured_output(monkeypatch, has_output):
+    expected = SWOTAnalysis(
+        strengths=["Example evidence"], weaknesses=[], opportunities=[], threats=[]
+    )
+    requests = []
+
+    def respond(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        output = []
+        if has_output:
+            output = [{
+                "id": "msg_test",
+                "type": "message",
+                "role": "assistant",
+                "status": "completed",
+                "content": [{
+                    "type": "output_text",
+                    "text": expected.model_dump_json(),
+                    "annotations": [],
+                }],
+            }]
+        return httpx.Response(200, json={
+            "id": "resp_test",
+            "object": "response",
+            "created_at": 0,
+            "status": "completed",
+            "model": "test-model",
+            "output": output,
+            "parallel_tool_calls": False,
+            "tool_choice": "auto",
+            "tools": [],
+        })
+
+    def offline_sdk(**kwargs) -> AsyncOpenAI:
+        return AsyncOpenAI(
+            **kwargs,
+            http_client=httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+        )
+
+    monkeypatch.setattr(client_module, "AsyncOpenAI", offline_sdk)
+
+    async def run() -> None:
+        client = client_module.OpenAIClient(Settings(
+            openai_api_key="offline-test-key",
+            openai_model="test-model",
+            _env_file=None,
+        ))
+        try:
+            if has_output:
+                result = await client.generate_structured(
+                    instructions="Test instructions",
+                    input_text="Test facts",
+                    output_schema=SWOTAnalysis,
+                )
+                assert result == expected
+            else:
+                with pytest.raises(ValueError, match="no parsed structured output"):
+                    await client.generate_structured(
+                        instructions="Test instructions",
+                        input_text="Test facts",
+                        output_schema=SWOTAnalysis,
+                    )
+        finally:
+            await client.close()
+        assert client.sdk.is_closed()
+
+    asyncio.run(run())
+    assert len(requests) == 1
+    assert requests[0].url.path == "/v1/responses"
+    payload = json.loads(requests[0].content)
+    assert payload["model"] == "test-model"
+    assert payload["text"]["format"]["type"] == "json_schema"

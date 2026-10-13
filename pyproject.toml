@@ -15,11 +15,11 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10"]
+dev = ["pytest>=8,<10", "httpx>=0.28,<1"]
 
 [tool.setuptools]
 package-dir = {"" = "src"}
-py-modules = ["config"]
+py-modules = ["config", "pipeline"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -1,6 +1,6 @@
 """Initial structured contracts; fields will evolve with team requirements."""
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 from models.crawl_result import ScrapedContent
 
@@ -17,7 +17,8 @@ class ExtractedInformation(BaseModel):
     summary: str
     features: list[str]
     target_customers: list[str]
-    source_urls: list[HttpUrl]
+    # Plain strings keep LLM output schemas within OpenAI's supported formats.
+    source_urls: list[str]
 
 
 class CompanyAnalysis(BaseModel):
@@ -27,7 +28,7 @@ class CompanyAnalysis(BaseModel):
     summary: str
     strengths: list[str]
     weaknesses: list[str]
-    source_urls: list[HttpUrl]
+    source_urls: list[str]
 
 
 class ComparisonInput(BaseModel):
