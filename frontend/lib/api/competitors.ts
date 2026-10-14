@@ -5,6 +5,7 @@ import type {
   CreateCompetitorInput,
   CreateCompetitorResult,
 } from "@/lib/api/types";
+import { normalizeSourceUrl } from "@/lib/format";
 import { mockCompetitors, mockProfiles } from "@/lib/mocks/data";
 
 function delay(ms = 200) {
@@ -14,7 +15,8 @@ function delay(ms = 200) {
 export async function listCompetitors(): Promise<CompetitorSummary[]> {
   if (useMocks()) {
     await delay();
-    return mockCompetitors;
+    // Return a new array so React Query sees a data change after mock mutations.
+    return [...mockCompetitors];
   }
   return apiFetch<CompetitorSummary[]>("/competitors");
 }
@@ -53,16 +55,34 @@ export async function createCompetitor(
 ): Promise<CreateCompetitorResult> {
   if (useMocks()) {
     await delay();
-    const id = input.name.toLowerCase().replace(/\s+/g, "-");
+    const sources = input.dataSources
+      .map(normalizeSourceUrl)
+      .filter(Boolean);
+    if (!sources.length) {
+      throw new Error("Add at least one data source");
+    }
+
+    const baseId = input.name.toLowerCase().replace(/\s+/g, "-") || "competitor";
+    let id = baseId;
+    let suffix = 2;
+    while (
+      mockCompetitors.some((c) => c.id === id) ||
+      mockProfiles[id]
+    ) {
+      id = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+
     const competitor: CompetitorSummary = {
       id,
       name: input.name.trim(),
-      website: input.website.trim(),
+      website: sources[0],
       trend: "flat",
       researchStatus: "pending",
       lastResearchedAt: null,
       recentChangeSummary: null,
     };
+    mockCompetitors.unshift(competitor);
     return {
       competitor,
       queuedRunId: `run-${id}-queued`,

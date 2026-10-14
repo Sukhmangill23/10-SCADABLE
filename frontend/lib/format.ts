@@ -3,6 +3,14 @@ export function displayWebsite(website: string): string {
   return website.replace(/^https?:\/\//, "");
 }
 
+/** Normalize a typed source into a URL the list/API can store. */
+export function normalizeSourceUrl(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return "";
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
+}
+
 /** Relative past time for mock / API timestamps. */
 export function formatRelativePast(iso: string | null): string {
   if (!iso) return "Not checked";

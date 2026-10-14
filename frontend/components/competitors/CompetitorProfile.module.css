@@ -197,6 +197,10 @@
   color: var(--sub);
 }
 
+.trendPending {
+  color: #8a6a2f;
+}
+
 .visualTabs {
   display: inline-flex;
   align-items: center;

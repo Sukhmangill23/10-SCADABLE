@@ -3,7 +3,12 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { competitorsApi, type Finding, type Trend } from "@/lib/api";
+import {
+  competitorsApi,
+  type Finding,
+  type ResearchStatus,
+  type Trend,
+} from "@/lib/api";
 import {
   displayWebsite,
   formatRelativeFuture,
@@ -26,7 +31,17 @@ const SCORE_LIST_LABELS: Record<string, string> = {
   "AI recommendations": "AI-generated recommendations",
 };
 
-function trendClass(trend: Trend): string {
+function isResearchPending(status: ResearchStatus): boolean {
+  return status === "pending" || status === "running";
+}
+
+function glanceTrendLabel(trend: Trend, status: ResearchStatus): string {
+  if (isResearchPending(status)) return "— Pending";
+  return TREND_LABEL[trend];
+}
+
+function trendClass(trend: Trend, status: ResearchStatus): string {
+  if (isResearchPending(status)) return styles.trendPending;
   if (trend === "up") return styles.trendUp;
   if (trend === "down") return styles.trendDown;
   return styles.trendFlat;
@@ -128,8 +143,10 @@ export function CompetitorProfileView({ id }: { id: string }) {
             <div className={styles.statRow}>
               <span>Trend</span>
               <b>
-                <span className={`${styles.trend} ${trendClass(data.trend)}`}>
-                  {TREND_LABEL[data.trend]}
+                <span
+                  className={`${styles.trend} ${trendClass(data.trend, data.researchStatus)}`}
+                >
+                  {glanceTrendLabel(data.trend, data.researchStatus)}
                 </span>
               </b>
             </div>

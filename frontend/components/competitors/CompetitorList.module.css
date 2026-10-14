@@ -4,6 +4,10 @@
 }
 
 .pageHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
   margin-bottom: 16px;
 }
 
@@ -22,6 +26,11 @@
   font-size: 12px;
   line-height: 1.5;
   font-weight: 400;
+}
+
+.headActions {
+  flex-shrink: 0;
+  padding-top: 4px;
 }
 
 .listControls {
@@ -220,6 +229,10 @@
 
 .trendFlat {
   color: var(--sub);
+}
+
+.trendPending {
+  color: #8a6a2f;
 }
 
 .lastChecked {

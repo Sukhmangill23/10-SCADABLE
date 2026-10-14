@@ -104,7 +104,8 @@ export type AgentRun = {
 
 export type CreateCompetitorInput = {
   name: string;
-  website: string;
+  /** One or more research sources (site, careers, blog, …). First is used as primary website. */
+  dataSources: string[];
 };
 
 export type CreateCompetitorResult = {
