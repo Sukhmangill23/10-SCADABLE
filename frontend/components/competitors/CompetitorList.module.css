@@ -141,6 +141,20 @@
   border-bottom: none;
 }
 
+.clickable {
+  transition: background-color 0.12s ease-out;
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background: #f3f1ef;
+}
+
+.clickable:focus-visible {
+  outline: 2px solid #5a4b86;
+  outline-offset: -2px;
+}
+
 /* Column widths so the full-bleed table still reads like the mockup */
 .colName {
   width: 22%;

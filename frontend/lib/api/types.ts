@@ -30,6 +30,12 @@ export type ScoreSeries = {
   scadable: number;
 };
 
+export type ActivityItem = {
+  id: string;
+  text: string;
+  detectedAt: string;
+};
+
 export type CompetitorSummary = {
   id: string;
   name: string;
@@ -43,6 +49,7 @@ export type CompetitorSummary = {
 export type CompetitorProfile = CompetitorSummary & {
   summary: string;
   findings: Finding[];
+  recentActivity: ActivityItem[];
   openRoles: number | null;
   nextRefreshAt: string | null;
   chartSeries: {

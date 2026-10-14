@@ -32,6 +32,7 @@ export async function getCompetitor(id: string): Promise<CompetitorProfile> {
         ...summary,
         summary: "Profile not researched yet.",
         findings: [],
+        recentActivity: [],
         openRoles: null,
         nextRefreshAt: null,
         chartSeries: {

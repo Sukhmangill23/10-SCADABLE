@@ -1,4 +1,4 @@
-import { PlaceholderPanel } from "@/components/ui/PlaceholderPanel";
+import { CompetitorProfileView } from "@/components/competitors/CompetitorProfileView";
 
 type Props = {
   params: Promise<{ id: string }>;
@@ -6,12 +6,5 @@ type Props = {
 
 export default async function CompetitorProfilePage({ params }: Props) {
   const { id } = await params;
-
-  return (
-    <PlaceholderPanel
-      title={`Competitor profile · ${id}`}
-      owner="FE A"
-      description="Findings with source links, change badges, and Recharts graphs. Wire to competitorsApi.getCompetitor(id)."
-    />
-  );
+  return <CompetitorProfileView id={id} />;
 }

@@ -1,8 +1,10 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { competitorsApi, type CompetitorSummary, type Trend } from "@/lib/api";
+import { displayWebsite, formatRelativePast } from "@/lib/format";
 import styles from "./CompetitorList.module.css";
 
 type ActivityFilter = "all" | Trend;
@@ -26,24 +28,6 @@ function trendClass(trend: Trend): string {
   return styles.trendFlat;
 }
 
-/** Display host only, matching the mockup (no https://). */
-function displayWebsite(website: string): string {
-  return website.replace(/^https?:\/\//, "");
-}
-
-/** Simple relative time for mock timestamps (good enough for the list UI). */
-function formatLastChecked(iso: string | null): string {
-  if (!iso) return "Not checked";
-
-  const then = new Date(iso).getTime();
-  const now = Date.now();
-  const days = Math.max(0, Math.floor((now - then) / (1000 * 60 * 60 * 24)));
-
-  if (days === 0) return "Today";
-  if (days === 1) return "1 day ago";
-  return `${days} days ago`;
-}
-
 function matchesSearch(competitor: CompetitorSummary, query: string): boolean {
   if (!query) return true;
   const q = query.toLowerCase();
@@ -54,6 +38,7 @@ function matchesSearch(competitor: CompetitorSummary, query: string): boolean {
 }
 
 export function CompetitorList() {
+  const router = useRouter();
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [search, setSearch] = useState("");
 
@@ -148,7 +133,18 @@ export function CompetitorList() {
               </tr>
             ) : (
               visible.map((c) => (
-                <tr key={c.id}>
+                <tr
+                  key={c.id}
+                  className={styles.clickable}
+                  tabIndex={0}
+                  onClick={() => router.push(`/competitors/${c.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      router.push(`/competitors/${c.id}`);
+                    }
+                  }}
+                >
                   <td className={styles.companyCell}>{c.name}</td>
                   <td className={styles.websiteCell}>{displayWebsite(c.website)}</td>
                   <td>
@@ -160,7 +156,7 @@ export function CompetitorList() {
                     </span>
                   </td>
                   <td className={styles.lastChecked}>
-                    {formatLastChecked(c.lastResearchedAt)}
+                    {formatRelativePast(c.lastResearchedAt)}
                   </td>
                   <td className={styles.rowArrow} aria-hidden="true">
                     <svg
