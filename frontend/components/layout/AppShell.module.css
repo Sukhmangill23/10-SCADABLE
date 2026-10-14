@@ -31,11 +31,67 @@
   color: var(--accent);
 }
 
+.titleRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 16px;
+  min-width: 0;
+}
+
 .title {
   font-size: 13px;
   font-weight: 650;
-  padding: 0 16px;
   letter-spacing: -0.01em;
+}
+
+.authControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.authBtnPrimary,
+.authBtnSecondary {
+  min-height: 28px;
+  padding: 0 11px;
+  border-radius: var(--radius);
+  font-size: 11px;
+  font-weight: 650;
+  border: 1px solid transparent;
+}
+
+.authBtnPrimary {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
+}
+
+.authBtnPrimary:hover {
+  background: var(--accent-hover);
+  border-color: var(--accent-hover);
+}
+
+.authBtnSecondary {
+  background: #fff;
+  color: var(--ink);
+  border-color: var(--line-strong);
+}
+
+.authBtnSecondary:hover {
+  background: #f8f5f2;
+}
+
+.devBadge {
+  font-size: 11px;
+  font-weight: 650;
+  color: var(--orange);
+  background: var(--orange-soft);
+  border: 1px solid #eccab2;
+  border-radius: 9px;
+  padding: 4px 9px;
 }
 
 .sidebar {

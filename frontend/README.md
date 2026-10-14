@@ -8,7 +8,7 @@ This folder is the shared foundation on branch `frontend/base`. Feature work bra
 
 | Person | Owns |
 | --- | --- |
-| **FE A** | Sign-in (Clerk later), competitors list + profile, agent runs |
+| **FE A** | Auth (Clerk), competitors list + profile, agent runs |
 | **FE B** | SWOT overview, Our Company page, Vercel deployment (when ready) |
 
 Do not edit each other’s feature folders without syncing.
@@ -58,9 +58,27 @@ Mocks are **on by default** (`NEXT_PUBLIC_USE_MOCKS` unset or not `"false"`).
 
 ## What’s intentionally not here yet
 
-- **Clerk** — no package, no provider, no keys. `/sign-in` is a stub only.
 - **Vercel** — no project config beyond a normal Next.js app. When deploying, set the Vercel **Root Directory** to `frontend`.
 - Real page UIs (list tables, SWOT grid, charts, run details) — build those on feature branches.
+
+## Auth (Clerk)
+
+Clerk is wired via `@clerk/nextjs`, `ClerkProvider`, and `proxy.ts` middleware.
+
+- Clerk app: **LIVE SWOT**
+- **Invite-only** (`sign_up_mode: restricted`) — public self sign-up is closed
+- Unauthenticated users are sent to **`/sign-in`** only (no “Access restricted” sign-up page)
+- **`/sign-up`** only appears from an invitation email link (ticket query param)
+- Signed-in users land on `/overview`
+- Keys live in `.env.local` (do not commit)
+- Access / invite docs: [docs/auth-access.md](./docs/auth-access.md)
+
+**Go to dashboard (dev bypass):** Always shown on auth pages. Sets a short-lived cookie and opens `/overview` without signing in. Available in `next dev`, or when `ALLOW_DEV_DASHBOARD_BYPASS=true`. Never enable that in real production.
+
+```bash
+npx -y clerk@latest doctor
+```
+
 
 ## API modules
 

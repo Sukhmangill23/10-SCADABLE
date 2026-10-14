@@ -1,0 +1,6 @@
+{
+  "email_address": "person@example.com",
+  "redirect_url": "http://localhost:3000/sign-up",
+  "notify": true,
+  "ignore_existing": true
+}
