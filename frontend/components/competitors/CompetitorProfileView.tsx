@@ -1,10 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useRouter } from "next/navigation";
+import { useEffect, useId, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { Button } from "@/components/ui/Button";
 import {
   competitorsApi,
+  type CompetitorSummary,
   type Finding,
   type ResearchStatus,
   type Trend,
@@ -62,6 +65,12 @@ function uniqueSources(findings: Finding[]) {
 }
 
 export function CompetitorProfileView({ id }: { id: string }) {
+  const router = useRouter();
+  const queryClient = useQueryClient();
+  const confirmTitleId = useId();
+  const [confirmOpen, setConfirmOpen] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
+
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["competitor", id],
     queryFn: () => competitorsApi.getCompetitor(id),
@@ -71,6 +80,34 @@ export function CompetitorProfileView({ id }: { id: string }) {
     () => (data ? uniqueSources(data.findings) : []),
     [data],
   );
+
+  const deleteMutation = useMutation({
+    mutationFn: () => competitorsApi.deleteCompetitor(id),
+    onSuccess: () => {
+      queryClient.setQueryData<CompetitorSummary[]>(["competitors"], (prev) =>
+        (prev ?? []).filter((c) => c.id !== id),
+      );
+      void queryClient.invalidateQueries({ queryKey: ["competitors"] });
+      queryClient.removeQueries({ queryKey: ["competitor", id] });
+      router.push("/competitors");
+    },
+    onError: (err) => {
+      setDeleteError(
+        err instanceof Error ? err.message : "Could not delete profile.",
+      );
+    },
+  });
+
+  useEffect(() => {
+    if (!confirmOpen) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape" && !deleteMutation.isPending) {
+        setConfirmOpen(false);
+      }
+    }
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [confirmOpen, deleteMutation.isPending]);
 
   if (isPending) {
     return <p className={styles.status}>Loading profile…</p>;
@@ -190,6 +227,64 @@ export function CompetitorProfileView({ id }: { id: string }) {
           </section>
         </div>
       </div>
+
+      <div className={styles.deleteBar}>
+        <Button
+          variant="danger"
+          onClick={() => {
+            setDeleteError(null);
+            setConfirmOpen(true);
+          }}
+        >
+          Delete profile
+        </Button>
+      </div>
+
+      {confirmOpen ? (
+        <div
+          className={styles.overlay}
+          role="presentation"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !deleteMutation.isPending) {
+              setConfirmOpen(false);
+            }
+          }}
+        >
+          <div
+            className={styles.confirmModal}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby={confirmTitleId}
+          >
+            <h2 id={confirmTitleId}>Delete this profile?</h2>
+            <p>
+              Deleting <strong>{data.name}</strong> will permanently remove this
+              competitor profile, research history, activity, findings, sources,
+              and queued agent runs for this company.
+            </p>
+            <p>This cannot be undone.</p>
+            {deleteError ? (
+              <p className={styles.confirmError}>{deleteError}</p>
+            ) : null}
+            <div className={styles.confirmActions}>
+              <Button
+                variant="secondary"
+                onClick={() => setConfirmOpen(false)}
+                disabled={deleteMutation.isPending}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => deleteMutation.mutate()}
+                disabled={deleteMutation.isPending}
+              >
+                {deleteMutation.isPending ? "Deleting…" : "Delete profile"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }

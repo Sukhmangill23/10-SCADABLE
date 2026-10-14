@@ -249,6 +249,65 @@
   padding: 24px 0;
 }
 
+.deleteBar {
+  margin-top: 8px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
+  display: flex;
+  justify-content: flex-start;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 19, 41, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.confirmModal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  padding: 24px;
+  width: 400px;
+  max-width: 100%;
+  box-shadow: var(--shadow);
+}
+
+.confirmModal h2 {
+  margin: 0 0 8px;
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  font-weight: 690;
+}
+
+.confirmModal p {
+  margin: 0 0 12px;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.confirmModal p:last-of-type {
+  margin-bottom: 20px;
+}
+
+.confirmActions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+}
+
+.confirmError {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: #a64f45;
+}
+
 @media (max-width: 900px) {
   .grid {
     grid-template-columns: 1fr;

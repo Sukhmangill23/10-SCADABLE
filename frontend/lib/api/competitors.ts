@@ -93,3 +93,17 @@ export async function createCompetitor(
     body: input,
   });
 }
+
+export async function deleteCompetitor(id: string): Promise<void> {
+  if (useMocks()) {
+    await delay();
+    const index = mockCompetitors.findIndex((c) => c.id === id);
+    if (index === -1) {
+      throw new Error(`Competitor not found: ${id}`);
+    }
+    mockCompetitors.splice(index, 1);
+    delete mockProfiles[id];
+    return;
+  }
+  await apiFetch<void>(`/competitors/${id}`, { method: "DELETE" });
+}
