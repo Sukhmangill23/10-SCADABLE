@@ -133,12 +133,12 @@ export function CompetitorList() {
         <table className={styles.table}>
           <thead>
             <tr>
-              <th>Name</th>
-              <th>Website</th>
-              <th>Relationship</th>
-              <th>Activity</th>
-              <th>Last checked</th>
-              <th aria-hidden="true" />
+              <th className={styles.colName}>Name</th>
+              <th className={styles.colWebsite}>Website</th>
+              <th className={styles.colRelationship}>Relationship</th>
+              <th className={styles.colActivity}>Activity</th>
+              <th className={styles.colChecked}>Last checked</th>
+              <th className={styles.colArrow} aria-hidden="true" />
             </tr>
           </thead>
           <tbody>
