@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { runsApi, type AgentRun, type ResearchStatus } from "@/lib/api";
 import { formatRelativePast } from "@/lib/format";
@@ -89,7 +90,9 @@ function RunRow({
 }
 
 export function AgentRunsList() {
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const searchParams = useSearchParams();
+  const runFromUrl = searchParams.get("run");
+  const [expandedId, setExpandedId] = useState<string | null>(runFromUrl);
 
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["runs"],
@@ -100,6 +103,15 @@ export function AgentRunsList() {
 
   const weeklyStats = useMemo(() => computeWeeklyRunStats(runs), [runs]);
   const latestRows = useMemo(() => latestRunPerCompetitor(runs), [runs]);
+
+  // Open the run linked from a competitor profile (`/runs?run=<id>`).
+  useEffect(() => {
+    if (!runFromUrl || latestRows.length === 0) return;
+    const match = latestRows.find((run) => run.id === runFromUrl);
+    if (match) {
+      setExpandedId(match.id);
+    }
+  }, [runFromUrl, latestRows]);
 
   if (isPending) {
     return <p className={styles.statusMessage}>Loading agent runs…</p>;

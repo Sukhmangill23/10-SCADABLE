@@ -41,6 +41,14 @@
   line-height: 1.5;
 }
 
+.heroActions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
 .pill {
   display: inline-flex;
   align-items: center;

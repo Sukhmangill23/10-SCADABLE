@@ -7,6 +7,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import {
   competitorsApi,
+  runsApi,
   type CompetitorSummary,
   type Finding,
   type ResearchStatus,
@@ -17,6 +18,7 @@ import {
   formatRelativeFuture,
   formatRelativePast,
 } from "@/lib/format";
+import { latestSuccessfulRunForCompetitor } from "@/lib/runs/stats";
 import { ProfileVisuals } from "./ProfileVisuals";
 import styles from "./CompetitorProfile.module.css";
 
@@ -76,9 +78,20 @@ export function CompetitorProfileView({ id }: { id: string }) {
     queryFn: () => competitorsApi.getCompetitor(id),
   });
 
+  const { data: runs } = useQuery({
+    queryKey: ["runs"],
+    queryFn: () => runsApi.listRuns(),
+  });
+
   const sources = useMemo(
     () => (data ? uniqueSources(data.findings) : []),
     [data],
+  );
+
+  /** Only after a successful completed run — hidden while pending / if latest failed. */
+  const latestSuccessfulRun = useMemo(
+    () => latestSuccessfulRunForCompetitor(runs ?? [], id),
+    [runs, id],
   );
 
   const deleteMutation = useMutation({
@@ -133,7 +146,19 @@ export function CompetitorProfileView({ id }: { id: string }) {
           <h1>{data.name}</h1>
           <p>{displayWebsite(data.website)}</p>
         </div>
-        <span className={styles.pill}>Competitor</span>
+        <div className={styles.heroActions}>
+          <span className={styles.pill}>Competitor</span>
+          {latestSuccessfulRun ? (
+            <Button
+              variant="secondary"
+              onClick={() =>
+                router.push(`/runs?run=${encodeURIComponent(latestSuccessfulRun.id)}`)
+              }
+            >
+              View latest agent run
+            </Button>
+          ) : null}
+        </div>
       </header>
 
       <div className={styles.grid}>
