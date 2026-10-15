@@ -17,9 +17,17 @@ export function formatRelativePast(iso: string | null): string {
 
   const then = new Date(iso).getTime();
   const now = Date.now();
-  const days = Math.max(0, Math.floor((now - then) / (1000 * 60 * 60 * 24)));
+  const minutes = Math.max(0, Math.floor((now - then) / (1000 * 60)));
 
-  if (days === 0) return "Today";
+  if (minutes < 1) return "Just now";
+  if (minutes === 1) return "1 minute ago";
+  if (minutes < 60) return `${minutes} minutes ago`;
+
+  const hours = Math.floor(minutes / 60);
+  if (hours === 1) return "1 hour ago";
+  if (hours < 24) return `${hours} hours ago`;
+
+  const days = Math.floor(hours / 24);
   if (days === 1) return "1 day ago";
   if (days < 7) return `${days} days ago`;
   if (days < 14) return "1 week ago";

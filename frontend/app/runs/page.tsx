@@ -1,11 +1,5 @@
-import { PlaceholderPanel } from "@/components/ui/PlaceholderPanel";
+import { AgentRunsList } from "@/components/runs/AgentRunsList";
 
 export default function RunsPage() {
-  return (
-    <PlaceholderPanel
-      title="Agent Runs"
-      owner="FE A"
-      description="Research run list with status, cost, steps, and cache stats. Wire to runsApi.listRuns()."
-    />
-  );
+  return <AgentRunsList />;
 }
