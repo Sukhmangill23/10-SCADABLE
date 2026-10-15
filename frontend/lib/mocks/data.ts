@@ -39,7 +39,7 @@ export const mockCompetitors: CompetitorSummary[] = [
     name: "BrightPath",
     website: "https://brightpath.example",
     trend: "up",
-    researchStatus: "success",
+    researchStatus: "failed",
     lastResearchedAt: "2026-10-12T09:00:00Z",
     recentChangeSummary: "Expanded analytics integrations",
   },

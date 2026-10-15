@@ -20,6 +20,7 @@ import {
 } from "@/lib/format";
 import { latestSuccessfulRunForCompetitor } from "@/lib/runs/stats";
 import { ProfileVisuals } from "./ProfileVisuals";
+import { ResearchStatusBanner } from "./ResearchStatusBanner";
 import styles from "./CompetitorProfile.module.css";
 
 const TREND_LABEL: Record<Trend, string> = {
@@ -111,6 +112,48 @@ export function CompetitorProfileView({ id }: { id: string }) {
     },
   });
 
+  const rerunMutation = useMutation({
+    mutationFn: () => competitorsApi.rerunCompetitorResearch(id),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["competitor", id] });
+      const previous = queryClient.getQueryData(["competitor", id]);
+      queryClient.setQueryData(["competitor", id], (current: typeof data) =>
+        current ? { ...current, researchStatus: "running" as const } : current,
+      );
+      queryClient.setQueryData<CompetitorSummary[]>(["competitors"], (prev) =>
+        (prev ?? []).map((c) =>
+          c.id === id ? { ...c, researchStatus: "running" } : c,
+        ),
+      );
+      return { previous };
+    },
+    onSuccess: (profile) => {
+      queryClient.setQueryData(["competitor", id], profile);
+      queryClient.setQueryData<CompetitorSummary[]>(["competitors"], (prev) =>
+        (prev ?? []).map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                researchStatus: profile.researchStatus,
+                lastResearchedAt: profile.lastResearchedAt,
+                recentChangeSummary: profile.recentChangeSummary,
+                trend: profile.trend,
+              }
+            : c,
+        ),
+      );
+      void queryClient.invalidateQueries({ queryKey: ["runs"] });
+      void queryClient.invalidateQueries({ queryKey: ["competitors"] });
+    },
+    onError: (_err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(["competitor", id], context.previous);
+      }
+      void queryClient.invalidateQueries({ queryKey: ["competitor", id] });
+      void queryClient.invalidateQueries({ queryKey: ["competitors"] });
+    },
+  });
+
   useEffect(() => {
     if (!confirmOpen) return;
     function onKeyDown(e: KeyboardEvent) {
@@ -160,6 +203,17 @@ export function CompetitorProfileView({ id }: { id: string }) {
           ) : null}
         </div>
       </header>
+
+      <ResearchStatusBanner
+        status={data.researchStatus}
+        competitorName={data.name}
+        rerunning={rerunMutation.isPending}
+        onRerun={
+          data.researchStatus === "failed"
+            ? () => rerunMutation.mutate()
+            : undefined
+        }
+      />
 
       <div className={styles.grid}>
         <div>
