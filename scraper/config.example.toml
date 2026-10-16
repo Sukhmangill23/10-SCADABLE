@@ -39,7 +39,7 @@ url_pattern = "https://example.com/careers*"
 wait_for_css = "main"
 scan_full_page = true
 max_scroll_steps = 5
-# Button interactions are configured by an operator and implemented in Stage 3.
+# First matching rule wins; clicks are bounded and pause for scroll_delay_seconds.
 load_more_selector = "button.load-more"
 max_clicks = 3
 

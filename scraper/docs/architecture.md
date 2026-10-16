@@ -11,10 +11,11 @@ FastAPI, PostgreSQL, OpenAI analysis, a frontend, scheduling or change detection
 Stage 1 implements packaging, input/output contracts, validated settings, SDK configuration
 factories and interfaces. Stage 2 adds bounded sitemap/robots HTTP discovery, URL policy,
 BestFirst/BFS traversal and discovery orchestration over the `PageFetcher` contract.
-Importing models does not load the SDK. Browser fetching, content extraction, writers and
-the CLI remain Stage 3 work. See `discovery.md` for the implemented API and offline checks.
+Stage 3 connects browser fetching, content extraction, writers and the CLI. Importing
+models does not load the SDK. See `discovery.md` and `extraction-and-output.md` for the
+implemented APIs, verification commands and current limitations.
 
-## Runtime flow planned for Stages 2-4
+## Runtime flow
 
 1. Receive one or more `CompetitorInput` values and validate homepage URLs.
 2. Resolve defaults, global settings, competitor overrides and explicit CLI overrides.
@@ -102,16 +103,20 @@ results; it does not block an application's event loop with a nested `asyncio.ru
 
 Default settings allow 4 page tasks per discovery run and 1 page per domain at a time,
 with a 1-2 second randomized inter-request delay. Stage 2 enforces these per-run limits.
-The Stage 3 service will coordinate the global limit across up to 2 competitors; Stage 2's
+The Stage 3 service coordinates the global limit across up to 2 competitors; Stage 2's
 `DiscoveryCrawler.run()` processes one competitor. Constructing a run config alone does
 not enforce limits. The retry policy remains Stage 4 work; Stage 2 makes one attempt per
 selected page and preserves failures. Retries need one owner to avoid multiplying budgets.
 
 Robots compliance is mandatory; `respect_robots_txt` cannot be set to false. Factories
-enable the SDK check and give browser and robots checks the same explicit user agent.
+enable the SDK check by default; the concrete guarded adapter disables the redundant
+SDK lookup. Browser and application robots checks use the same explicit user agent.
 Stage 2 validates robots behavior for sitemap requests, their redirects and page preflight.
-The future browser fetcher must also check each navigation/redirect before requesting it;
-the traversal's final-URL check cannot undo a request that a faulty fetcher already made.
+The concrete browser fetcher checks document navigation and every redirect hop before
+requesting it. It aborts redirect responses and separately navigates to each checked next
+hop because ordinary browser routing can miss automatic redirects. Third-party rendering
+resources are allowed; embedded documents and popups are blocked. See Stage 3 usage for
+the exact policy and local Chromium verification.
 Unavailable robots rules
 caused by timeouts/server errors should defer the affected host with a warning rather
 than silently proceeding. A missing robots file is distinct from a retrieval failure.
@@ -130,7 +135,8 @@ Default navigation uses `domcontentloaded`, a 45-second navigation timeout and a
 selector wait limit. The service must also enforce a total attempt deadline around the
 SDK call: a navigation timeout is not a total interaction timeout. Optional scrolling is
 limited to 5 steps. Per-site rules use URL globs, CSS waits and explicit load-more selectors
-with finite click/scroll limits. Rule selection and button execution are Stage 3 work.
+with finite click/scroll limits. Stage 3 selects the first matching rule and executes
+explicit bounded load-more clicks before retrieving the final DOM.
 Arbitrary buttons are not guessed. Page-specific failures are recorded and do not abort
 other competitors; cancellation must propagate to release browser resources.
 
@@ -156,11 +162,11 @@ registry dispositions, and `discovered` counts all unique registry records. Thes
 do not claim all sitemap or site URLs were enumerated. `pending` is available for an
 interrupted run; normal completion must finalize eligible remaining URLs as deferred.
 
-Planned JSON contains complete competitor result objects in a versioned run document.
-Planned JSONL contains typed `page` records and one `competitor_summary` record per
-competitor, without repeating page bodies in the summary. Writers and run-document models
-are finalized in Stage 3. Backend and LLM teams can import the contracts now and later
-await the service directly; no API server or database is needed to consume the results.
+JSON contains complete competitor result objects in a versioned `CrawlRunDocument`.
+JSONL contains typed `page` records and one `competitor_summary` record per competitor,
+without repeating page bodies in the summary. The CLI emits records as competitors
+complete. Backend and LLM teams can import the contracts and await `CompetitorScraper`
+directly; no API server or database is needed to consume the results.
 
 ## Delivery and Git gates
 
@@ -171,4 +177,5 @@ await the service directly; no API server or database is needed to consume the r
 
 Stop for review after every stage. Commit only after explicit approval, using the four
 requested messages. Do not push without permission. Live competitor tests require the
-user's approval in Stage 4. Current tests are offline and do not launch a browser.
+user's approval in Stage 4. Default tests use fixtures without launching a browser.
+Opt-in Stage 3 Chromium tests use loopback servers only.

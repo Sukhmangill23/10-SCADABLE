@@ -1,4 +1,4 @@
-"""SDK configuration only. Browser execution is introduced in later stages.
+"""Lazy official SDK configuration factories; browser execution lives in browser.py.
 
 Imports are lazy so backend consumers can use the contracts without loading the SDK.
 The frontier, per-domain semaphore, retry policy and redirect checks belong to the service;
@@ -30,14 +30,18 @@ def build_browser_config(settings: ScraperConfig) -> BrowserConfig:
 
 
 def build_run_config(
-    settings: ScraperConfig, *, dynamic: DynamicSettings | None = None
+    settings: ScraperConfig,
+    *,
+    dynamic: DynamicSettings | None = None,
+    application_robots_guard: bool = False,
 ) -> CrawlerRunConfig:
     from crawl4ai import CacheMode, CrawlerRunConfig
+    from crawl4ai.content_filter_strategy import PruningContentFilterLXML
     from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
 
     interaction = dynamic if dynamic is not None else settings.dynamic
     return CrawlerRunConfig(
-        check_robots_txt=settings.respect_robots_txt,
+        check_robots_txt=not application_robots_guard,
         user_agent=settings.user_agent,
         cache_mode=CacheMode.DISABLED,
         deep_crawl_strategy=None,
@@ -53,6 +57,7 @@ def build_run_config(
         markdown_generator=DefaultMarkdownGenerator(
             content_source="raw_html",
             options={"ignore_links": False},
+            content_filter=PruningContentFilterLXML(threshold=0.2, min_word_threshold=0),
         ),
         exclude_external_links=False,
         exclude_social_media_links=False,

@@ -49,7 +49,7 @@ def test_run_preserves_source_content_and_links_without_persistent_page_cache():
     assert run.cache_mode.value == "disabled"
     assert run.markdown_generator.content_source == "raw_html"
     assert run.markdown_generator.options["ignore_links"] is False
-    assert run.markdown_generator.content_filter is None
+    assert run.markdown_generator.content_filter is not None
     assert run.word_count_threshold == 0
     assert run.exclude_external_links is False
     assert run.exclude_social_media_links is False
@@ -57,6 +57,12 @@ def test_run_preserves_source_content_and_links_without_persistent_page_cache():
     assert run.remove_forms is False
     assert run.extraction_strategy is None
     assert run.verbose is False
+
+
+def test_application_guard_disables_only_duplicate_sdk_robots_lookup():
+    run = build_run_config(ScraperConfig(), application_robots_guard=True)
+    assert run.check_robots_txt is False
+    assert ScraperConfig().respect_robots_txt is True
 
 
 def test_sitemap_discovery_does_not_probe_candidate_pages_or_common_crawl(tmp_path):

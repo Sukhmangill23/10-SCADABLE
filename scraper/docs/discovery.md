@@ -38,8 +38,9 @@ The supplied fetcher must implement `PageFetcher`'s async context manager and `f
 It must enforce domain and robots policy before every browser navigation and redirect hop.
 Stage 2 rejects an unexpected unapproved final URL and does not expand its content, but
 that check cannot prevent a bad fetcher from having already requested the destination.
-The concrete Crawl4AI browser adapter, extraction and CLI belong to Stage 3. This stage
-tests rendering through controlled fixtures and does not claim live-browser verification.
+The concrete Crawl4AI browser adapter, extraction and CLI are implemented in Stage 3; see
+[extraction and output](extraction-and-output.md). Stage 2 itself tests rendering through
+controlled fixtures and does not claim live-browser verification.
 The HTTP sitemap/robots implementation is concrete and independently reusable.
 
 `robots_guard.check(url)` returns the minimum interval from robots rules or raises
@@ -111,7 +112,7 @@ only HTTP and rendering are replaced with synthetic fixtures. Tests cover both t
 strategies, source preservation, deduplication, shorter paths, page/depth/discovery limits,
 external hosts, robots failures, redirects, XML/gzip bounds, concurrency and cancellation.
 No browser or live competitor website is contacted. Live testing still requires approval
-in Stage 4. No Stage 2 commit is created until review approval.
+in Stage 4. Stage 2 was approved and committed as `1d8e50e`.
 
 References: [Crawl4AI deep crawling](https://docs.crawl4ai.com/core/deep-crawling/),
 [HTTPX transports](https://www.python-httpx.org/advanced/transports/),

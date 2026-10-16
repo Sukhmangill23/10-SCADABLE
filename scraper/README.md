@@ -3,10 +3,10 @@
 Standalone Python package for discovering and collecting source-linked competitor content.
 It is independent of the backend, database, LLM and frontend.
 
-**Current status: Stage 1 foundation.** Models, configuration, component interfaces and SDK
-configuration factories are implemented and tested. Discovery, browser execution, content
-cleaning, file writers and the command-line scraper are delivered in Stages 2-4. There is
-no crawl command or concrete scraper service yet.
+**Current status: Stage 3 implemented, awaiting review.** Sitemap/link discovery,
+BestFirst/BFS traversal, Crawl4AI rendering, conservative extraction, JSON/JSONL output
+and the multiple-homepage CLI are available. Retry/backoff hardening and approved live
+competitor validation remain Stage 4 work.
 
 ## Setup and checks
 
@@ -15,6 +15,7 @@ Use Python 3.12 and [uv](https://docs.astral.sh/uv/). From the repository root:
 ```powershell
 cd scraper
 uv sync --locked
+uv run --locked python -m playwright install chromium
 uv run --locked pytest -q
 uv run --locked ruff check .
 uv run --locked ruff format --check .
@@ -32,13 +33,12 @@ The pip path installs runtime dependencies; uv is the supported way to reproduce
 locked development environment. No environment variables, service credentials or API
 keys are needed. Python 3.12 is the supported baseline for this first release.
 
-Browser binaries are not needed for Stage 1. Before browser execution is introduced,
-install Chromium in the same environment using `uv run python -m playwright install chromium`.
+The default tests do not require browser binaries. Real crawling requires Chromium.
 On Linux, Playwright may also require OS libraries. See the official
 [Crawl4AI installation guide](https://docs.crawl4ai.com/core/installation/).
 
 Crawl4AI is pinned to 0.9.5. Pydantic provides validated, JSON-compatible contracts;
-`tomllib` and the future CLI's `argparse` come from Python. Crawl4AI itself brings
+`tomllib` and the CLI's `argparse` come from Python. Crawl4AI itself brings
 LLM-related transitive dependencies; this package does not configure or call an LLM.
 
 ## Review the configuration
@@ -69,8 +69,42 @@ rejected. Inputs must include `http://` or `https://`. An omitted competitor nam
 back to the homepage hostname with `www.` removed.
 
 See [config.example.toml](config.example.toml) for two competitor inputs and a dynamic-page
-rule. Its example domains are not live test targets. Settings express policies for the
-later crawl service; configuration alone does not enforce domain or concurrency limits.
+rule. Its example domains are not live test targets. Global concurrency settings are
+shared ceilings for `crawl_many()`; individual competitors cannot raise those ceilings.
+
+## Run the scraper
+
+Replace the placeholders with competitor homepages you are authorized to crawl:
+
+```powershell
+uv run --locked scadable-scraper https://competitor-a.example https://competitor-b.example --output output/crawl.json
+uv run --locked scadable-scraper --config config.toml --format jsonl --output output/crawl.jsonl
+uv run --locked python -m scadable_scraper --help
+```
+
+Positional homepages select matching competitors from TOML, preserving their names and
+overrides; unmatched homepages use global defaults. With no positional URLs, all TOML
+competitors run. `--max-pages`, `--max-depth`, `--strategy` and `--max-concurrency` override
+configuration. Existing output requires `--overwrite`; `--output -` emits structured
+output to stdout. Diagnostics go to stderr. Exit codes: 0 successful page collection,
+1 at least one partial/failed competitor, 2 input/output error, 130 interruption. Check
+`completion_reason` and deferred URLs to assess coverage even when the exit code is 0.
+
+For an importing application, use the asynchronous service directly:
+
+```python
+from scadable_scraper import CompetitorInput, ScraperConfig
+from scadable_scraper.service import CompetitorScraper
+
+
+async def collect(homepages: list[str]):
+    scraper = CompetitorScraper()
+    inputs = [CompetitorInput(homepage_url=url) for url in homepages]
+    return [result async for result in scraper.crawl_many(inputs, ScraperConfig())]
+```
+
+No nested event loop, database, API server or LLM is required. See
+[Stage 3 usage](docs/extraction-and-output.md) for dynamic rules and streaming integration.
 
 ## Data contracts
 
@@ -109,24 +143,32 @@ registry entries, not pretend fetch results. Discovered/skipped/deferred/externa
 records preserve reasons and provenance. A discovery cap is reported explicitly.
 
 Models support `model_dump(mode="json")`, `model_dump_json()` and `model_json_schema()`.
-JSON/JSONL file writing is Stage 3 work; JSONL will contain typed `page` records followed
-by a `competitor_summary` record without repeated page bodies.
+JSON uses `CrawlRunDocument` with `schema_version`, `serialized_at` and `results`.
+JSONL contains typed `page` records followed by a `competitor_summary` record per
+competitor, without repeated page bodies. Records are emitted as competitors complete.
 
 ## Boundaries and tests
 
-- [models.py](src/scadable_scraper/models.py): application-owned fetch and result models.
-- [config.py](src/scadable_scraper/config.py): validated settings, inputs and TOML resolution.
-- [interfaces.py](src/scadable_scraper/interfaces.py): async service, fetching, sitemap,
-  extraction and output contracts; no concrete implementations.
-- [crawl4ai_adapter.py](src/scadable_scraper/crawl4ai_adapter.py): verified SDK configuration
+- [models.py](src/models.py): application-owned fetch, result and output-record models.
+- [config.py](src/config.py): validated settings, inputs and TOML resolution.
+- [interfaces.py](src/interfaces.py): async component contracts.
+- [crawl4ai_adapter.py](src/crawl4ai_adapter.py): verified SDK configuration
   factories, with lazy SDK imports and no browser creation.
+- [browser.py](src/browser.py): rendering, guarded document requests and dynamic rules.
+- [extraction.py](src/extraction.py): cleaning and keyword categories without network I/O.
+- [service.py](src/service.py): reusable async service and shared page concurrency.
+- [output.py](src/output.py) and [cli.py](src/cli.py): serialization and standalone execution.
 - [architecture.md](docs/architecture.md): approved policies, flow and stage boundaries.
-- [tests](tests): offline model/configuration tests and real SDK configuration checks.
+- [tests](tests): fixture-based workflow checks and opt-in loopback browser tests.
 
-The public package and interface imports do not import Crawl4AI. Tests do not start
-browsers, call an LLM or contact competitor websites. SDK-boundary tests instantiate real
-SDK configuration objects rather than mocking their signatures. Synthetic fixtures in
-`tests/fixtures` are available for later discovery/extraction tests.
+The public package and interface imports do not import Crawl4AI. Default tests use
+synthetic fixtures and mocked HTTP/rendering boundaries. Opt-in tests launch Chromium
+against loopback fixture servers only; no competitor website or LLM is contacted:
+
+```powershell
+$env:SCADABLE_BROWSER_TESTS = "1"
+uv run --locked pytest tests/integration/test_browser_local.py -q
+```
 
 Generated output, environments, caches, build artifacts and secrets are ignored by Git.
 Each stage is reviewed and explicitly approved before its commit; no remote push is automatic.

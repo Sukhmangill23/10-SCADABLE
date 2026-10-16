@@ -128,7 +128,9 @@ class CrawlSummary(ContractModel):
     pending: NonNegativeInt = 0
 
 
-class CompetitorCrawlResult(ContractModel):
+class CompetitorSummary(ContractModel):
+    """JSONL summary payload: includes accounting/provenance, without page bodies."""
+
     schema_version: Literal["1.0"] = "1.0"
     competitor_name: NonEmptyText
     homepage_url: HomepageUrl
@@ -137,11 +139,20 @@ class CompetitorCrawlResult(ContractModel):
     run_status: Literal["success", "partial", "failed", "cancelled"]
     completion_reason: Literal["completed", "page_limit", "discovery_limit", "cancelled", "failed"]
     effective_config: ScraperConfig = Field(default_factory=ScraperConfig)
-    pages: list[ScrapedPage] = Field(default_factory=list)
     discovered_urls: list[DiscoveredUrl] = Field(default_factory=list)
     discovery_truncated: bool = False
     warnings: list[NonEmptyText] = Field(default_factory=list)
     summary: CrawlSummary = Field(default_factory=CrawlSummary)
+
+    @model_validator(mode="after")
+    def ordered_timestamps(self) -> Self:
+        if self.finished_at < self.started_at:
+            raise ValueError("finished_at must not precede started_at")
+        return self
+
+
+class CompetitorCrawlResult(CompetitorSummary):
+    pages: list[ScrapedPage] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_result_and_derive_summary(self) -> Self:
@@ -169,3 +180,21 @@ class CompetitorCrawlResult(ContractModel):
             raise ValueError("Summary counts do not match the page and URL records")
         object.__setattr__(self, "summary", summary)
         return self
+
+
+class CrawlRunDocument(ContractModel):
+    schema_version: Literal["1.0"] = "1.0"
+    serialized_at: UtcTimestamp = Field(default_factory=utc_now)
+    results: list[CompetitorCrawlResult]
+
+
+class PageRecord(ContractModel):
+    schema_version: Literal["1.0"] = "1.0"
+    record_type: Literal["page"] = "page"
+    page: ScrapedPage
+
+
+class CompetitorSummaryRecord(ContractModel):
+    schema_version: Literal["1.0"] = "1.0"
+    record_type: Literal["competitor_summary"] = "competitor_summary"
+    result: CompetitorSummary

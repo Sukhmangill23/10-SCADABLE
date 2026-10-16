@@ -14,7 +14,12 @@ dependencies = [
     "httpx>=0.28,<1",
     "defusedxml>=0.7,<1",
     "protego>=0.5,<1",
+    "playwright>=1.64,<2",
+    "rich>=14,<16",
 ]
+
+[project.scripts]
+scadable-scraper = "scadable_scraper.cli:main"
 
 [dependency-groups]
 dev = [
@@ -36,6 +41,7 @@ scadable_scraper = ["py.typed"]
 testpaths = ["tests"]
 asyncio_mode = "auto"
 addopts = "-ra"
+markers = ["browser: opt-in Chromium tests against loopback fixture servers only"]
 
 [tool.ruff]
 target-version = "py312"
