@@ -1,0 +1,40 @@
+# Example domains are configuration examples, not live test targets.
+[global]
+strategy = "best_first"
+max_pages = 50
+max_depth = 3
+max_discovered_urls = 5000
+max_concurrency = 4
+max_concurrent_competitors = 2
+per_domain_concurrency = 1
+request_delay_seconds = [1.0, 2.0]
+page_timeout_seconds = 45.0
+discovery_timeout_seconds = 30.0
+max_retries = 2
+respect_robots_txt = true
+
+[global.dynamic]
+scan_full_page = false
+max_scroll_steps = 5
+wait_timeout_seconds = 10.0
+
+[[competitors]]
+homepage_url = "https://example.com/"
+name = "Example"
+
+[competitors.overrides]
+max_pages = 20
+# Exact extra hosts must be approved before adding them here.
+allowed_domains = []
+
+[[competitors.overrides.dynamic_rules]]
+url_pattern = "https://example.com/careers*"
+wait_for_css = "main"
+scan_full_page = true
+max_scroll_steps = 5
+# Button interactions are configured by an operator and implemented in Stage 3.
+load_more_selector = "button.load-more"
+max_clicks = 3
+
+[[competitors]]
+homepage_url = "https://example.org/"

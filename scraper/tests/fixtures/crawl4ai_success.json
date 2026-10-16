@@ -1,0 +1,63 @@
+{
+  "url": "https://example.com/pricing",
+  "html": "<!doctype html>\n<html lang=\"en\">\n<head>\n  <title>Example pricing</title>\n  <meta name=\"description\" content=\"Example compliance platform plans\">\n</head>\n<body>\n  <nav><a href=\"/\">Example</a><a href=\"/features\">Features</a></nav>\n  <main>\n    <h1>Pricing</h1>\n    <p>Compliance automation for growing companies.</p>\n    <table>\n      <thead><tr><th>Plan</th><th>Price</th><th>Features</th></tr></thead>\n      <tbody><tr><td>Pro</td><td>$49/month</td><td>Audit evidence, integrations</td></tr></tbody>\n    </table>\n    <a href=\"/integrations?category=security&amp;utm_source=pricing\">Security integrations</a>\n    <a href=\"https://jobs.example.net/example\">Open positions</a>\n  </main>\n</body>\n</html>\n",
+  "success": true,
+  "cleaned_html": "<main><h1>Pricing</h1><p>Pro: $49/month</p></main>",
+  "media": {
+    "images": [],
+    "videos": [],
+    "audios": []
+  },
+  "links": {
+    "internal": [
+      {
+        "href": "https://example.com/features",
+        "text": "Features",
+        "title": "",
+        "base_domain": "example.com"
+      }
+    ],
+    "external": [
+      {
+        "href": "https://jobs.example.net/example",
+        "text": "Open positions",
+        "title": "",
+        "base_domain": "example.net"
+      }
+    ]
+  },
+  "downloaded_files": null,
+  "js_execution_result": null,
+  "screenshot": null,
+  "pdf": null,
+  "mhtml": null,
+  "extracted_content": null,
+  "metadata": {
+    "title": "Example pricing",
+    "description": "Example compliance platform plans"
+  },
+  "error_message": null,
+  "session_id": null,
+  "response_headers": {
+    "content-type": "text/html; charset=utf-8"
+  },
+  "status_code": 200,
+  "ssl_certificate": null,
+  "dispatch_result": null,
+  "redirected_url": "https://www.example.com/pricing",
+  "redirected_status_code": null,
+  "network_requests": null,
+  "console_messages": null,
+  "tables": [],
+  "head_fingerprint": null,
+  "cached_at": null,
+  "cache_status": null,
+  "crawl_stats": null,
+  "markdown": {
+    "raw_markdown": "# Pricing\n\nPro: $49/month\n\n[Features](https://example.com/features)",
+    "markdown_with_citations": "# Pricing\n\nPro: $49/month\n\nFeatures[1]",
+    "references_markdown": "[1] https://example.com/features",
+    "fit_markdown": "# Pricing\n\nPro: $49/month",
+    "fit_html": "<main><h1>Pricing</h1><p>Pro: $49/month</p></main>"
+  }
+}
