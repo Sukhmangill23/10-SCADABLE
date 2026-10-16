@@ -3,7 +3,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scraper.src import CompetitorCrawlResult, CompetitorInput, ScrapedPage
+from scadable_scraper import CompetitorCrawlResult, CompetitorInput, ScrapedPage
 
 
 def test_public_models_and_interfaces_import_without_loading_crawl4ai(tmp_path):

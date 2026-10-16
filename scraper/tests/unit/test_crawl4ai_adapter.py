@@ -1,5 +1,5 @@
-from config import DynamicSettings, ScraperConfig
-from crawl4ai_adapter import (
+from scadable_scraper.config import DynamicSettings, ScraperConfig
+from scadable_scraper.crawl4ai_adapter import (
     build_browser_config,
     build_run_config,
     build_seeding_config,

@@ -4,7 +4,7 @@ from datetime import UTC, datetime, timedelta, timezone
 import pytest
 from pydantic import ValidationError
 
-from models import (
+from scadable_scraper.models import (
     CompetitorCrawlResult,
     CompetitorInput,
     DiscoveredUrl,

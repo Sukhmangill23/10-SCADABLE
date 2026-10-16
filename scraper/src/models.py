@@ -24,6 +24,7 @@ __all__ = [
     "CrawlSummary",
     "DiscoveredLink",
     "DiscoveredUrl",
+    "DiscoveryEvidence",
     "FetchedPage",
     "ScrapedPage",
 ]
@@ -33,6 +34,14 @@ class DiscoveredLink(ContractModel):
     url: WebUrl
     text: str = ""
     title: str | None = None
+
+
+class DiscoveryEvidence(ContractModel):
+    observed_url: str
+    discovery_source: DiscoverySource
+    parent_url: WebUrl | None = None
+    depth: NonNegativeInt | None = None
+    title: str = ""
 
 
 class DiscoveredUrl(ContractModel):
@@ -46,6 +55,8 @@ class DiscoveredUrl(ContractModel):
     relevance_score: Annotated[float, Field(ge=0, le=1)] = 0.0
     disposition: UrlDisposition = UrlDisposition.PENDING
     reason: NonEmptyText | None = None
+    discovery_count: PositiveInt = 1
+    evidence: list[DiscoveryEvidence] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def explain_uncrawled_urls(self) -> Self:

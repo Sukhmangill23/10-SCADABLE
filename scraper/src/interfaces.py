@@ -32,7 +32,17 @@ class PageFetcher(Protocol):
     ) -> None: ...
 
     async def fetch(self, url: WebUrl, settings: ScraperConfig) -> FetchedPage:
-        """One attempt; page failures become FetchedPage failures, cancellation propagates."""
+        """One attempt; failures become outcomes and cancellation propagates.
+
+        Implementations must enforce domain and robots policy before every navigation,
+        including redirect hops. A final-URL check after fetching cannot prevent egress.
+        """
+        ...
+
+
+class RobotsGuard(Protocol):
+    async def check(self, url: str) -> float:
+        """Return the minimum request interval or raise discovery.http.RequestBlocked."""
         ...
 
 

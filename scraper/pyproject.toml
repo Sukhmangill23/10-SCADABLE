@@ -1,6 +1,6 @@
 [build-system]
-requires = ["hatchling>=1.27,<2"]
-build-backend = "hatchling.build"
+requires = ["setuptools>=80,<83"]
+build-backend = "setuptools.build_meta"
 
 [project]
 name = "scadable-scraper"
@@ -11,6 +11,9 @@ requires-python = ">=3.12,<3.13"
 dependencies = [
     "crawl4ai==0.9.5",
     "pydantic>=2.12,<3",
+    "httpx>=0.28,<1",
+    "defusedxml>=0.7,<1",
+    "protego>=0.5,<1",
 ]
 
 [dependency-groups]
@@ -20,8 +23,14 @@ dev = [
     "ruff>=0.14,<1",
 ]
 
-[tool.hatch.build.targets.wheel]
-packages = ["src/scadable_scraper"]
+[tool.setuptools]
+packages = ["scadable_scraper", "scadable_scraper.discovery"]
+
+[tool.setuptools.package-dir]
+scadable_scraper = "src"
+
+[tool.setuptools.package-data]
+scadable_scraper = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -34,3 +43,6 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["scadable_scraper"]

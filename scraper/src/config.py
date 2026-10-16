@@ -4,9 +4,16 @@ import re
 import tomllib
 from copy import deepcopy
 from pathlib import Path
-from typing import Annotated, Any, Literal
+from typing import Annotated, Any, Literal, Self
 
-from pydantic import ConfigDict, Field, StrictBool, field_serializer, field_validator
+from pydantic import (
+    ConfigDict,
+    Field,
+    StrictBool,
+    field_serializer,
+    field_validator,
+    model_validator,
+)
 
 from .types import ContractModel, HomepageUrl, NonEmptyText, PageCategory
 
@@ -58,6 +65,11 @@ class ScraperConfig(ContractModel):
     max_pages: PositiveInt = 50
     max_depth: NonNegativeInt = 3
     max_discovered_urls: PositiveInt = 5000
+    max_sitemap_documents: PositiveInt = 20
+    max_sitemap_requests: PositiveInt = 50
+    max_sitemap_depth: NonNegativeInt = 3
+    max_sitemap_bytes: PositiveInt = 2_097_152
+    max_redirects: NonNegativeInt = 5
     max_concurrency: PositiveInt = 4
     max_concurrent_competitors: PositiveInt = 2
     per_domain_concurrency: PositiveInt = 1
@@ -87,8 +99,16 @@ class ScraperConfig(ContractModel):
         default_factory=_default_keywords
     )
     minimum_relevance_score: Annotated[float, Field(strict=True, ge=0, le=1)] = 0.0
+    url_keyword_weight: Annotated[float, Field(strict=True, ge=0, le=1)] = 0.7
+    title_keyword_weight: Annotated[float, Field(strict=True, ge=0, le=1)] = 0.3
     dynamic: DynamicSettings = Field(default_factory=DynamicSettings)
     dynamic_rules: list[DynamicRule] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def usable_relevance_weights(self) -> Self:
+        if self.url_keyword_weight + self.title_keyword_weight == 0:
+            raise ValueError("At least one relevance signal must have positive weight")
+        return self
 
     @field_validator("request_delay_seconds")
     @classmethod

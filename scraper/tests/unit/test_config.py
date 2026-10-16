@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from config import ProjectConfig, ScraperConfig, load_config, resolve_config
+from scadable_scraper.config import ProjectConfig, ScraperConfig, load_config, resolve_config
 
 
 def test_override_precedence_preserves_unspecified_nested_settings():

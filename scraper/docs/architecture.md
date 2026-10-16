@@ -2,14 +2,17 @@
 
 ## Scope and status
 
-The scraper is a separately installable package under `scraper/`, with a `src/` layout.
+The scraper is a separately installable package under `scraper/`. Source files remain
+directly under `src/`, as requested during Stage 2. Setuptools maps that directory to
+the public `scadable_scraper` package for both editable installs and wheels.
 It collects competitor website content for downstream analysis. It does not implement
 FastAPI, PostgreSQL, OpenAI analysis, a frontend, scheduling or change detection.
 
-Stage 1 implements the foundation only: packaging, input/output contracts, validated
-settings, SDK configuration factories and interfaces. Importing models does not load
-the SDK. Interface methods are Protocol declarations, not runnable implementations.
-No empty modules or fake crawl results represent unfinished stages.
+Stage 1 implements packaging, input/output contracts, validated settings, SDK configuration
+factories and interfaces. Stage 2 adds bounded sitemap/robots HTTP discovery, URL policy,
+BestFirst/BFS traversal and discovery orchestration over the `PageFetcher` contract.
+Importing models does not load the SDK. Browser fetching, content extraction, writers and
+the CLI remain Stage 3 work. See `discovery.md` for the implemented API and offline checks.
 
 ## Runtime flow planned for Stages 2-4
 
@@ -31,11 +34,17 @@ BestFirst traversal, not a guarantee of the globally most relevant 50 pages on a
 
 ## Why a shared frontier
 
-Approved choice: own a small queue and registry, while using the official Crawl4AI SDK
-for rendering, links, sitemap seeding, scoring/filtering and dispatch where appropriate.
+Approved choice: own a small frontier and registry, while using the official Crawl4AI SDK
+for rendering, links and scoring/filtering where appropriate. During Stage 2 the user
+approved bounded sitemap fetching/parsing with HTTPX and defusedxml, because the native
+seeder's default recursion and redirects do not enforce the required resource/scope policies.
+Protego handles robots matching, including longest-match precedence and wildcard rules.
 Native deep-crawl strategies are useful but their one-root entry point and success-based
 page limit do not directly provide our combined sitemap/link budget and audit registry.
 We will not copy the SDK crawler or access its private queues/resume-state representation.
+The bounded registry is scanned for the next best eligible URL instead of accumulating
+stale heap entries on rediscovery. At the default 5,000 records and 50 attempts this keeps
+selection small, deterministic and easy to inspect. BFS selects by depth and discovery order.
 
 See [deep crawling](https://docs.crawl4ai.com/core/deep-crawling/),
 [URL seeding](https://docs.crawl4ai.com/core/url-seeding/) and the
@@ -91,23 +100,31 @@ results; it does not block an application's event loop with a nested `asyncio.ru
 
 ## Operational policies
 
-Default settings allow 4 page tasks globally, 2 competitors concurrently and 1 page per
-domain at a time, with a 1-2 second randomized inter-request delay. The service will own
-these shared limits: constructing a run config does not enforce them. Retries need a
-single owner to avoid multiplying SDK, dispatcher and service retry budgets.
+Default settings allow 4 page tasks per discovery run and 1 page per domain at a time,
+with a 1-2 second randomized inter-request delay. Stage 2 enforces these per-run limits.
+The Stage 3 service will coordinate the global limit across up to 2 competitors; Stage 2's
+`DiscoveryCrawler.run()` processes one competitor. Constructing a run config alone does
+not enforce limits. The retry policy remains Stage 4 work; Stage 2 makes one attempt per
+selected page and preserves failures. Retries need one owner to avoid multiplying budgets.
 
 Robots compliance is mandatory; `respect_robots_txt` cannot be set to false. Factories
 enable the SDK check and give browser and robots checks the same explicit user agent.
-Stage 2 must validate robots behavior for sitemap requests, navigation and redirects;
-the factory alone does not establish end-to-end compliance. Unavailable robots rules
+Stage 2 validates robots behavior for sitemap requests, their redirects and page preflight.
+The future browser fetcher must also check each navigation/redirect before requesting it;
+the traversal's final-URL check cannot undo a request that a faulty fetcher already made.
+Unavailable robots rules
 caused by timeouts/server errors should defer the affected host with a warning rather
 than silently proceeding. A missing robots file is distinct from a retrieval failure.
 
-Use fresh page content (`CacheMode.DISABLED`). Sitemap seeding uses `source="sitemap"`,
-`force=True`, and no live checks/head extraction to avoid hidden candidate page fetches.
-Its low-level nonsense filtering is disabled so application policy can record reasons.
-Common Crawl and external search are not enabled. Seeder and browser storage paths must
-be supplied by the runtime owner; tests confine SDK caches to temporary directories.
+Use fresh page content (`CacheMode.DISABLED`). The bounded sitemap reader handles robots
+directives, conventional roots, nested XML indexes and gzip. It never probes candidate pages.
+Default bounds are 20 sitemap documents, 50 HTTP requests (including robots and redirect
+hops), index depth 3, 2 MiB per response/decompressed sitemap and 5 redirects per request.
+XML DTDs/entities are rejected. The pending sitemap queue is bounded; child-index references
+take priority over speculative roots. Limits set truncation flags rather than implying full
+coverage. HTTP clients close on normal exit, errors and cancellation. Common Crawl and
+external search are not enabled. The Stage 1 SDK seeding-config factory is retained for
+compatibility but is not used by the bounded reader. Tests confine SDK caches to temp paths.
 
 Default navigation uses `domcontentloaded`, a 45-second navigation timeout and a 10-second
 selector wait limit. The service must also enforce a total attempt deadline around the
@@ -127,7 +144,9 @@ must contain source Markdown. A failed page may retain useful partial content.
 `DiscoveredUrl` keeps the observed URL and normalized identity separately, source, parent,
 timestamp, depth/basis, relevance score, disposition and reason. One normalized registry
 entry can accumulate additional discovery evidence in Stage 2 without duplicating crawl
-work. Skipped/deferred/external entries require a reason; they do not create fetched pages.
+work. `discovery_count` retains the total observations; at most 8 distinct evidence records
+per URL bound provenance storage. Shallower paths update descendant depths without refetching
+their parents. Skipped/deferred/external entries require a reason; they do not create pages.
 
 `CompetitorCrawlResult` uses schema version `1.0`, timing, effective config, result status,
 completion reason, page list, URL registry, truncation flag and warnings. Summary fields
