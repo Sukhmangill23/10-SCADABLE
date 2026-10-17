@@ -1,8 +1,8 @@
 import io
 import json
 
-from scadable_scraper import CompetitorCrawlResult, ScrapedPage
-from scadable_scraper.types import utc_now
+from scraper import CompetitorCrawlResult, ScrapedPage
+from scraper.types import utc_now
 
 
 def crawl_result():
@@ -29,8 +29,8 @@ def crawl_result():
 
 
 def test_json_run_document_round_trip():
-    from scadable_scraper.models import CrawlRunDocument
-    from scadable_scraper.output import write_json
+    from scraper.models import CrawlRunDocument
+    from scraper.output import write_json
 
     result = crawl_result()
     document = CrawlRunDocument(results=[result])
@@ -43,7 +43,7 @@ def test_json_run_document_round_trip():
 
 
 async def test_jsonl_records_reconstruct_result_without_repeating_page_bodies():
-    from scadable_scraper.output import JsonlSink, parse_jsonl_record
+    from scraper.output import JsonlSink, parse_jsonl_record
 
     result = crawl_result()
     stream = io.StringIO()

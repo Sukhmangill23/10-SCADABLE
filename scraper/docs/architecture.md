@@ -4,7 +4,7 @@
 
 The scraper is a separately installable package under `scraper/`. Source files remain
 directly under `src/`, as requested during Stage 2. Setuptools maps that directory to
-the public `scadable_scraper` package for both editable installs and wheels.
+the public `scraper` package for both editable installs and wheels.
 It collects competitor website content for downstream analysis. It does not implement
 FastAPI, PostgreSQL, OpenAI analysis, a frontend, scheduling or change detection.
 

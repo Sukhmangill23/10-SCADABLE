@@ -1,5 +1,5 @@
-from scadable_scraper.config import DynamicSettings, ScraperConfig
-from scadable_scraper.crawl4ai_adapter import (
+from scraper.config import DynamicSettings, ScraperConfig
+from scraper.crawl4ai_adapter import (
     build_browser_config,
     build_run_config,
     build_seeding_config,
@@ -7,14 +7,14 @@ from scadable_scraper.crawl4ai_adapter import (
 
 
 def test_browser_and_robots_checks_use_the_same_explicit_identity():
-    settings = ScraperConfig(user_agent="SCADABLETestBot/1.0", page_timeout_seconds=12.5)
+    settings = ScraperConfig(user_agent="TestBot/1.0", page_timeout_seconds=12.5)
     browser = build_browser_config(settings)
     run = build_run_config(settings)
     assert browser.headless is True
     assert browser.java_script_enabled is True
     assert browser.accept_downloads is False
     assert browser.ignore_https_errors is False
-    assert browser.user_agent == run.user_agent == "SCADABLETestBot/1.0"
+    assert browser.user_agent == run.user_agent == "TestBot/1.0"
     assert run.check_robots_txt is True
     assert run.page_timeout == 12500
     assert run.deep_crawl_strategy is None

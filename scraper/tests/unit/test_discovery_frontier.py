@@ -1,7 +1,7 @@
 """Network-free traversal rules, independent of the pending sitemap implementation."""
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.discovery.traversal import UrlFrontier
+from scraper import ScraperConfig
+from scraper.discovery.traversal import UrlFrontier
 
 
 def drain(frontier):

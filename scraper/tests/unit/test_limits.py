@@ -3,9 +3,9 @@ import time
 
 import pytest
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.limits import HostLimiter
-from scadable_scraper.reliability import CapacityTimeout
+from scraper import ScraperConfig
+from scraper.limits import HostLimiter
+from scraper.reliability import CapacityTimeout
 
 
 async def test_retry_after_received_during_pacing_extends_the_wait():

@@ -4,8 +4,8 @@ import time
 import httpx
 import pytest
 
-from scadable_scraper import CompetitorInput, FetchedPage, ScraperConfig
-from scadable_scraper.types import utc_now
+from scraper import CompetitorInput, FetchedPage, ScraperConfig
+from scraper.types import utc_now
 
 
 def http_fixture(request):
@@ -26,7 +26,7 @@ class FixtureFetcher:
         type(self).closed += 1
 
     async def fetch(self, url, settings):
-        from scadable_scraper.models import DiscoveredLink
+        from scraper.models import DiscoveredLink
 
         cls = type(self)
         cls.active += 1
@@ -45,7 +45,7 @@ class FixtureFetcher:
 
 
 async def test_service_composes_discovery_extraction_and_competitor_overrides():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     FixtureFetcher.closed = 0
     service = CompetitorScraper(
@@ -66,7 +66,7 @@ async def test_service_composes_discovery_extraction_and_competitor_overrides():
 
 
 async def test_many_limits_global_page_concurrency_even_if_competitor_requests_more():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     FixtureFetcher.peak = FixtureFetcher.active = 0
     service = CompetitorScraper(
@@ -90,7 +90,7 @@ async def test_many_limits_global_page_concurrency_even_if_competitor_requests_m
 
 
 async def test_failed_competitor_does_not_abort_other_competitors():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     def factory(competitor, settings, guard):
         if competitor.homepage_url.host == "broken.example":
@@ -112,7 +112,7 @@ async def test_failed_competitor_does_not_abort_other_competitors():
 
 
 async def test_invalid_merged_settings_fail_before_starting_workers():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     service = CompetitorScraper()
     competitor = CompetitorInput(
@@ -125,7 +125,7 @@ async def test_invalid_merged_settings_fail_before_starting_workers():
 
 
 async def test_shared_hostname_spacing_across_competitors():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     starts = []
 
@@ -148,7 +148,7 @@ async def test_shared_hostname_spacing_across_competitors():
 
 
 async def test_closing_many_iterator_cancels_running_competitor():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     slow_started = asyncio.Event()
     slow_closed = asyncio.Event()

@@ -24,8 +24,8 @@ Use the existing event loop in an importing application:
 
 ```python
 from contextlib import aclosing
-from scadable_scraper import CompetitorInput, ScraperConfig
-from scadable_scraper.service import CompetitorScraper
+from scraper import CompetitorInput, ScraperConfig
+from scraper.service import CompetitorScraper
 
 
 async def collect(homepages, consume):
@@ -58,7 +58,7 @@ JSON is a complete versioned document:
 
 ```python
 from pathlib import Path
-from scadable_scraper import CrawlRunDocument
+from scraper import CrawlRunDocument
 
 document = CrawlRunDocument.model_validate_json(
     Path("output/crawl.json").read_text(encoding="utf-8")
@@ -72,8 +72,8 @@ and validate its counts before accepting it:
 
 ```python
 from pathlib import Path
-from scadable_scraper import CompetitorCrawlResult
-from scadable_scraper.output import parse_jsonl_record
+from scraper import CompetitorCrawlResult
+from scraper.output import parse_jsonl_record
 
 pending = {}
 completed = []
@@ -186,8 +186,8 @@ uv run --locked pytest -q
 uv run --locked ruff check .
 uv run --locked ruff format --check .
 uv build
-uv run --locked scadable-scraper --help
-$env:SCADABLE_BROWSER_TESTS = "1"
+uv run --locked scraper --help
+$env:SCRAPER_BROWSER_TESTS = "1"
 uv run --locked pytest tests/integration/test_browser_local.py -q
 ```
 

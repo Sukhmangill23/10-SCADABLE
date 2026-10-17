@@ -3,8 +3,8 @@ import gzip
 import httpx
 import pytest
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.discovery.sitemaps import BoundedSitemapDiscoverer
+from scraper import ScraperConfig
+from scraper.discovery.sitemaps import BoundedSitemapDiscoverer
 
 
 def settings(**changes):

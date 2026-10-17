@@ -28,7 +28,7 @@ $env:CRAWL4_AI_BASE_DIRECTORY = Join-Path (Get-Location) ".uv-cache"
 $env:PLAYWRIGHT_BROWSERS_PATH = Join-Path (Get-Location) ".uv-cache\playwright"
 uv sync --locked
 uv run --locked python -m playwright install chromium
-uv run --locked scadable-scraper --help
+uv run --locked scraper --help
 ```
 
 Run the three environment-variable assignments again in a new terminal. They keep SDK
@@ -37,8 +37,8 @@ be used for installation and execution. All commands below run from `scraper/`.
 
 ## First manual website test
 
-Start with a small crawl. SCADABLE was approved and tested during development; substitute
-another authorized homepage when needed. This creates an ignored local configuration:
+Start with a small crawl. Replace `https://competitor.example/` below with a homepage
+you are authorized to crawl. This creates an ignored local configuration:
 
 ```powershell
 New-Item -ItemType Directory -Force output | Out-Null
@@ -54,11 +54,11 @@ max_sitemap_documents = 3
 max_sitemap_requests = 8
 
 [[competitors]]
-homepage_url = "https://scadable.com/"
-name = "SCADABLE"
+homepage_url = "https://competitor.example/"
+name = "Example competitor"
 '@ | Set-Content -Encoding ascii output/manual.toml
 
-uv run --locked scadable-scraper --config output/manual.toml --output output/manual.json
+uv run --locked scraper --config output/manual.toml --output output/manual.json
 ```
 
 You will see progress logs in the terminal. The JSON file appears when the run finishes.
@@ -98,9 +98,8 @@ $result.pages[0].cleaned_markdown | Set-Content -Encoding utf8 output/first-page
 means the configured budget stopped traversal; it does not mean the whole site was read.
 Keyword categories are coarse labels, so a product-focused blog article can be `products`.
 
-The existing development sample is in `output/live-scadable.json` and
-`output/live-scadable.jsonl` in this workspace. Generated data is ignored by Git and is
-not included in a fresh clone. See [validation.md](validation.md) for its measured coverage.
+Generated data is ignored by Git and is not included in a fresh clone.
+See [validation.md](validation.md) for the existing live sample's paths and measured coverage.
 
 ## JSONL, more websites and configuration
 
@@ -108,7 +107,7 @@ Choose JSONL for one JSON object per line. Page records are followed by a compet
 summary; each completed competitor is flushed:
 
 ```powershell
-uv run --locked scadable-scraper --config output/manual.toml --format jsonl --output output/manual.jsonl
+uv run --locked scraper --config output/manual.toml --format jsonl --output output/manual.jsonl
 Get-Content output/manual.jsonl -Encoding UTF8 | ForEach-Object { $_ | ConvertFrom-Json } | Select-Object record_type
 ```
 
@@ -124,8 +123,8 @@ Inputs are homepages with `http://` or `https://`, not individual article URLs.
 Common overrides:
 
 ```powershell
-uv run --locked scadable-scraper --config output/manual.toml --max-pages 10 --max-depth 2 --output output/larger.json
-uv run --locked scadable-scraper --config output/manual.toml --strategy bfs --output output/bfs.json
+uv run --locked scraper --config output/manual.toml --max-pages 10 --max-depth 2 --output output/larger.json
+uv run --locked scraper --config output/manual.toml --strategy bfs --output output/bfs.json
 ```
 
 CLI options override competitor settings, which override global settings and defaults.
@@ -138,7 +137,7 @@ guess arbitrary pagination controls.
 ```powershell
 uv run --locked pytest -q
 uv run --locked ruff check .
-$env:SCADABLE_BROWSER_TESTS = "1"
+$env:SCRAPER_BROWSER_TESTS = "1"
 uv run --locked pytest tests/integration/test_browser_local.py -q
 ```
 

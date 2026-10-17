@@ -1,8 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.discovery.relevance import UrlPolicy
+from scraper import ScraperConfig
+from scraper.discovery.relevance import UrlPolicy
 
 
 def test_keyword_scoring_ignores_hostnames_and_uses_known_titles():

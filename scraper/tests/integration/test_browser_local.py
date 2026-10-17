@@ -9,15 +9,15 @@ from threading import Thread
 
 import pytest
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.browser import Crawl4AIFetcher
-from scadable_scraper.discovery.http import GuardedHttpClient
+from scraper import ScraperConfig
+from scraper.browser import Crawl4AIFetcher
+from scraper.discovery.http import GuardedHttpClient
 
 pytestmark = [
     pytest.mark.browser,
     pytest.mark.skipif(
-        os.getenv("SCADABLE_BROWSER_TESTS") != "1",
-        reason="Set SCADABLE_BROWSER_TESTS=1 for loopback Chromium checks",
+        os.getenv("SCRAPER_BROWSER_TESTS") != "1",
+        reason="Set SCRAPER_BROWSER_TESTS=1 for loopback Chromium checks",
     ),
 ]
 
@@ -168,7 +168,7 @@ def test_real_cli_pipeline_writes_parseable_jsonl(website, tmp_path):
         [
             sys.executable,
             "-m",
-            "scadable_scraper",
+            "scraper",
             base,
             "--config",
             str(config),
@@ -193,8 +193,8 @@ def test_real_cli_pipeline_writes_parseable_jsonl(website, tmp_path):
 
 
 async def test_real_browser_retries_and_partial_results_preserve_page_budget(website):
-    from scadable_scraper import CompetitorInput
-    from scadable_scraper.service import CompetitorScraper
+    from scraper import CompetitorInput
+    from scraper.service import CompetitorScraper
 
     base, requests = website
     settings = ScraperConfig(
@@ -218,8 +218,8 @@ async def test_real_browser_retries_and_partial_results_preserve_page_budget(web
 
 
 async def test_real_sdk_wrapped_selector_timeouts_are_retried(website):
-    from scadable_scraper import CompetitorInput
-    from scadable_scraper.service import CompetitorScraper
+    from scraper import CompetitorInput
+    from scraper.service import CompetitorScraper
 
     base, requests = website
     settings = ScraperConfig(

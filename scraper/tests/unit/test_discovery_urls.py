@@ -2,8 +2,8 @@
 
 import pytest
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.discovery.urls import DomainScope, normalize_url
+from scraper import ScraperConfig
+from scraper.discovery.urls import DomainScope, normalize_url
 
 
 @pytest.mark.parametrize(

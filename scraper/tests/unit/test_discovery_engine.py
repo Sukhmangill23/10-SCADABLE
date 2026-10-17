@@ -3,11 +3,11 @@ from datetime import UTC, datetime
 
 import pytest
 
-from scadable_scraper import CompetitorInput, FetchedPage, ScraperConfig
-from scadable_scraper.discovery.engine import DiscoveryCrawler
-from scadable_scraper.discovery.http import RequestBlocked
-from scadable_scraper.interfaces import DiscoveryBatch
-from scadable_scraper.models import DiscoveredLink, DiscoveredUrl
+from scraper import CompetitorInput, FetchedPage, ScraperConfig
+from scraper.discovery.engine import DiscoveryCrawler
+from scraper.discovery.http import RequestBlocked
+from scraper.interfaces import DiscoveryBatch
+from scraper.models import DiscoveredLink, DiscoveredUrl
 
 
 class FixtureFetcher:

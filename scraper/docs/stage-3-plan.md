@@ -2,7 +2,7 @@
 
 Goal: connect the approved shared discovery frontier to Crawl4AI rendering, conservative
 content extraction, structured output and a multiple-homepage CLI. Stage 2 is committed
-as `1d8e50e`. Files stay directly under `src/` in the installed `scadable_scraper` package.
+as `1d8e50e`. Files stay directly under `src/` in the installed `scraper` package.
 
 ## Approved design
 

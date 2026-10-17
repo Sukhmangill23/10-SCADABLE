@@ -3,7 +3,7 @@ requires = ["setuptools>=80,<83"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "scadable-scraper"
+name = "scraper"
 version = "0.1.0"
 description = "Standalone, source-linked competitor scraping with Crawl4AI"
 readme = "README.md"
@@ -19,7 +19,7 @@ dependencies = [
 ]
 
 [project.scripts]
-scadable-scraper = "scadable_scraper.cli:main"
+scraper = "scraper.cli:main"
 
 [dependency-groups]
 dev = [
@@ -29,13 +29,13 @@ dev = [
 ]
 
 [tool.setuptools]
-packages = ["scadable_scraper", "scadable_scraper.discovery"]
+packages = ["scraper", "scraper.discovery"]
 
 [tool.setuptools.package-dir]
-scadable_scraper = "src"
+scraper = "src"
 
 [tool.setuptools.package-data]
-scadable_scraper = ["py.typed"]
+scraper = ["py.typed"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -51,4 +51,4 @@ line-length = 100
 select = ["E", "F", "I", "UP", "B", "ASYNC"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["scadable_scraper"]
+known-first-party = ["scraper"]

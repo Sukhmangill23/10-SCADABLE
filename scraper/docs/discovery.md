@@ -1,7 +1,7 @@
 # Stage 2: discovery and traversal
 
 Implemented under `src/discovery/`. Files remain directly under `src/`; setuptools maps
-the directory to the installed `scadable_scraper` package. No source files were moved.
+the directory to the installed `scraper` package. No source files were moved.
 
 ## Components
 
@@ -21,10 +21,10 @@ completion reason. It supports Pydantic JSON round trips but does not write outp
 ## API composition
 
 ```python
-from scadable_scraper import CompetitorInput, ScraperConfig, resolve_config
-from scadable_scraper.discovery.engine import DiscoveryCrawler
-from scadable_scraper.discovery.http import GuardedHttpClient
-from scadable_scraper.discovery.sitemaps import BoundedSitemapDiscoverer
+from scraper import CompetitorInput, ScraperConfig, resolve_config
+from scraper.discovery.engine import DiscoveryCrawler
+from scraper.discovery.http import GuardedHttpClient
+from scraper.discovery.sitemaps import BoundedSitemapDiscoverer
 
 
 async def discover_competitor(fetcher, competitor: CompetitorInput, global_settings: ScraperConfig):

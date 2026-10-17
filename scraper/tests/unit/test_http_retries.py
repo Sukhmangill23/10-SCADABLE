@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.discovery.http import GuardedHttpClient, RequestBlocked
+from scraper import ScraperConfig
+from scraper.discovery.http import GuardedHttpClient, RequestBlocked
 
 
 def settings(**kwargs):

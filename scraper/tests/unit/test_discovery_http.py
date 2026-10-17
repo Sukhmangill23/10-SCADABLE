@@ -1,8 +1,8 @@
 import httpx
 import pytest
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.discovery.http import GuardedHttpClient, RequestBlocked
+from scraper import ScraperConfig
+from scraper.discovery.http import GuardedHttpClient, RequestBlocked
 
 
 async def test_longest_robots_rule_and_wildcards_are_respected():
@@ -34,8 +34,8 @@ async def test_robots_interval_is_returned_and_applied_to_sitemap_requests(monke
             )
         return httpx.Response(200, content=b"<urlset/>")
 
-    monkeypatch.setattr("scadable_scraper.discovery.http.asyncio.sleep", capture_delay)
-    monkeypatch.setattr("scadable_scraper.discovery.http.time.monotonic", lambda: 100.0)
+    monkeypatch.setattr("scraper.discovery.http.asyncio.sleep", capture_delay)
+    monkeypatch.setattr("scraper.discovery.http.time.monotonic", lambda: 100.0)
     async with GuardedHttpClient(
         "https://example.com/",
         ScraperConfig(

@@ -1,4 +1,4 @@
-# SCADABLE competitor scraper
+# Competitor scraper
 
 Standalone Python package for discovering and collecting source-linked competitor content.
 It is independent of the backend, database, LLM and frontend.
@@ -8,10 +8,14 @@ BestFirst/BFS traversal, Crawl4AI rendering, conservative extraction, JSON/JSONL
 and the multiple-homepage CLI are available, with bounded retries, resource cleanup,
 interruption-safe file output and offline/browser verification. See the
 [integration guide](docs/integration.md) for reliability and downstream consumption.
-The approved three-page SCADABLE crawl and packaging checks are recorded in the
+The approved three-page live crawl and packaging checks are recorded in the
 [validation report](docs/validation.md).
 Start with the [quickstart guide](docs/quickstart.md) for setup, manual website tests
 and inspecting the output.
+
+The Python package and CLI are named `scraper`. After upgrading an existing checkout,
+run `uv sync --locked`; update imports to `from scraper import ...` and commands to
+`uv run --locked scraper ...`. Browser tests use `SCRAPER_BROWSER_TESTS=1`.
 
 ## Setup and checks
 
@@ -49,7 +53,7 @@ LLM-related transitive dependencies; this package does not configure or call an 
 ## Review the configuration
 
 ```python
-from scadable_scraper import ScraperConfig, load_config, resolve_config
+from scraper import ScraperConfig, load_config, resolve_config
 
 project = load_config("config.example.toml")
 cli_overrides = ScraperConfig(max_pages=5)
@@ -82,9 +86,9 @@ shared ceilings for `crawl_many()`; individual competitors cannot raise those ce
 Replace the placeholders with competitor homepages you are authorized to crawl:
 
 ```powershell
-uv run --locked scadable-scraper https://competitor-a.example https://competitor-b.example --output output/crawl.json
-uv run --locked scadable-scraper --config config.toml --format jsonl --output output/crawl.jsonl
-uv run --locked python -m scadable_scraper --help
+uv run --locked scraper https://competitor-a.example https://competitor-b.example --output output/crawl.json
+uv run --locked scraper --config config.toml --format jsonl --output output/crawl.jsonl
+uv run --locked python -m scraper --help
 ```
 
 Positional homepages select matching competitors from TOML, preserving their names and
@@ -98,8 +102,8 @@ output to stdout. Diagnostics go to stderr. Exit codes: 0 successful page collec
 For an importing application, use the asynchronous service directly:
 
 ```python
-from scadable_scraper import CompetitorInput, ScraperConfig
-from scadable_scraper.service import CompetitorScraper
+from scraper import CompetitorInput, ScraperConfig
+from scraper.service import CompetitorScraper
 
 
 async def collect(homepages: list[str]):
@@ -115,7 +119,7 @@ No nested event loop, database, API server or LLM is required. See
 
 ```python
 from datetime import UTC, datetime
-from scadable_scraper import ScrapedPage
+from scraper import ScrapedPage
 
 page = ScrapedPage(
     competitor_name="Example",
@@ -173,7 +177,7 @@ synthetic fixtures and mocked HTTP/rendering boundaries. Opt-in tests launch Chr
 against loopback fixture servers only; no competitor website or LLM is contacted:
 
 ```powershell
-$env:SCADABLE_BROWSER_TESTS = "1"
+$env:SCRAPER_BROWSER_TESTS = "1"
 uv run --locked pytest tests/integration/test_browser_local.py -q
 ```
 

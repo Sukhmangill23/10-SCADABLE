@@ -10,8 +10,8 @@ pages close on normal exit or cancellation. Service objects do not own an event 
 
 ```python
 from contextlib import aclosing
-from scadable_scraper import CompetitorInput, ScraperConfig
-from scadable_scraper.service import CompetitorScraper
+from scraper import CompetitorInput, ScraperConfig
+from scraper.service import CompetitorScraper
 
 
 async def collect_or_stop(homepages, consume):
@@ -141,14 +141,14 @@ uv run --locked pytest -q
 uv run --locked ruff check .
 uv run --locked ruff format --check .
 uv build
-uv run --locked scadable-scraper --help
+uv run --locked scraper --help
 ```
 
 Opt-in Chromium verification uses only local fixture servers:
 
 ```powershell
 uv run --locked python -m playwright install chromium
-$env:SCADABLE_BROWSER_TESTS = "1"
+$env:SCRAPER_BROWSER_TESTS = "1"
 uv run --locked pytest tests/integration/test_browser_local.py -q
 ```
 

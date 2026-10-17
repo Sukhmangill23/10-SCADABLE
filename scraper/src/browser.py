@@ -217,7 +217,7 @@ class Crawl4AIFetcher:
         from crawl4ai.async_logger import AsyncLogger
         from rich.console import Console
 
-        self._temporary = TemporaryDirectory(prefix="scadable-crawl-")
+        self._temporary = TemporaryDirectory(prefix="scraper-crawl-")
         try:
             self._crawler = (self._factory or AsyncWebCrawler)(
                 config=build_browser_config(self.settings),

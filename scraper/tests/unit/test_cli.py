@@ -5,15 +5,15 @@ import sys
 
 import pytest
 
-from scadable_scraper import CompetitorCrawlResult
-from scadable_scraper.types import utc_now
+from scraper import CompetitorCrawlResult
+from scraper.types import utc_now
 
 
 class FixtureService:
     observed = []
 
     async def crawl_many(self, competitors, global_settings, *, cli_overrides):
-        from scadable_scraper.config import resolve_config
+        from scraper.config import resolve_config
 
         self.observed[:] = competitors
         for competitor in competitors:
@@ -32,7 +32,7 @@ class FixtureService:
 
 
 def test_cli_writes_multiple_competitors_to_json_without_browser(tmp_path, monkeypatch):
-    from scadable_scraper import cli
+    from scraper import cli
 
     monkeypatch.setattr(cli, "CompetitorScraper", FixtureService)
     target = tmp_path / "results.json"
@@ -60,7 +60,7 @@ def test_cli_writes_multiple_competitors_to_json_without_browser(tmp_path, monke
 def test_cli_config_matching_preserves_overrides_and_selects_requested_homepages(
     tmp_path, monkeypatch
 ):
-    from scadable_scraper import cli
+    from scraper import cli
 
     monkeypatch.setattr(cli, "CompetitorScraper", FixtureService)
     config = tmp_path / "config.toml"
@@ -77,7 +77,7 @@ def test_cli_config_matching_preserves_overrides_and_selects_requested_homepages
 
 
 def test_cli_jsonl_stdout_remains_machine_readable(monkeypatch, capsys):
-    from scadable_scraper import cli
+    from scraper import cli
 
     monkeypatch.setattr(cli, "CompetitorScraper", FixtureService)
     assert cli.main(["https://one.example", "--output", "-", "--format", "jsonl"]) == 0
@@ -89,14 +89,14 @@ def test_cli_jsonl_stdout_remains_machine_readable(monkeypatch, capsys):
     "args", [[], ["https://example.com/pricing"], ["https://example.com", "--max-pages", "0"]]
 )
 def test_invalid_input_exits_before_browser_start(args, capsys):
-    from scadable_scraper.cli import main
+    from scraper.cli import main
 
     assert main(args) == 2
     assert capsys.readouterr().err
 
 
 def test_existing_output_is_not_overwritten(tmp_path, monkeypatch):
-    from scadable_scraper import cli
+    from scraper import cli
 
     monkeypatch.setattr(cli, "CompetitorScraper", FixtureService)
     target = tmp_path / "results.json"
@@ -108,8 +108,8 @@ def test_existing_output_is_not_overwritten(tmp_path, monkeypatch):
 @pytest.mark.parametrize("format", ["json", "jsonl"])
 def test_redirected_stdout_is_utf8_under_windows_legacy_encoding(format, tmp_path):
     code = """
-from scadable_scraper import cli, CompetitorCrawlResult, ScrapedPage
-from scadable_scraper.types import utc_now
+from scraper import cli, CompetitorCrawlResult, ScrapedPage
+from scraper.types import utc_now
 class Service:
     async def crawl_many(self, *args, **kwargs):
         now = utc_now()
@@ -142,7 +142,7 @@ raise SystemExit(cli.main(["https://example.com", "--output", "-", "--format", F
 def test_interrupted_json_preserves_existing_file_and_removes_temporary_output(
     tmp_path, monkeypatch
 ):
-    from scadable_scraper import cli
+    from scraper import cli
 
     class Interrupted(FixtureService):
         async def crawl_many(self, *args, **kwargs):
@@ -159,7 +159,7 @@ def test_interrupted_json_preserves_existing_file_and_removes_temporary_output(
 
 
 def test_interrupted_new_json_is_not_published(tmp_path, monkeypatch):
-    from scadable_scraper import cli
+    from scraper import cli
 
     class Interrupted(FixtureService):
         async def crawl_many(self, *args, **kwargs):
@@ -174,7 +174,7 @@ def test_interrupted_new_json_is_not_published(tmp_path, monkeypatch):
 
 
 def test_interrupted_jsonl_retains_completed_competitor(tmp_path, monkeypatch):
-    from scadable_scraper import cli
+    from scraper import cli
 
     class Interrupted(FixtureService):
         async def crawl_many(self, *args, **kwargs):
@@ -190,7 +190,7 @@ def test_interrupted_jsonl_retains_completed_competitor(tmp_path, monkeypatch):
 
 
 def test_json_write_error_preserves_prior_output(tmp_path, monkeypatch):
-    from scadable_scraper import cli
+    from scraper import cli
 
     monkeypatch.setattr(cli, "CompetitorScraper", FixtureService)
 

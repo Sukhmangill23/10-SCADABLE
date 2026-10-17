@@ -3,13 +3,13 @@ import subprocess
 import sys
 from pathlib import Path
 
-from scadable_scraper import CompetitorCrawlResult, CompetitorInput, ScrapedPage
+from scraper import CompetitorCrawlResult, CompetitorInput, ScrapedPage
 
 
 def test_public_models_and_interfaces_import_without_loading_crawl4ai(tmp_path):
     code = (
-        "import sys; import scadable_scraper; import scadable_scraper.interfaces; "
-        "import scadable_scraper.crawl4ai_adapter; "
+        "import sys; import scraper; import scraper.interfaces; "
+        "import scraper.crawl4ai_adapter; "
         "assert 'crawl4ai' not in sys.modules; print('browser-free import')"
     )
     result = subprocess.run(

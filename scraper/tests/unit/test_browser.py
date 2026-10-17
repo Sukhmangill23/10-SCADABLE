@@ -5,8 +5,8 @@ from unittest.mock import AsyncMock
 
 import pytest
 
-from scadable_scraper import ScraperConfig
-from scadable_scraper.discovery.http import RequestBlocked
+from scraper import ScraperConfig
+from scraper.discovery.http import RequestBlocked
 
 
 class Guard:
@@ -60,7 +60,7 @@ class FakeCrawler:
 
 
 async def test_fetch_maps_real_sdk_result_and_closes_browser():
-    from scadable_scraper.browser import Crawl4AIFetcher
+    from scraper.browser import Crawl4AIFetcher
 
     runtime = FakeCrawler()
     settings = ScraperConfig(request_delay_seconds=(0.0, 0.0))
@@ -80,7 +80,7 @@ async def test_fetch_maps_real_sdk_result_and_closes_browser():
 
 
 async def test_fetch_robots_refusal_prevents_sdk_navigation():
-    from scadable_scraper.browser import Crawl4AIFetcher
+    from scraper.browser import Crawl4AIFetcher
 
     runtime = FakeCrawler()
     settings = ScraperConfig()
@@ -97,7 +97,7 @@ async def test_fetch_robots_refusal_prevents_sdk_navigation():
 
 
 async def test_fetch_timeout_and_cancellation_close_owned_page_and_browser():
-    from scadable_scraper.browser import Crawl4AIFetcher
+    from scraper.browser import Crawl4AIFetcher
 
     runtime = FakeCrawler()
     original = runtime.arun
@@ -119,7 +119,7 @@ async def test_fetch_timeout_and_cancellation_close_owned_page_and_browser():
 
 
 def test_dynamic_rules_use_first_match_and_inherit_global_defaults():
-    from scadable_scraper.browser import select_dynamic_rule
+    from scraper.browser import select_dynamic_rule
 
     settings = ScraperConfig(
         dynamic={"max_scroll_steps": 2, "wait_for_css": "main"},
@@ -142,7 +142,7 @@ def test_dynamic_rules_use_first_match_and_inherit_global_defaults():
 
 
 async def test_document_router_blocks_external_redirect_without_requesting_target():
-    from scadable_scraper.browser import Crawl4AIFetcher
+    from scraper.browser import Crawl4AIFetcher
 
     settings = ScraperConfig(request_delay_seconds=(0.0, 0.0))
     runtime = FakeCrawler()
@@ -188,8 +188,8 @@ async def test_document_router_blocks_external_redirect_without_requesting_targe
 
 
 async def test_load_more_clicks_are_bounded_and_missing_button_is_normal():
-    from scadable_scraper.browser import apply_load_more
-    from scadable_scraper.config import DynamicRule
+    from scraper.browser import apply_load_more
+    from scraper.config import DynamicRule
 
     button = SimpleNamespace(
         count=AsyncMock(return_value=1),
@@ -209,7 +209,7 @@ async def test_load_more_clicks_are_bounded_and_missing_button_is_normal():
 async def test_frameless_popup_document_is_denied_without_callback_error():
     from playwright.async_api import Error
 
-    from scadable_scraper.browser import Crawl4AIFetcher
+    from scraper.browser import Crawl4AIFetcher
 
     class PopupRequest:
         resource_type = "document"
@@ -226,7 +226,7 @@ async def test_frameless_popup_document_is_denied_without_callback_error():
 
 
 async def test_cancellation_propagates_and_closes_browser_page():
-    from scadable_scraper.browser import Crawl4AIFetcher
+    from scraper.browser import Crawl4AIFetcher
 
     runtime = FakeCrawler()
     started = asyncio.Event()
@@ -260,7 +260,7 @@ async def test_cancellation_propagates_and_closes_browser_page():
 
 
 def test_sdk_mapping_keeps_failed_partial_content_and_resolves_relative_links():
-    from scadable_scraper.browser import map_sdk_result
+    from scraper.browser import map_sdk_result
 
     runtime = FakeCrawler()
     result = runtime.result.model_copy(
@@ -292,7 +292,7 @@ def test_sdk_mapping_keeps_failed_partial_content_and_resolves_relative_links():
 async def test_constructor_failure_releases_temporary_browser_directory(tmp_path, monkeypatch):
     from tempfile import TemporaryDirectory
 
-    from scadable_scraper import browser
+    from scraper import browser
 
     directory = tmp_path / "browser-temp"
     directory.mkdir()
@@ -313,8 +313,8 @@ async def test_constructor_failure_releases_temporary_browser_directory(tmp_path
 
 
 async def test_shared_redirect_destination_limits_render_concurrency():
-    from scadable_scraper.browser import Crawl4AIFetcher
-    from scadable_scraper.limits import HostLimiter
+    from scraper.browser import Crawl4AIFetcher
+    from scraper.limits import HostLimiter
 
     settings = ScraperConfig(allowed_domains=["two.example"], request_delay_seconds=(0.0, 0.0))
     limiter = HostLimiter(1)
@@ -351,8 +351,8 @@ async def test_shared_redirect_destination_limits_render_concurrency():
 
 
 async def test_browser_host_queue_does_not_consume_active_attempt_budget():
-    from scadable_scraper.browser import Crawl4AIFetcher
-    from scadable_scraper.limits import HostLimiter
+    from scraper.browser import Crawl4AIFetcher
+    from scraper.limits import HostLimiter
 
     limiter = HostLimiter(1)
     entered = asyncio.Event()
@@ -379,7 +379,7 @@ async def test_browser_host_queue_does_not_consume_active_attempt_budget():
 
 
 async def test_browser_startup_has_a_deadline_and_closes_on_timeout():
-    from scadable_scraper.browser import Crawl4AIFetcher
+    from scraper.browser import Crawl4AIFetcher
 
     runtime = FakeCrawler()
 
@@ -399,7 +399,7 @@ async def test_browser_startup_has_a_deadline_and_closes_on_timeout():
 
 
 async def test_cleanup_error_does_not_replace_collected_page(caplog):
-    from scadable_scraper.browser import Crawl4AIFetcher
+    from scraper.browser import Crawl4AIFetcher
 
     runtime = FakeCrawler()
 
@@ -417,8 +417,8 @@ async def test_cleanup_error_does_not_replace_collected_page(caplog):
 
 
 async def test_rate_wait_does_not_consume_active_render_budget():
-    from scadable_scraper.browser import Crawl4AIFetcher
-    from scadable_scraper.limits import HostLimiter
+    from scraper.browser import Crawl4AIFetcher
+    from scraper.limits import HostLimiter
 
     runtime = FakeCrawler()
     runtime.page.main_frame = SimpleNamespace(page=runtime.page)
@@ -476,7 +476,7 @@ async def test_rate_wait_does_not_consume_active_render_budget():
     ],
 )
 def test_sdk_wrapped_failures_are_classified_conservatively(message, kind):
-    from scadable_scraper.browser import map_sdk_result
+    from scraper.browser import map_sdk_result
 
     result = FakeCrawler().result.model_copy(
         update={"success": False, "status_code": None, "error_message": message}
@@ -515,8 +515,8 @@ def routed_runtime(status=200, headers=None):
 
 
 async def test_browser_publishes_retry_after_before_slow_cleanup_releases_result():
-    from scadable_scraper.browser import Crawl4AIFetcher
-    from scadable_scraper.limits import HostLimiter
+    from scraper.browser import Crawl4AIFetcher
+    from scraper.limits import HostLimiter
 
     limiter = HostLimiter(1)
     first, _ = routed_runtime(429, {"retry-after": "120"})
@@ -556,8 +556,8 @@ async def test_browser_publishes_retry_after_before_slow_cleanup_releases_result
 
 
 async def test_browser_rate_wait_deadline_is_capacity_failure():
-    from scadable_scraper.browser import Crawl4AIFetcher
-    from scadable_scraper.limits import HostLimiter
+    from scraper.browser import Crawl4AIFetcher
+    from scraper.limits import HostLimiter
 
     runtime, route = routed_runtime()
     limiter = HostLimiter(1)

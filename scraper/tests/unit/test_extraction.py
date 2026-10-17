@@ -1,7 +1,7 @@
 import pytest
 
-from scadable_scraper import CompetitorInput, FetchedPage, ScraperConfig
-from scadable_scraper.types import utc_now
+from scraper import CompetitorInput, FetchedPage, ScraperConfig
+from scraper.types import utc_now
 
 
 def fetched(**updates):
@@ -19,7 +19,7 @@ def fetched(**updates):
 
 
 def test_extract_preserves_sources_and_prices_while_normalizing_line_endings():
-    from scadable_scraper.extraction import MarkdownExtractor
+    from scraper.extraction import MarkdownExtractor
 
     source = fetched(page_title="Our plans")
     result = MarkdownExtractor().extract(
@@ -37,7 +37,7 @@ def test_extract_preserves_sources_and_prices_while_normalizing_line_endings():
 
 
 def test_cleaning_preserves_fenced_code_indentation_and_markdown_hard_breaks():
-    from scadable_scraper.extraction import clean_markdown
+    from scraper.extraction import clean_markdown
 
     source = (
         "\x00# Features\r\nLine  \r\nnext\r\n\r\n"
@@ -58,7 +58,7 @@ def test_cleaning_preserves_fenced_code_indentation_and_markdown_hard_breaks():
     ],
 )
 def test_category_uses_url_title_and_stable_specificity(url, title, category):
-    from scadable_scraper.extraction import MarkdownExtractor
+    from scraper.extraction import MarkdownExtractor
 
     result = MarkdownExtractor().extract(
         fetched(source_url="https://example.com" + url, final_url=None, page_title=title),
@@ -69,7 +69,7 @@ def test_category_uses_url_title_and_stable_specificity(url, title, category):
 
 
 def test_empty_success_becomes_explicit_failure_and_partial_failed_content_survives():
-    from scadable_scraper.extraction import MarkdownExtractor
+    from scraper.extraction import MarkdownExtractor
 
     extractor = MarkdownExtractor()
     competitor = CompetitorInput(homepage_url="https://example.com")

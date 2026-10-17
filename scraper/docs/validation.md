@@ -12,11 +12,17 @@ were explicitly approved by the user. No remote push was performed.
 - Independent read-only review found three reliability issues, now corrected: pacing
   consuming rendering time, concurrent requests bypassing Retry-After, and SDK-wrapped
   timeouts missing retries. Re-review found no remaining Critical or Important issues.
-- Installed `dist/scadable_scraper-0.1.0-py3-none-any.whl` with runtime dependencies into
+- Installed the `scraper-0.1.0-py3-none-any.whl` wheel with runtime dependencies into
   a fresh ignored `output/wheel-venv` using the offline package cache. An isolated Python
   process verified imports came from that wheel, then processed two mocked competitors
   through the library API and roundtripped both JSON and JSONL. Both installed CLI entry
-  points (`scadable-scraper --help` and `python -m scadable_scraper --help`) succeeded.
+  points (`scraper --help` and `python -m scraper --help`) succeeded.
+
+After generalizing the package name to `scraper`, the full suite passed again:
+**241 passed in 35.10 seconds**. A fresh wheel install under `output/rename-venv`
+verified the renamed imports, both CLI entry points, two mocked competitors and
+JSON/JSONL roundtrips. Wheel paths contain only the generic package name; the lockfile
+retains all dependency versions. No additional live website requests were made.
 
 The suite covers transient/permanent HTTP failures, request/page budgets, Retry-After
 dates and bounds, concurrent cooldown changes, separate capacity/rendering deadlines,

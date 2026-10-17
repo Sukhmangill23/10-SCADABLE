@@ -80,7 +80,7 @@ class ScraperConfig(ContractModel):
     max_retries: NonNegativeInt = 2
     max_backoff_seconds: PositiveSeconds = 30.0
     respect_robots_txt: Literal[True] = True
-    user_agent: NonEmptyText = "SCADABLECompetitorBot/0.1"
+    user_agent: NonEmptyText = "ScraperBot/0.1"
     allowed_domains: list[NonEmptyText] = Field(default_factory=list)
     excluded_url_patterns: list[NonEmptyText] = Field(
         default_factory=lambda: [

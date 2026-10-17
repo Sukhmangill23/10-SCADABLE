@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 
 import httpx
 
-from scadable_scraper import CompetitorInput, FetchedPage, ScraperConfig
-from scadable_scraper.discovery.engine import DiscoveryCrawler, DiscoveryRun
-from scadable_scraper.discovery.http import GuardedHttpClient
-from scadable_scraper.discovery.sitemaps import BoundedSitemapDiscoverer
-from scadable_scraper.models import DiscoveredLink
+from scraper import CompetitorInput, FetchedPage, ScraperConfig
+from scraper.discovery.engine import DiscoveryCrawler, DiscoveryRun
+from scraper.discovery.http import GuardedHttpClient
+from scraper.discovery.sitemaps import BoundedSitemapDiscoverer
+from scraper.models import DiscoveredLink
 
 
 async def test_robots_sitemaps_and_rendered_links_share_scope_and_limits():
@@ -17,7 +17,7 @@ async def test_robots_sitemaps_and_rendered_links_share_scope_and_limits():
 
     def documents(request):
         requested_documents.append(str(request.url))
-        assert request.headers["user-agent"] == "SCADABLECompetitorBot/0.1"
+        assert request.headers["user-agent"] == "ScraperBot/0.1"
         if request.url.path == "/robots.txt":
             return httpx.Response(200, content=b"User-agent: *\nDisallow: /private\n")
         if request.url.path == "/sitemap.xml":

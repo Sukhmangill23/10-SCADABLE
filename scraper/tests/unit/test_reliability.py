@@ -2,7 +2,7 @@ from datetime import UTC, datetime
 
 import pytest
 
-from scadable_scraper import ScraperConfig
+from scraper import ScraperConfig
 
 
 @pytest.mark.parametrize(
@@ -27,7 +27,7 @@ from scadable_scraper import ScraperConfig
     ],
 )
 def test_only_transient_failures_are_retryable(status, kind, want):
-    from scadable_scraper.reliability import is_retryable
+    from scraper.reliability import is_retryable
 
     assert is_retryable(status, kind) is want
 
@@ -44,15 +44,15 @@ def test_only_transient_failures_are_retryable(status, kind, want):
     ],
 )
 def test_retry_after_supports_seconds_and_http_dates(header, want):
-    from scadable_scraper.reliability import parse_retry_after
+    from scraper.reliability import parse_retry_after
 
     assert parse_retry_after(header, now=datetime(2026, 1, 1, tzinfo=UTC)) == want
 
 
 def test_delay_is_exponential_bounded_and_never_shortens_retry_after(monkeypatch):
-    from scadable_scraper.reliability import retry_delay
+    from scraper.reliability import retry_delay
 
-    monkeypatch.setattr("scadable_scraper.reliability.random.uniform", lambda low, high: high)
+    monkeypatch.setattr("scraper.reliability.random.uniform", lambda low, high: high)
     settings = ScraperConfig(max_backoff_seconds=3.0)
     assert [retry_delay(n, settings) for n in [1, 2, 3, 9]] == [1.0, 2.0, 3.0, 3.0]
     assert retry_delay(1, settings, retry_after=2.5) == 2.5

@@ -3,9 +3,9 @@ import asyncio
 import httpx
 import pytest
 
-from scadable_scraper import CompetitorInput, FetchedPage, ScraperConfig
-from scadable_scraper.models import DiscoveredLink
-from scadable_scraper.types import utc_now
+from scraper import CompetitorInput, FetchedPage, ScraperConfig
+from scraper.models import DiscoveredLink
+from scraper.types import utc_now
 
 
 def response(url, status=200, **kwargs):
@@ -27,7 +27,7 @@ def settings(**kwargs):
 
 
 def service(fetcher, **kwargs):
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     transport = httpx.MockTransport(lambda r: httpx.Response(404))
     return CompetitorScraper(
@@ -102,7 +102,7 @@ async def test_long_retry_after_stops_without_retrying_early():
 
 
 async def test_global_queue_wait_does_not_consume_render_timeout():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     async def operation(url, count):
         await asyncio.sleep(0.06 if "slow" in url else 0.001)
@@ -132,7 +132,7 @@ async def test_global_queue_wait_does_not_consume_render_timeout():
 
 
 async def test_one_extraction_error_preserves_other_pages_and_source():
-    from scadable_scraper.extraction import MarkdownExtractor
+    from scraper.extraction import MarkdownExtractor
 
     class Extractor:
         def extract(self, page, competitor, config):
@@ -165,7 +165,7 @@ async def test_one_extraction_error_preserves_other_pages_and_source():
 
 
 async def test_backoff_releases_global_capacity(monkeypatch):
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     retry_waiting = asyncio.Event()
     other_done = asyncio.Event()
@@ -174,7 +174,7 @@ async def test_backoff_releases_global_capacity(monkeypatch):
         retry_waiting.set()
         await asyncio.wait_for(other_done.wait(), 1)
 
-    monkeypatch.setattr("scadable_scraper.service.wait_before_retry", backoff)
+    monkeypatch.setattr("scraper.service.wait_before_retry", backoff)
 
     async def operation(url, count):
         if "retry" in url and count == 1:
@@ -196,7 +196,7 @@ async def test_backoff_releases_global_capacity(monkeypatch):
 
 
 async def test_capacity_wait_timeout_is_not_retried():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     calls = []
 
@@ -229,7 +229,7 @@ async def test_cancellation_during_backoff_propagates_and_closes_fetcher(monkeyp
         waiting.set()
         await asyncio.Event().wait()
 
-    monkeypatch.setattr("scadable_scraper.service.wait_before_retry", backoff)
+    monkeypatch.setattr("scraper.service.wait_before_retry", backoff)
 
     async def operation(url, count):
         return response(url, 503)
@@ -270,7 +270,7 @@ async def test_long_retry_after_prevents_requests_to_other_pages_on_same_host():
 
 
 async def test_page_retry_after_also_prevents_sitemap_requests_on_same_host():
-    from scadable_scraper.service import CompetitorScraper
+    from scraper.service import CompetitorScraper
 
     requested = []
 
