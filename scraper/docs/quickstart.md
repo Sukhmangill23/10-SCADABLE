@@ -35,7 +35,32 @@ Run the three environment-variable assignments again in a new terminal. They kee
 and browser caches in a writable, ignored project directory. The same browser path must
 be used for installation and execution. All commands below run from `scraper/`.
 
-## First manual website test
+## Run an editable Python file
+
+Open [manual_test.py](../manual_test.py) and edit the values at the top:
+
+- `WEBSITES`: homepage URLs and optional competitor names; add an entry per website.
+- `SETTINGS`: page/depth limits, concurrency, request spacing and sitemap bounds.
+- `OUTPUT_DIRECTORY`: defaults to a fresh timestamped folder under `output/`.
+
+After the one-time setup above, run it from `scraper/`:
+
+```powershell
+uv run --locked python manual_test.py
+```
+
+You can also select the project's `.venv` Python interpreter in VS Code and run the file
+using **Run Python File**, or execute `.venv/Scripts/python.exe manual_test.py` directly.
+The runner configures the SDK cache and detects the local browser cache automatically;
+explicit environment settings take precedence. Paths are relative to the script's project
+directory, so changing your terminal's working directory does not move the output.
+
+The log shows the exact output directory and each saved `crawl_summary.json`. Markdown
+files are under each website's `pages/` directory. A fixed custom output directory must
+be new; existing output is never replaced. The tests for this runner mock crawling;
+executing the runner itself contacts the configured websites.
+
+## Alternative: manual CLI test
 
 Start with a small crawl. Replace `https://competitor.example/` below with a homepage
 you are authorized to crawl. This creates an ignored local configuration:
@@ -54,7 +79,7 @@ max_sitemap_documents = 3
 max_sitemap_requests = 8
 
 [[competitors]]
-homepage_url = "https://competitor.example/"
+homepage_url = "https://scadable.com/"
 name = "Example competitor"
 '@ | Set-Content -Encoding ascii output/manual.toml
 
@@ -81,7 +106,7 @@ $summary.completion_reason
 $summary.pages | Select-Object url, markdown_file, title, category, status, word_count
 $page = $summary.pages | Where-Object status -eq 'success' | Select-Object -First 1
 Get-Content (Join-Path $site $page.markdown_file) -Raw -Encoding UTF8
-$summary.uncrawled_urls | Where-Object status -eq 'deferred' | Select-Object url, reason
+$summary.uncrawled_urls | Where-Object status -eq 'deferred' | Select-Object url, reason=
 ```
 
 | Field | Meaning |
