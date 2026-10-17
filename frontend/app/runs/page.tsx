@@ -1,11 +1,10 @@
-import { PlaceholderPanel } from "@/components/ui/PlaceholderPanel";
+import { Suspense } from "react";
+import { AgentRunsList } from "@/components/runs/AgentRunsList";
 
 export default function RunsPage() {
   return (
-    <PlaceholderPanel
-      title="Agent Runs"
-      owner="FE A"
-      description="Research run list with status, cost, steps, and cache stats. Wire to runsApi.listRuns()."
-    />
+    <Suspense fallback={<p>Loading agent runs…</p>}>
+      <AgentRunsList />
+    </Suspense>
   );
 }

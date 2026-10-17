@@ -25,10 +25,12 @@
   display: grid;
   place-items: center;
   border-right: 1px solid var(--line);
-  font-weight: 700;
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  color: var(--accent);
+  color: #141218;
+}
+
+.brandMark svg {
+  width: 26px;
+  height: 26px;
 }
 
 .titleRow {
@@ -113,6 +115,7 @@
 .navItem {
   width: 34px;
   height: 34px;
+  padding: 0;
   border: 0;
   border-radius: 3px;
   background: transparent;
@@ -121,8 +124,12 @@
   place-items: center;
   margin: 0 auto 4px;
   position: relative;
-  font-size: 11px;
-  font-weight: 700;
+}
+
+.navItem svg {
+  width: 17px;
+  height: 17px;
+  stroke-width: 1.7;
 }
 
 .navItem:hover {
@@ -135,7 +142,7 @@
   color: #376d55;
 }
 
-.navItem span {
+.label {
   position: absolute;
   left: 44px;
   top: 50%;
@@ -145,15 +152,15 @@
   color: #fff;
   border-radius: 3px;
   font-size: 11px;
+  font-weight: 500;
   white-space: nowrap;
   opacity: 0;
   pointer-events: none;
   transition: opacity 0.12s ease-out;
-  font-weight: 500;
 }
 
-.navItem:hover span,
-.navItem:focus-visible span {
+.navItem:hover .label,
+.navItem:focus-visible .label {
   opacity: 1;
 }
 

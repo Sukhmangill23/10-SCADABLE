@@ -7,15 +7,26 @@ import {
 } from "@clerk/nextjs";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import type { ReactNode } from "react";
+import type { ComponentType, ReactNode } from "react";
+import {
+  BrandMarkIcon,
+  CompanyIcon,
+  CompetitorsIcon,
+  OverviewIcon,
+  RunsIcon,
+} from "./NavIcons";
 import styles from "./AppShell.module.css";
 
-const NAV = [
-  { href: "/overview", label: "Overview", short: "O" },
-  { href: "/competitors", label: "Competitors", short: "C" },
-  { href: "/company", label: "Our Company", short: "S" },
-  { href: "/runs", label: "Agent Runs", short: "R" },
-] as const;
+const NAV: {
+  href: string;
+  label: string;
+  Icon: ComponentType;
+}[] = [
+  { href: "/overview", label: "Overview", Icon: OverviewIcon },
+  { href: "/competitors", label: "Competitors", Icon: CompetitorsIcon },
+  { href: "/company", label: "Our Company", Icon: CompanyIcon },
+  { href: "/runs", label: "Agent Runs", Icon: RunsIcon },
+];
 
 function titleForPath(pathname: string): string {
   if (pathname.startsWith("/competitors/")) return "Competitor profile";
@@ -45,8 +56,8 @@ export function AppShell({ children, clerkEnabled }: Props) {
   return (
     <div className={styles.shell}>
       <header className={styles.topbar}>
-        <div className={styles.brandMark} aria-hidden="true">
-          LS
+        <div className={styles.brandMark} aria-label="SCADABLE">
+          <BrandMarkIcon />
         </div>
         <div className={styles.titleRow}>
           <div className={styles.title}>{titleForPath(pathname)}</div>
@@ -72,19 +83,19 @@ export function AppShell({ children, clerkEnabled }: Props) {
       </header>
 
       <nav className={styles.sidebar} aria-label="Primary">
-        {NAV.map((item) => {
+        {NAV.map(({ href, label, Icon }) => {
           const active =
-            pathname === item.href || pathname.startsWith(`${item.href}/`);
+            pathname === href || pathname.startsWith(`${href}/`);
           return (
             <Link
-              key={item.href}
-              href={item.href}
+              key={href}
+              href={href}
               className={`${styles.navItem} ${active ? styles.navItemActive : ""}`}
-              aria-label={item.label}
+              aria-label={label}
               aria-current={active ? "page" : undefined}
             >
-              {item.short}
-              <span>{item.label}</span>
+              <Icon />
+              <span className={styles.label}>{label}</span>
             </Link>
           );
         })}

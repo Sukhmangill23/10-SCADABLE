@@ -1,0 +1,259 @@
+.page {
+  width: 100%;
+  font-family: var(--font-sans);
+}
+
+.pageHead {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.pageHead h1 {
+  margin: 0 0 8px;
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  font-weight: 690;
+}
+
+.pageHead p {
+  margin: 0;
+  color: var(--sub);
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+.headActions {
+  flex-shrink: 0;
+  padding-top: 4px;
+}
+
+.listControls {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+  flex-wrap: wrap;
+}
+
+.filterTabs {
+  display: inline-flex;
+  align-items: center;
+  background: #fff;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  padding: 2px;
+}
+
+.filterTabs button {
+  height: 25px;
+  padding: 0 13px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--sub);
+  font-size: 11px;
+  font-weight: 550;
+}
+
+.filterTabs button[aria-pressed="true"] {
+  background: var(--accent);
+  color: #fff;
+}
+
+.searchGroup {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.searchWrap {
+  position: relative;
+  display: block;
+}
+
+.searchWrap svg {
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 13px;
+  height: 13px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.searchWrap input {
+  width: 152px;
+  height: 30px;
+  border: 1px solid var(--line-strong);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.83);
+  color: var(--ink);
+  padding: 0 10px 0 29px;
+  font-size: 11px;
+}
+
+.searchWrap input::placeholder {
+  color: #77717b;
+}
+
+.resultCount {
+  font-size: 11px;
+  color: var(--sub);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.tableWrap {
+  background: rgba(255, 254, 253, 0.88);
+  border: 1px solid var(--line);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  table-layout: fixed;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.table th {
+  text-align: left;
+  height: 32px;
+  padding: 0 12px;
+  color: #716b75;
+  font-weight: 650;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.table td {
+  height: 37px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.table tr:last-child td {
+  border-bottom: none;
+}
+
+.clickable {
+  transition: background-color 0.12s ease-out;
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background: #f3f1ef;
+}
+
+.clickable:focus-visible {
+  outline: 2px solid #5a4b86;
+  outline-offset: -2px;
+}
+
+/* Column widths so the full-bleed table still reads like the mockup */
+.colName {
+  width: 22%;
+}
+
+.colWebsite {
+  width: 22%;
+}
+
+.colRelationship {
+  width: 16%;
+}
+
+.colActivity {
+  width: 18%;
+}
+
+.colChecked {
+  width: 16%;
+}
+
+.colArrow {
+  width: 40px;
+}
+
+.companyCell {
+  font-weight: 580;
+  color: #282333;
+}
+
+.websiteCell {
+  color: #4f4956;
+}
+
+.relationship {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  padding: 0 9px;
+  border: 1px solid #eccab2;
+  border-radius: 9px;
+  background: var(--orange-soft);
+  color: var(--orange);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.trend {
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.trendUp {
+  color: #a64f45;
+}
+
+.trendDown {
+  color: #3e7f61;
+}
+
+.trendFlat {
+  color: var(--sub);
+}
+
+.trendPending {
+  color: #8a6a2f;
+}
+
+.lastChecked {
+  color: var(--sub);
+  font-size: 11px;
+}
+
+.rowArrow {
+  color: var(--muted);
+  text-align: right;
+}
+
+.emptyRow td {
+  text-align: center;
+  color: var(--sub);
+  padding: 32px 12px;
+  height: auto;
+}
+
+.status {
+  color: var(--sub);
+  font-size: 13px;
+  padding: 24px 0;
+}
