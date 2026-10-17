@@ -112,7 +112,7 @@ async def test_sitemap_disallowed_by_robots_is_not_requested():
 @pytest.mark.parametrize("status", [401, 403, 500, 503])
 async def test_robots_failures_do_not_silently_allow_sitemap_requests(status):
     result, requests = await discover({"https://example.com/robots.txt": (status, b"")})
-    assert requests == ["https://example.com/robots.txt"]
+    assert requests == ["https://example.com/robots.txt"] * (3 if status in (500, 503) else 1)
     assert not result.urls
     assert result.warnings
 

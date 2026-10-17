@@ -34,6 +34,15 @@ def website():
                 self.end_headers()
                 self.wfile.write(b"User-agent: *\nAllow: /\nDisallow: /private\n")
                 return
+            paths = [path for _, path in requests]
+            if self.path == "/permanent" or (
+                self.path == "/transient" and paths.count("/transient") < 3
+            ):
+                self.send_response(403 if self.path == "/permanent" else 503)
+                self.send_header("Content-Type", "text/html")
+                self.end_headers()
+                self.wfile.write(b"<main><h1>Temporary fixture failure</h1></main>")
+                return
             redirects = {
                 "/redirect": "/pricing",
                 "/external": f"http://localhost:{self.server.server_port}/forbidden",
@@ -64,6 +73,7 @@ def website():
                 <script src="http://localhost:{self.server.server_port}/resource.js"></script>
                 <div id="plans">Starter $49</div><button id="more">Load more</button>
                 <a href="/products">Products</a><iframe src="/embedded"></iframe></main>
+                <a href="/transient">Pricing plans</a><a href="/permanent">News</a>
                 <script>let clicks=0; document.querySelector('#more').onclick=()=>{{
                 document.querySelector('#plans').insertAdjacentHTML('beforeend','<p>Pro $99</p>');
                 if(++clicks===2) document.querySelector('#more').remove();}};
@@ -180,3 +190,52 @@ def test_real_cli_pipeline_writes_parseable_jsonl(website, tmp_path):
     assert all("Starter $49" in record["page"]["raw_markdown"] for record in records[:2])
     assert "Starting" in process.stderr
     assert "/embedded" not in [path for _, path in requests]
+
+
+async def test_real_browser_retries_and_partial_results_preserve_page_budget(website):
+    from scadable_scraper import CompetitorInput
+    from scadable_scraper.service import CompetitorScraper
+
+    base, requests = website
+    settings = ScraperConfig(
+        max_pages=4, max_depth=1, max_backoff_seconds=0.01, request_delay_seconds=(0.0, 0.0)
+    )
+    result = await CompetitorScraper().crawl(CompetitorInput(homepage_url=base), settings)
+    assert result.run_status == "partial"
+    assert len(result.pages) == 4
+    assert result.summary.successful == 3
+    assert result.summary.failed == 1
+    transient = next(page for page in result.pages if str(page.source_url).endswith("/transient"))
+    assert transient.attempt_count == 3
+    assert transient.crawl_status == "success"
+    assert "Starter $49" in transient.raw_markdown
+    permanent = next(page for page in result.pages if str(page.source_url).endswith("/permanent"))
+    assert permanent.attempt_count == 1
+    assert permanent.http_status == 403
+    paths = [path for _, path in requests]
+    assert paths.count("/transient") == 3
+    assert paths.count("/permanent") == 1
+
+
+async def test_real_sdk_wrapped_selector_timeouts_are_retried(website):
+    from scadable_scraper import CompetitorInput
+    from scadable_scraper.service import CompetitorScraper
+
+    base, requests = website
+    settings = ScraperConfig(
+        max_pages=1,
+        max_depth=0,
+        max_backoff_seconds=0.01,
+        request_delay_seconds=(0.0, 0.0),
+        dynamic={"wait_for_css": "#never-present", "wait_timeout_seconds": 0.02},
+    )
+    result = await CompetitorScraper().crawl(CompetitorInput(homepage_url=base), settings)
+    assert result.run_status == "failed"
+    assert len(result.pages) == 1
+    page = result.pages[0]
+    assert page.attempt_count == 3
+    assert page.metadata["crawl_diagnostics"]["stop_reason"] == "retries_exhausted"
+    assert {
+        attempt["failure_kind"] for attempt in page.metadata["crawl_diagnostics"]["attempts"]
+    } == {"timeout"}
+    assert [path for _, path in requests].count("/") == 3

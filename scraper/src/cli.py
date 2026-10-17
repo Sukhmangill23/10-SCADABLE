@@ -5,13 +5,13 @@ import asyncio
 import logging
 import sys
 from collections.abc import Sequence
-from contextlib import contextmanager
+from contextlib import aclosing, contextmanager
 from io import TextIOWrapper
 from pathlib import Path
 
 from .config import CompetitorInput, ProjectConfig, ScraperConfig, load_config, resolve_config
 from .models import CrawlRunDocument
-from .output import JsonlSink, write_json
+from .output import JsonlSink, atomic_json_file, write_json
 from .service import CompetitorScraper
 
 
@@ -89,16 +89,17 @@ async def _run(args, competitors, project, overrides, stream) -> int:
     results = []
     sink = JsonlSink(stream)
     failed = False
-    async for result in service.crawl_many(
-        competitors, project.global_settings, cli_overrides=overrides
-    ):
-        failed |= result.run_status != "success"
-        if args.format == "jsonl":
-            for page in result.pages:
-                await sink.write_page(page)
-            await sink.write_summary(result)
-        else:
-            results.append(result)
+    async with aclosing(
+        service.crawl_many(competitors, project.global_settings, cli_overrides=overrides)
+    ) as iterator:
+        async for result in iterator:
+            failed |= result.run_status != "success"
+            if args.format == "jsonl":
+                for page in result.pages:
+                    await sink.write_page(page)
+                await sink.write_summary(result)
+            else:
+                results.append(result)
     if args.format == "json":
         write_json(CrawlRunDocument(results=results), stream)
     return 1 if failed else 0
@@ -120,7 +121,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         else:
             target = Path(args.output)
             target.parent.mkdir(parents=True, exist_ok=True)
-            context = target.open("w" if args.overwrite else "x", encoding="utf-8", newline="\n")
+            context = (
+                atomic_json_file(target, overwrite=args.overwrite)
+                if args.format == "json"
+                else target.open("w" if args.overwrite else "x", encoding="utf-8", newline="\n")
+            )
         with context as stream:
             return asyncio.run(_run(args, competitors, project, overrides, stream))
     except KeyboardInterrupt:

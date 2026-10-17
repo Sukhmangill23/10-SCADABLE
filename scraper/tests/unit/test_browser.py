@@ -348,3 +348,228 @@ async def test_shared_redirect_destination_limits_render_concurrency():
     pages = await asyncio.gather(collect("https://one.example/"), collect("https://two.example/"))
     assert all(page.crawl_status == "success" for page in pages)
     assert peak == 1
+
+
+async def test_browser_host_queue_does_not_consume_active_attempt_budget():
+    from scadable_scraper.browser import Crawl4AIFetcher
+    from scadable_scraper.limits import HostLimiter
+
+    limiter = HostLimiter(1)
+    entered = asyncio.Event()
+
+    async def hold():
+        async with limiter.slot("https://example.com"):
+            entered.set()
+            await asyncio.sleep(0.08)
+
+    settings = ScraperConfig(page_timeout_seconds=0.04, request_delay_seconds=(0.0, 0.0))
+    runtime = FakeCrawler()
+    async with Crawl4AIFetcher(
+        "https://example.com",
+        settings,
+        Guard(),
+        crawler_factory=lambda **kw: runtime,
+        host_limiter=limiter,
+    ) as fetcher:
+        task = asyncio.create_task(hold())
+        await entered.wait()
+        page = await fetcher.fetch("https://example.com/pricing", settings)
+    await task
+    assert page.crawl_status == "success", page.error_message
+
+
+async def test_browser_startup_has_a_deadline_and_closes_on_timeout():
+    from scadable_scraper.browser import Crawl4AIFetcher
+
+    runtime = FakeCrawler()
+
+    async def hangs():
+        await asyncio.Event().wait()
+
+    runtime.start = hangs
+    settings = ScraperConfig(page_timeout_seconds=0.02)
+    with pytest.raises(TimeoutError):
+        async with asyncio.timeout(0.2) as watchdog:
+            async with Crawl4AIFetcher(
+                "https://example.com", settings, Guard(), crawler_factory=lambda **kw: runtime
+            ):
+                pass
+    assert not watchdog.expired()
+    assert runtime.closed
+
+
+async def test_cleanup_error_does_not_replace_collected_page(caplog):
+    from scadable_scraper.browser import Crawl4AIFetcher
+
+    runtime = FakeCrawler()
+
+    async def broken():
+        raise OSError("close failed")
+
+    runtime.close = broken
+    settings = ScraperConfig()
+    async with Crawl4AIFetcher(
+        "https://example.com", settings, Guard(), crawler_factory=lambda **kw: runtime
+    ) as fetcher:
+        page = await fetcher.fetch("https://example.com/pricing", settings)
+    assert page.crawl_status == "success"
+    assert "close failed" in caplog.text
+
+
+async def test_rate_wait_does_not_consume_active_render_budget():
+    from scadable_scraper.browser import Crawl4AIFetcher
+    from scadable_scraper.limits import HostLimiter
+
+    runtime = FakeCrawler()
+    runtime.page.main_frame = SimpleNamespace(page=runtime.page)
+    request = SimpleNamespace(
+        url="https://example.com/pricing",
+        resource_type="document",
+        method="GET",
+        frame=runtime.page.main_frame,
+    )
+    response = SimpleNamespace(status=200, headers={}, dispose=AsyncMock())
+    route = SimpleNamespace(
+        request=request,
+        fetch=AsyncMock(return_value=response),
+        fulfill=AsyncMock(),
+        abort=AsyncMock(),
+        continue_=AsyncMock(),
+    )
+    original = runtime.arun
+
+    async def render(url, config):
+        result = await original(url, config)
+        await runtime.context.route.call_args.args[1](route)
+        return result
+
+    runtime.arun = render
+    settings = ScraperConfig(
+        page_timeout_seconds=0.04,
+        capacity_wait_timeout_seconds=0.2,
+        request_delay_seconds=(0.0, 0.0),
+    )
+    limiter = HostLimiter(1)
+    async with Crawl4AIFetcher(
+        "https://example.com",
+        settings,
+        Guard(),
+        crawler_factory=lambda **kw: runtime,
+        host_limiter=limiter,
+    ) as fetcher:
+        limiter.defer("https://example.com", 0.08, settings)
+        page = await fetcher.fetch("https://example.com/pricing", settings)
+    assert page.crawl_status == "success", page.error_message
+    assert route.fetch.await_count == 1
+
+
+@pytest.mark.parametrize(
+    "message,kind",
+    [
+        ("Wait condition failed: Timeout after 1000ms waiting for selector '#ready'", "timeout"),
+        ("Wait condition failed: Page.wait_for_selector: Timeout 1000ms exceeded.", "timeout"),
+        ("Page.goto: Timeout 1000ms exceeded.", "timeout"),
+        ("Page.goto: net::ERR_CONNECTION_RESET at https://example.com", "network"),
+        ("Invalid CSS selector: '[[timeout'", "internal"),
+        ("Unexpected metadata timeout field", "internal"),
+        ("Invalid CSS selector\nCode context: Page.goto: Timeout 1000ms exceeded.", "internal"),
+    ],
+)
+def test_sdk_wrapped_failures_are_classified_conservatively(message, kind):
+    from scadable_scraper.browser import map_sdk_result
+
+    result = FakeCrawler().result.model_copy(
+        update={"success": False, "status_code": None, "error_message": message}
+    )
+    page = map_sdk_result(
+        result, "https://example.com/pricing", final_url="https://example.com/pricing", metadata={}
+    )
+    assert page.metadata["crawl_diagnostics"]["failure_kind"] == kind
+
+
+def routed_runtime(status=200, headers=None):
+    runtime = FakeCrawler()
+    runtime.page.main_frame = SimpleNamespace(page=runtime.page)
+    route = SimpleNamespace(
+        request=SimpleNamespace(
+            url="https://example.com/pricing",
+            resource_type="document",
+            method="GET",
+            frame=runtime.page.main_frame,
+        ),
+        fetch=AsyncMock(
+            return_value=SimpleNamespace(status=status, headers=headers or {}, dispose=AsyncMock())
+        ),
+        fulfill=AsyncMock(),
+        abort=AsyncMock(),
+    )
+    original = runtime.arun
+
+    async def render(url, config):
+        result = await original(url, config)
+        await runtime.context.route.call_args.args[1](route)
+        return result.model_copy(update={"status_code": status, "response_headers": headers or {}})
+
+    runtime.arun = render
+    return runtime, route
+
+
+async def test_browser_publishes_retry_after_before_slow_cleanup_releases_result():
+    from scadable_scraper.browser import Crawl4AIFetcher
+    from scadable_scraper.limits import HostLimiter
+
+    limiter = HostLimiter(1)
+    first, _ = routed_runtime(429, {"retry-after": "120"})
+    second, route = routed_runtime()
+    closing, release = asyncio.Event(), asyncio.Event()
+
+    async def slow_close():
+        closing.set()
+        await release.wait()
+
+    first.page.close = slow_close
+    settings = ScraperConfig(request_delay_seconds=(0.0, 0.0))
+    async with Crawl4AIFetcher(
+        "https://example.com",
+        settings,
+        Guard(),
+        crawler_factory=lambda **kw: first,
+        host_limiter=limiter,
+    ) as fetcher:
+        task = asyncio.create_task(fetcher.fetch("https://example.com/pricing", settings))
+        try:
+            await closing.wait()
+            async with Crawl4AIFetcher(
+                "https://example.com",
+                settings,
+                Guard(),
+                crawler_factory=lambda **kw: second,
+                host_limiter=limiter,
+            ) as other:
+                page = await other.fetch("https://example.com/pricing", settings)
+            assert page.crawl_status == "failed"
+            assert "host_retry_after_exceeds_budget" in page.error_message
+            assert route.fetch.await_count == 0
+        finally:
+            release.set()
+            await task
+
+
+async def test_browser_rate_wait_deadline_is_capacity_failure():
+    from scadable_scraper.browser import Crawl4AIFetcher
+    from scadable_scraper.limits import HostLimiter
+
+    runtime, route = routed_runtime()
+    limiter = HostLimiter(1)
+    settings = ScraperConfig(capacity_wait_timeout_seconds=0.02, request_delay_seconds=(0.0, 0.0))
+    limiter.defer("https://example.com", 0.1, settings)
+    async with Crawl4AIFetcher(
+        "https://example.com",
+        settings,
+        Guard(),
+        crawler_factory=lambda **kw: runtime,
+        host_limiter=limiter,
+    ) as fetcher:
+        page = await fetcher.fetch("https://example.com/pricing", settings)
+    assert page.metadata["crawl_diagnostics"]["failure_kind"] == "capacity"
+    assert route.fetch.await_count == 0

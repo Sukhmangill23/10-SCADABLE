@@ -137,3 +137,70 @@ raise SystemExit(cli.main(["https://example.com", "--output", "-", "--format", F
         assert json.loads(output)["results"][0]["pages"][0]["raw_markdown"] == "中文 €49"
     else:
         assert json.loads(output.splitlines()[0])["page"]["raw_markdown"] == "中文 €49"
+
+
+def test_interrupted_json_preserves_existing_file_and_removes_temporary_output(
+    tmp_path, monkeypatch
+):
+    from scadable_scraper import cli
+
+    class Interrupted(FixtureService):
+        async def crawl_many(self, *args, **kwargs):
+            async for result in super().crawl_many(*args, **kwargs):
+                yield result
+                raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "CompetitorScraper", Interrupted)
+    target = tmp_path / "results.json"
+    target.write_text("existing", encoding="utf-8")
+    assert cli.main(["https://example.com", "--output", str(target), "--overwrite"]) == 130
+    assert target.read_text(encoding="utf-8") == "existing"
+    assert list(tmp_path.iterdir()) == [target]
+
+
+def test_interrupted_new_json_is_not_published(tmp_path, monkeypatch):
+    from scadable_scraper import cli
+
+    class Interrupted(FixtureService):
+        async def crawl_many(self, *args, **kwargs):
+            async for result in super().crawl_many(*args, **kwargs):
+                yield result
+                raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "CompetitorScraper", Interrupted)
+    target = tmp_path / "results.json"
+    assert cli.main(["https://example.com", "--output", str(target)]) == 130
+    assert not target.exists()
+
+
+def test_interrupted_jsonl_retains_completed_competitor(tmp_path, monkeypatch):
+    from scadable_scraper import cli
+
+    class Interrupted(FixtureService):
+        async def crawl_many(self, *args, **kwargs):
+            async for result in super().crawl_many(*args, **kwargs):
+                yield result
+                raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "CompetitorScraper", Interrupted)
+    target = tmp_path / "results.jsonl"
+    assert cli.main(["https://example.com", "--output", str(target), "--format", "jsonl"]) == 130
+    records = [json.loads(line) for line in target.read_text(encoding="utf-8").splitlines()]
+    assert records[-1]["record_type"] == "competitor_summary"
+
+
+def test_json_write_error_preserves_prior_output(tmp_path, monkeypatch):
+    from scadable_scraper import cli
+
+    monkeypatch.setattr(cli, "CompetitorScraper", FixtureService)
+
+    def broken(document, stream):
+        stream.write("incomplete")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(cli, "write_json", broken)
+    target = tmp_path / "results.json"
+    target.write_text("existing", encoding="utf-8")
+    assert cli.main(["https://example.com", "--output", str(target), "--overwrite"]) == 2
+    assert target.read_text(encoding="utf-8") == "existing"
+    assert list(tmp_path.iterdir()) == [target]

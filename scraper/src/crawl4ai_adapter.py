@@ -24,6 +24,7 @@ def build_browser_config(settings: ScraperConfig) -> BrowserConfig:
         headless=True,
         java_script_enabled=True,
         accept_downloads=False,
+        ignore_https_errors=False,
         user_agent=settings.user_agent,
         verbose=False,
     )

@@ -64,8 +64,9 @@ deferred URL record; it does not pretend that page content was fetched.
 - Exact homepage/apex-www hosts and explicitly approved extra hosts are eligible. An
   approved host does not approve its subdomains. Relevant external links are recorded
   without being scheduled; asset/login exclusions receive explicit skipped reasons.
-- Distinct page attempts consume the budget, including failures. Retries are reserved
-  for Stage 4. Robots refusals occur before fetching and do not consume a page slot.
+- Distinct page attempts consume the budget, including failures. Service retries reuse
+  that reservation. Standalone `DiscoveryCrawler` remains a single-attempt orchestrator.
+  Robots refusals occur before fetching and do not consume a page slot.
 - Every successful boundary page still contributes links after the page limit is reached.
   Additional candidates are recorded as deferred, up to the independent discovery cap.
 - Repeated normalized URLs accumulate an observation count and up to 8 distinct evidence
@@ -111,8 +112,9 @@ The integration test uses the real frontier, sitemap reader, robots client and o
 only HTTP and rendering are replaced with synthetic fixtures. Tests cover both traversal
 strategies, source preservation, deduplication, shorter paths, page/depth/discovery limits,
 external hosts, robots failures, redirects, XML/gzip bounds, concurrency and cancellation.
-No browser or live competitor website is contacted. Live testing still requires approval
-in Stage 4. Stage 2 was approved and committed as `1d8e50e`.
+No browser or live competitor website is contacted by these default checks. Live testing
+requires explicit approval. Stage 2 was approved and committed as `1d8e50e`.
+See [integration.md](integration.md) for the service retry and shared pacing policy.
 
 References: [Crawl4AI deep crawling](https://docs.crawl4ai.com/core/deep-crawling/),
 [HTTPX transports](https://www.python-httpx.org/advanced/transports/),

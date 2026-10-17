@@ -14,6 +14,7 @@ from defusedxml.common import DefusedXmlException
 
 from ..config import ScraperConfig
 from ..interfaces import DiscoveryBatch
+from ..limits import HostLimiter
 from ..models import DiscoveredUrl
 from ..types import WebUrl
 from .http import GuardedHttpClient, RequestBlocked
@@ -32,14 +33,22 @@ def _locations(root):
 
 
 class BoundedSitemapDiscoverer:
-    def __init__(self, *, transport: httpx.AsyncBaseTransport | None = None):
+    def __init__(
+        self,
+        *,
+        transport: httpx.AsyncBaseTransport | None = None,
+        host_limiter: HostLimiter | None = None,
+    ):
         self._transport = transport
+        self._host_limiter = host_limiter
 
     async def discover(self, homepage: WebUrl | str, settings: ScraperConfig) -> DiscoveryBatch:
         urls: dict[str, DiscoveredUrl] = {}
         warnings: list[str] = []
         truncated = False
-        async with GuardedHttpClient(str(homepage), settings, transport=self._transport) as client:
+        async with GuardedHttpClient(
+            str(homepage), settings, transport=self._transport, host_limiter=self._host_limiter
+        ) as client:
             try:
                 async with asyncio.timeout(settings.discovery_timeout_seconds):
                     rules = await client.robots_for(str(homepage))
@@ -145,6 +154,7 @@ class BoundedSitemapDiscoverer:
                 warnings.append("sitemap_discovery_timeout")
             except RequestBlocked as error:
                 warnings.append(str(error))
+        warnings.extend(client.retry_events)
         return DiscoveryBatch(
             urls=list(urls.values()), truncated=truncated, warnings=list(dict.fromkeys(warnings))
         )

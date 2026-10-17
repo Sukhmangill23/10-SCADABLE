@@ -35,7 +35,8 @@ spacing and robots minimum intervals. The default browser adapter reserves a hos
 slot for every actual render hop, including redirect destinations, and shares document
 start pacing across competitors. Custom fetcher factories receive source-host limits
 from the service and own their internal redirect policy; a custom Crawl4AI adapter can
-receive a shared `HostLimiter` explicitly. Sitemap HTTP has separate bounded request pacing.
+receive a shared `HostLimiter` explicitly. The service also shares that limiter with
+robots and sitemap HTTP; the HTTP request budget remains separate from page reservations.
 Rendering resources are not counted as independently crawled pages.
 
 ## Browser and dynamic-page policy
@@ -127,8 +128,9 @@ counts against the summary. A summary record alone cannot verify omitted page bo
 `write_json(document, stream)` and `JsonlSink(stream)` use caller-owned text streams.
 The CLI emits records when a competitor completes; it does not stream pages during that
 competitor's discovery. A JSONL summary flushes its completed competitor. JSON is written
-after all competitors finish. Interruptions may leave incomplete output; consumers should
-require a competitor summary before treating that competitor as complete. Files require
+after all competitors finish. JSON file publication is atomic; an interruption preserves
+the prior file (or leaves a new target absent). JSONL retains completed competitors;
+consumers must require a summary before treating a competitor as complete. Files require
 `--overwrite` to replace existing content. No generated output belongs in Git.
 
 ## Verification and current limits
@@ -155,12 +157,10 @@ both installation and execution. During development they were stored in the igno
 `.uv-cache/playwright` directory. The cross-host loopback-script fixture grants a local
 network permission in its test-only subclass; production does not grant it.
 
-Retries/backoff remain Stage 4 work: `max_retries` currently does not cause automatic
-retries, and `attempt_count` is 1. Page deadlines, basic error isolation and cleanup are
-implemented. The total attempt deadline includes capacity waits, so heavily contended
-runs may need a longer page timeout or lower competitor concurrency. No live competitor
-tests have been run. Stage 3 remains uncommitted until
-review approval; Stage 4 requires a separate design/review checkpoint.
+The service implements bounded transient retries and records actual `attempt_count` plus
+per-attempt diagnostics. Capacity and rate waits have a separate deadline from rendering.
+See [integration.md](integration.md) for reliability, failure classifications and consumer
+examples. Stage 3 was approved and committed as `f801e62`; Stage 4 is also approved.
 
 Official references: [Markdown generation](https://docs.crawl4ai.com/core/markdown-generation/),
 [browser hooks](https://docs.crawl4ai.com/advanced/hooks-auth/),

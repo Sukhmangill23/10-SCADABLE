@@ -35,11 +35,17 @@ class DiscoveryRun(ContractModel):
 
 class DiscoveryCrawler:
     def __init__(
-        self, fetcher: PageFetcher, sitemaps: SitemapDiscoverer, *, robots_guard: RobotsGuard
+        self,
+        fetcher: PageFetcher,
+        sitemaps: SitemapDiscoverer,
+        *,
+        robots_guard: RobotsGuard,
+        managed_attempts: bool = False,
     ):
         self._fetcher = fetcher
         self._sitemaps = sitemaps
         self._robots = robots_guard
+        self._managed_attempts = managed_attempts
 
     async def run(
         self,
@@ -64,6 +70,9 @@ class DiscoveryCrawler:
                 return RequestBlocked("robots_unavailable", url)
             except RequestBlocked as error:
                 return error
+            if self._managed_attempts:
+                # The service owns capacity waits, attempt deadlines, pacing and retries.
+                return await fetcher.fetch(record.normalized_url, settings)
             host = urlsplit(url).hostname
             async with pace_locks.setdefault(host, asyncio.Lock()):
                 interval = max(random.uniform(*settings.request_delay_seconds), robots_delay)

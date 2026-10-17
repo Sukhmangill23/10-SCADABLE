@@ -3,10 +3,15 @@
 Standalone Python package for discovering and collecting source-linked competitor content.
 It is independent of the backend, database, LLM and frontend.
 
-**Current status: Stage 3 implemented, awaiting review.** Sitemap/link discovery,
+**Current status: all four stages implemented and approved.** Sitemap/link discovery,
 BestFirst/BFS traversal, Crawl4AI rendering, conservative extraction, JSON/JSONL output
-and the multiple-homepage CLI are available. Retry/backoff hardening and approved live
-competitor validation remain Stage 4 work.
+and the multiple-homepage CLI are available, with bounded retries, resource cleanup,
+interruption-safe file output and offline/browser verification. See the
+[integration guide](docs/integration.md) for reliability and downstream consumption.
+The approved three-page SCADABLE crawl and packaging checks are recorded in the
+[validation report](docs/validation.md).
+Start with the [quickstart guide](docs/quickstart.md) for setup, manual website tests
+and inspecting the output.
 
 ## Setup and checks
 
@@ -104,7 +109,7 @@ async def collect(homepages: list[str]):
 ```
 
 No nested event loop, database, API server or LLM is required. See
-[Stage 3 usage](docs/extraction-and-output.md) for dynamic rules and streaming integration.
+[extraction guide](docs/extraction-and-output.md) for dynamic rules and streaming integration.
 
 ## Data contracts
 
@@ -157,8 +162,10 @@ competitor, without repeated page bodies. Records are emitted as competitors com
 - [browser.py](src/browser.py): rendering, guarded document requests and dynamic rules.
 - [extraction.py](src/extraction.py): cleaning and keyword categories without network I/O.
 - [service.py](src/service.py): reusable async service and shared page concurrency.
+- [reliability.py](src/reliability.py): transient failure policy and bounded retry delays.
 - [output.py](src/output.py) and [cli.py](src/cli.py): serialization and standalone execution.
 - [architecture.md](docs/architecture.md): approved policies, flow and stage boundaries.
+- [integration.md](docs/integration.md): deadlines, interruption behavior and consumer examples.
 - [tests](tests): fixture-based workflow checks and opt-in loopback browser tests.
 
 The public package and interface imports do not import Crawl4AI. Default tests use

@@ -75,6 +75,7 @@ class ScraperConfig(ContractModel):
     per_domain_concurrency: PositiveInt = 1
     request_delay_seconds: tuple[NonNegativeSeconds, NonNegativeSeconds] = (1.0, 2.0)
     page_timeout_seconds: PositiveSeconds = 45.0
+    capacity_wait_timeout_seconds: PositiveSeconds = 120.0
     discovery_timeout_seconds: PositiveSeconds = 30.0
     max_retries: NonNegativeInt = 2
     max_backoff_seconds: PositiveSeconds = 30.0

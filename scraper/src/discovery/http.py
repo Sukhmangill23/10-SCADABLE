@@ -1,16 +1,27 @@
 """Bounded, exact-host HTTP requests and cached robots rules for URL discovery."""
 
 import asyncio
+import logging
 import random
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
 import httpx
 from protego import Protego
 
 from ..config import ScraperConfig
+from ..limits import HostLimiter
+from ..reliability import (
+    TRANSIENT_STATUSES,
+    CapacityTimeout,
+    parse_retry_after,
+    retry_delay,
+    wait_before_retry,
+)
 from .urls import DomainScope, normalize_url
+
+logger = logging.getLogger(__name__)
 
 
 class RequestBlocked(Exception):
@@ -25,6 +36,7 @@ class HttpDocument:
     url: str
     status: int
     body: bytes
+    headers: dict[str, str] = field(default_factory=dict)
 
 
 class GuardedHttpClient:
@@ -40,8 +52,10 @@ class GuardedHttpClient:
         settings: ScraperConfig,
         *,
         transport: httpx.AsyncBaseTransport | None = None,
+        host_limiter: HostLimiter | None = None,
     ):
         self.settings = settings
+        self._host_limiter = host_limiter
         self.scope = DomainScope(homepage, settings)
         self._client = httpx.AsyncClient(
             transport=transport,
@@ -55,6 +69,9 @@ class GuardedHttpClient:
         self._request_lock = asyncio.Lock()
         self._last_request: dict[str, float] = {}
         self.request_count = 0
+        self.retry_events: list[str] = []
+        self._cooldowns: dict[str, float] = {}
+        self._blocked_hosts: set[str] = set()
 
     async def __aenter__(self):
         return self
@@ -63,12 +80,46 @@ class GuardedHttpClient:
         await self._client.aclose()
 
     async def _request(self, url: str) -> HttpDocument:
+        for attempt in range(1, self.settings.max_retries + 2):
+            try:
+                document = await self._request_once(url)
+            except RequestBlocked as error:
+                transient = error.reason == "network_error" and isinstance(
+                    error.__cause__,
+                    (httpx.TimeoutException, httpx.NetworkError, httpx.RemoteProtocolError),
+                )
+                if not transient or attempt > self.settings.max_retries:
+                    raise
+                document = None
+            if document is not None and document.status not in TRANSIENT_STATUSES:
+                return document
+            after = parse_retry_after(document.headers.get("retry-after")) if document else None
+            host = urlsplit(url).hostname
+            delay = retry_delay(attempt, self.settings, retry_after=after)
+            if after is not None and self._host_limiter:
+                self._host_limiter.defer(url, after, self.settings)
+            if delay is None:
+                self._blocked_hosts.add(host)
+                return document
+            if after is not None:
+                self._cooldowns[host] = max(self._cooldowns.get(host, 0), time.monotonic() + after)
+            if attempt > self.settings.max_retries:
+                return document
+            event = f"discovery_retry: {url}: attempt {attempt + 1}: delay {delay:.3f}s"
+            self.retry_events.append(event)
+            logger.info(event)
+            await wait_before_retry(delay)
+        raise AssertionError("Retry loop must return or raise")
+
+    async def _request_once(self, url: str) -> HttpDocument:
         if not self.scope.allows(url):
             raise RequestBlocked("domain_not_approved", url)
         async with self._request_lock:
             if self.request_count >= self.settings.max_sitemap_requests:
                 raise RequestBlocked("sitemap_request_limit", url)
             host = urlsplit(url).hostname
+            if host in self._blocked_hosts:
+                raise RequestBlocked("retry_after_exceeds_budget", url)
             delay = random.uniform(*self.settings.request_delay_seconds)
             parts = urlsplit(url)
             origin = urlunsplit((parts.scheme, parts.netloc, "", "", ""))
@@ -76,7 +127,13 @@ class GuardedHttpClient:
             if isinstance(rules, Protego):
                 delay = max(delay, self._minimum_delay(rules))
             remaining = delay - (time.monotonic() - self._last_request.get(host, 0.0))
-            if remaining > 0:
+            remaining = max(remaining, self._cooldowns.get(host, 0) - time.monotonic())
+            if self._host_limiter:
+                try:
+                    await self._host_limiter.pace(url, self.settings, delay)
+                except CapacityTimeout as error:
+                    raise RequestBlocked("retry_after_exceeds_budget", url) from error
+            elif remaining > 0:
                 await asyncio.sleep(remaining)
             self.request_count += 1
             self._last_request[host] = time.monotonic()
@@ -88,7 +145,12 @@ class GuardedHttpClient:
                         if len(chunks) > self.settings.max_sitemap_bytes:
                             raise RequestBlocked("response_too_large", url)
                     location = response.headers.get("location")
-                    document = HttpDocument(str(response.url), response.status_code, bytes(chunks))
+                    document = HttpDocument(
+                        str(response.url),
+                        response.status_code,
+                        bytes(chunks),
+                        dict(response.headers),
+                    )
                     if response.is_redirect and location:
                         return HttpDocument(
                             urljoin(str(response.url), location), response.status_code, b""

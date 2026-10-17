@@ -4,19 +4,29 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 from collections.abc import AsyncIterator, Callable, Sequence
+from contextlib import AsyncExitStack
 
 import httpx
 
 from .config import CompetitorInput, ScraperConfig, resolve_config
 from .discovery.engine import DiscoveryCrawler
-from .discovery.http import GuardedHttpClient
+from .discovery.http import GuardedHttpClient, RequestBlocked
 from .discovery.sitemaps import BoundedSitemapDiscoverer
 from .discovery.urls import normalize_url
 from .extraction import MarkdownExtractor
 from .interfaces import ContentExtractor, PageFetcher, RobotsGuard
 from .limits import HostLimiter
-from .models import CompetitorCrawlResult
+from .models import CompetitorCrawlResult, ScrapedPage
+from .reliability import (
+    CapacityTimeout,
+    failed_page,
+    is_retryable,
+    parse_retry_after,
+    retry_delay,
+    wait_before_retry,
+)
 from .types import UrlDisposition, utc_now
 
 logger = logging.getLogger(__name__)
@@ -57,19 +67,91 @@ class _LimitedFetcher:
         await self.fetcher.__aexit__(*exc)
 
     async def fetch(self, url, settings):
-        async with self.capacity.pages:
-            logger.info("Fetching %s", url)
+        history = []
+        stop = "non_retryable"
+        for attempt in range(1, settings.max_retries + 2):
+            started = time.monotonic()
+            logger.info("Fetching %s (attempt %d/%d)", url, attempt, settings.max_retries + 1)
+            try:
+                page = await self._attempt(url, settings)
+            except RequestBlocked as error:
+                page = failed_page(str(url), error, kind="policy")
+            except Exception as error:
+                page = failed_page(str(url), error)
+            diagnostics = page.metadata.get("crawl_diagnostics", {})
+            kind = diagnostics.get("failure_kind") if isinstance(diagnostics, dict) else None
+            if page.crawl_status == "failed" and kind is None:
+                kind = "http" if page.http_status and page.http_status >= 400 else "internal"
+            headers = page.metadata.get("response_headers", {})
+            after = (
+                next(
+                    (
+                        str(value)
+                        for name, value in headers.items()
+                        if name.lower() == "retry-after"
+                    ),
+                    None,
+                )
+                if isinstance(headers, dict)
+                else None
+            )
+            retry_after = parse_retry_after(after)
+            delay = retry_delay(attempt, settings, retry_after=retry_after)
+            if (
+                page.crawl_status == "failed"
+                and is_retryable(page.http_status, kind)
+                and retry_after is not None
+                and not page.metadata.get("retry_after_applied")
+            ):
+                self.capacity.hosts.defer(str(page.final_url or url), retry_after, settings)
+            history.append(
+                {
+                    "attempt": attempt,
+                    "http_status": page.http_status,
+                    "failure_kind": kind,
+                    "error_message": page.error_message,
+                    "duration_seconds": round(time.monotonic() - started, 6),
+                }
+            )
+            if page.crawl_status == "success":
+                stop = "succeeded"
+                break
+            if not is_retryable(page.http_status, kind):
+                break
+            if delay is None:
+                stop = "retry_after_exceeds_budget"
+                break
+            if attempt > settings.max_retries:
+                stop = "retries_exhausted"
+                break
+            history[-1]["retry_delay_seconds"] = delay
+            logger.warning("Retrying %s after %.2fs (%s)", url, delay, kind)
+            # _attempt has released all shared slots before the retry sleep.
+            await wait_before_retry(delay)
+        metadata = dict(page.metadata)
+        metadata["crawl_diagnostics"] = {
+            **(diagnostics if isinstance(diagnostics, dict) else {}),
+            "attempts": history,
+            "stop_reason": stop,
+        }
+        logger.info("Fetched %s: %s after %d attempt(s)", url, page.crawl_status, len(history))
+        return page.model_copy(update={"attempt_count": len(history), "metadata": metadata})
+
+    async def _attempt(self, url, settings):
+        async with AsyncExitStack() as stack:
+            try:
+                async with asyncio.timeout(settings.capacity_wait_timeout_seconds):
+                    await stack.enter_async_context(self.capacity.pages)
+                    if self.limit_source_host:
+                        await stack.enter_async_context(self.capacity.hosts.slot(str(url)))
+                        minimum = await self.guard.check(str(url))
+                        await self.capacity.hosts.pace(str(url), settings, minimum)
+            except TimeoutError as error:
+                raise CapacityTimeout("capacity_wait_timeout") from error
             if self.limit_source_host:
-                # An injected fetcher owns any redirect handling. The default browser
-                # adapter holds shared slots for each actual navigation hostname.
-                async with self.capacity.hosts.slot(str(url)):
-                    minimum = await self.guard.check(str(url))
-                    await self.capacity.hosts.pace(str(url), settings, minimum)
-                    page = await self.active.fetch(url, settings)
-            else:
-                page = await self.active.fetch(url, settings)
-            logger.info("Fetched %s: %s", url, page.crawl_status)
-            return page
+                async with asyncio.timeout(settings.page_timeout_seconds):
+                    return await self.active.fetch(url, settings)
+            return await self.active.fetch(url, settings)
 
 
 class CompetitorScraper:
@@ -100,7 +182,10 @@ class CompetitorScraper:
         logger.info("Starting %s", competitor.homepage_url)
         try:
             async with GuardedHttpClient(
-                str(competitor.homepage_url), settings, transport=self._transport
+                str(competitor.homepage_url),
+                settings,
+                transport=self._transport,
+                host_limiter=capacity.hosts,
             ) as guard:
                 custom = self._fetcher_factory is not None
                 owned = (
@@ -110,12 +195,38 @@ class CompetitorScraper:
                 )
                 fetcher = _LimitedFetcher(owned, capacity, guard, limit_source_host=custom)
                 discovery = await DiscoveryCrawler(
-                    fetcher, BoundedSitemapDiscoverer(transport=self._transport), robots_guard=guard
+                    fetcher,
+                    BoundedSitemapDiscoverer(
+                        transport=self._transport, host_limiter=capacity.hosts
+                    ),
+                    robots_guard=guard,
+                    managed_attempts=True,
                 ).run(competitor, global_settings, cli_overrides=cli_overrides)
-            pages = [
-                self._extractor.extract(page, competitor, settings)
-                for page in discovery.fetched_pages
-            ]
+            pages = []
+            for page in discovery.fetched_pages:
+                try:
+                    pages.append(self._extractor.extract(page, competitor, settings))
+                except Exception as error:
+                    logger.warning("Extraction failed for %s: %s", page.source_url, error)
+                    content = page.model_dump(exclude={"raw_html", "links"})
+                    metadata = dict(page.metadata)
+                    prior = metadata.get("crawl_diagnostics", {})
+                    metadata["crawl_diagnostics"] = {
+                        **(prior if isinstance(prior, dict) else {}),
+                        "failure_kind": "extraction",
+                    }
+                    content.update(
+                        crawl_status="failed",
+                        error_message=f"extraction_error: {error}",
+                        metadata=metadata,
+                    )
+                    pages.append(
+                        ScrapedPage(
+                            **content,
+                            competitor_name=competitor.display_name,
+                            homepage_url=competitor.homepage_url,
+                        )
+                    )
             failures = {
                 normalize_url(str(page.source_url)).normalized: page.error_message
                 for page in pages

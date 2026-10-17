@@ -13,6 +13,7 @@ def test_browser_and_robots_checks_use_the_same_explicit_identity():
     assert browser.headless is True
     assert browser.java_script_enabled is True
     assert browser.accept_downloads is False
+    assert browser.ignore_https_errors is False
     assert browser.user_agent == run.user_agent == "SCADABLETestBot/1.0"
     assert run.check_robots_txt is True
     assert run.page_timeout == 12500

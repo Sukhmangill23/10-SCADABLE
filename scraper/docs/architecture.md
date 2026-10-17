@@ -11,7 +11,9 @@ FastAPI, PostgreSQL, OpenAI analysis, a frontend, scheduling or change detection
 Stage 1 implements packaging, input/output contracts, validated settings, SDK configuration
 factories and interfaces. Stage 2 adds bounded sitemap/robots HTTP discovery, URL policy,
 BestFirst/BFS traversal and discovery orchestration over the `PageFetcher` contract.
-Stage 3 connects browser fetching, content extraction, writers and the CLI. Importing
+Stage 3 connects browser fetching, content extraction, writers and the CLI. Stage 4 adds
+bounded retries, independent capacity deadlines, atomic JSON publication and integration
+verification. Importing
 models does not load the SDK. See `discovery.md` and `extraction-and-output.md` for the
 implemented APIs, verification commands and current limitations.
 
@@ -105,8 +107,9 @@ Default settings allow 4 page tasks per discovery run and 1 page per domain at a
 with a 1-2 second randomized inter-request delay. Stage 2 enforces these per-run limits.
 The Stage 3 service coordinates the global limit across up to 2 competitors; Stage 2's
 `DiscoveryCrawler.run()` processes one competitor. Constructing a run config alone does
-not enforce limits. The retry policy remains Stage 4 work; Stage 2 makes one attempt per
-selected page and preserves failures. Retries need one owner to avoid multiplying budgets.
+not enforce limits. The service owns page retries; the bounded HTTP reader owns discovery
+retries, each consuming its existing HTTP request budget. SDK retries stay disabled.
+The service shares hostname pacing/cooldowns across browser and discovery requests.
 
 Robots compliance is mandatory; `respect_robots_txt` cannot be set to false. Factories
 enable the SDK check by default; the concrete guarded adapter disables the redundant
@@ -131,14 +134,17 @@ coverage. HTTP clients close on normal exit, errors and cancellation. Common Cra
 external search are not enabled. The Stage 1 SDK seeding-config factory is retained for
 compatibility but is not used by the bounded reader. Tests confine SDK caches to temp paths.
 
-Default navigation uses `domcontentloaded`, a 45-second navigation timeout and a 10-second
-selector wait limit. The service must also enforce a total attempt deadline around the
-SDK call: a navigation timeout is not a total interaction timeout. Optional scrolling is
+Default navigation uses `domcontentloaded`, a 45-second active attempt deadline and a
+10-second selector wait limit. Redirect render hops share the active deadline; capacity
+and document pacing waits use a separate 120-second bound. The SDK navigation timer also
+allows routing wait time, while the adapter enforces the active deadline. Optional scrolling is
 limited to 5 steps. Per-site rules use URL globs, CSS waits and explicit load-more selectors
 with finite click/scroll limits. Stage 3 selects the first matching rule and executes
 explicit bounded load-more clicks before retrieving the final DOM.
 Arbitrary buttons are not guessed. Page-specific failures are recorded and do not abort
 other competitors; cancellation must propagate to release browser resources.
+See [integration.md](integration.md) for retry classification, cleanup deadlines and
+interruption guarantees. TLS verification is enabled for HTTP and browser requests.
 
 ## Result semantics and integration
 

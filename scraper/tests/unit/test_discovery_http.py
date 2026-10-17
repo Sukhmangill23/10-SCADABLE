@@ -65,4 +65,4 @@ async def test_robots_failure_is_cached_and_never_treated_as_permission():
         for path in ("/pricing", "/products"):
             with pytest.raises(RequestBlocked, match="robots_unavailable"):
                 await client.check("https://example.com" + path)
-    assert requested == ["https://example.com/robots.txt"]
+    assert requested == ["https://example.com/robots.txt"] * 3
