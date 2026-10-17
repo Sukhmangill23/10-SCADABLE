@@ -12,7 +12,7 @@ Stage 1 implements packaging, input/output contracts, validated settings, SDK co
 factories and interfaces. Stage 2 adds bounded sitemap/robots HTTP discovery, URL policy,
 BestFirst/BFS traversal and discovery orchestration over the `PageFetcher` contract.
 Stage 3 connects browser fetching, content extraction, writers and the CLI. Stage 4 adds
-bounded retries, independent capacity deadlines, atomic JSON publication and integration
+bounded retries, independent capacity deadlines and integration
 verification. Importing
 models does not load the SDK. See `discovery.md` and `extraction-and-output.md` for the
 implemented APIs, verification commands and current limitations.
@@ -64,7 +64,7 @@ Configuration factories are checked against the installed, pinned Crawl4AI 0.9.5
 | Page fetcher | URL + settings -> `FetchedPage` | One browser attempt, metadata, HTML, Markdown, links and page errors |
 | Content extractor | `FetchedPage` + competitor + settings -> `ScrapedPage` | Cleaning, category assignment and source preservation |
 | Scraper service | Competitor input(s) + settings -> result(s) | Composition, limits, retry orchestration and progress |
-| Result sink | Page and final competitor result -> local output | JSON/JSONL serialization, independent of crawling |
+| Exporter | Completed competitor result -> Markdown files + `CrawlExportSummary` | URL-based content paths, concise index and summary-last publication |
 
 Only the adapter knows SDK-specific result types. `FetchedPage` is transient and includes
 HTML and links; exported `ScrapedPage` deliberately contains Markdown and metadata instead.
@@ -168,11 +168,13 @@ registry dispositions, and `discovered` counts all unique registry records. Thes
 do not claim all sitemap or site URLs were enumerated. `pending` is available for an
 interrupted run; normal completion must finalize eligible remaining URLs as deferred.
 
-JSON contains complete competitor result objects in a versioned `CrawlRunDocument`.
-JSONL contains typed `page` records and one `competitor_summary` record per competitor,
-without repeating page bodies in the summary. The CLI emits records as competitors
-complete. Backend and LLM teams can import the contracts and await `CompetitorScraper`
-directly; no API server or database is needed to consume the results.
+The CLI exports one directory per competitor as it completes: content-only `.md` files
+and a schema `2.0` `CrawlExportSummary` index containing relative file references, counts,
+timing and bounded discovery provenance. The exporter stages the files and publishes the
+index last as a completion marker. Existing directories require a fresh output root.
+The previous JSON/JSONL file formats were replaced; historical generated data is retained.
+Backend and LLM teams can read the index plus Markdown or await the unchanged
+`CompetitorScraper` API directly. See [output-layout.md](output-layout.md).
 
 ## Delivery and Git gates
 

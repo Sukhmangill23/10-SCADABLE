@@ -1,8 +1,9 @@
 """Application-owned input, fetch and output contracts; no SDK or backend imports."""
 
+from pathlib import PurePosixPath
 from typing import Annotated, Literal, Self
 
-from pydantic import Field, JsonValue, model_validator
+from pydantic import Field, JsonValue, field_validator, model_validator
 
 from .config import CompetitorInput, NonNegativeInt, PositiveInt, ScraperConfig
 from .types import (
@@ -27,6 +28,9 @@ __all__ = [
     "DiscoveryEvidence",
     "FetchedPage",
     "ScrapedPage",
+    "CrawlExportSummary",
+    "ExportedPage",
+    "UncrawledUrl",
 ]
 
 
@@ -129,7 +133,7 @@ class CrawlSummary(ContractModel):
 
 
 class CompetitorSummary(ContractModel):
-    """JSONL summary payload: includes accounting/provenance, without page bodies."""
+    """Shared in-memory crawl accounting and provenance."""
 
     schema_version: Literal["1.0"] = "1.0"
     competitor_name: NonEmptyText
@@ -182,19 +186,103 @@ class CompetitorCrawlResult(CompetitorSummary):
         return self
 
 
-class CrawlRunDocument(ContractModel):
-    schema_version: Literal["1.0"] = "1.0"
-    serialized_at: UtcTimestamp = Field(default_factory=utc_now)
-    results: list[CompetitorCrawlResult]
+class ExportDiscovery(ContractModel):
+    depth: NonNegativeInt | None = None
+    depth_basis: Literal["homepage", "link", "sitemap_seed"] | None = None
+    discovery_sources: list[DiscoverySource] = Field(default_factory=list)
+    discovered_from: list[WebUrl] = Field(default_factory=list)
 
 
-class PageRecord(ContractModel):
-    schema_version: Literal["1.0"] = "1.0"
-    record_type: Literal["page"] = "page"
-    page: ScrapedPage
+class ExportedPage(ExportDiscovery):
+    """Content reference and essential metadata; never embeds page bodies."""
+
+    url: WebUrl
+    url_path: str
+    markdown_file: str | None = None
+    title: str | None = None
+    category: PageCategory
+    word_count: NonNegativeInt
+    crawled_at: UtcTimestamp
+    duration_seconds: Annotated[float, Field(ge=0)] | None = None
+    status: CrawlStatus
+    final_url: WebUrl | None = None
+    http_status: Annotated[int, Field(ge=100, le=599)] | None = None
+    error: NonEmptyText | None = None
+    attempt_count: PositiveInt | None = None
+    retry_stop_reason: str | None = None
+
+    @field_validator("markdown_file")
+    @classmethod
+    def safe_content_reference(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        path = PurePosixPath(value)
+        if (
+            path.is_absolute()
+            or path.as_posix() != value
+            or not value.startswith("pages/")
+            or path.suffix != ".md"
+            or any(part in {".", ".."} for part in path.parts)
+            or any(char in value for char in "\\:\x00")
+        ):
+            raise ValueError("Markdown files must be safe relative paths under pages/")
+        return value
+
+    @model_validator(mode="after")
+    def consistent_reference(self) -> Self:
+        if self.status == CrawlStatus.SUCCESS and (not self.markdown_file or self.error):
+            raise ValueError("Successful pages require a Markdown file and no error")
+        if self.status == CrawlStatus.FAILED and (self.markdown_file or not self.error):
+            raise ValueError("Failed pages require an error and no Markdown file")
+        return self
 
 
-class CompetitorSummaryRecord(ContractModel):
-    schema_version: Literal["1.0"] = "1.0"
-    record_type: Literal["competitor_summary"] = "competitor_summary"
-    result: CompetitorSummary
+class UncrawledUrl(ExportDiscovery):
+    url: WebUrl
+    status: Literal["skipped", "deferred", "external", "pending"]
+    reason: NonEmptyText | None = None
+
+    @model_validator(mode="after")
+    def explain_disposition(self) -> Self:
+        if self.status != "pending" and not self.reason:
+            raise ValueError("Uncrawled URLs require a reason")
+        return self
+
+
+class CrawlExportSummary(ContractModel):
+    """Versioned, content-free index for one competitor's Markdown export."""
+
+    schema_version: Literal["2.0"] = "2.0"
+    competitor_name: NonEmptyText
+    homepage_url: HomepageUrl
+    started_at: UtcTimestamp
+    finished_at: UtcTimestamp
+    duration_seconds: Annotated[float, Field(ge=0)]
+    status: Literal["success", "partial", "failed", "cancelled"]
+    completion_reason: Literal["completed", "page_limit", "discovery_limit", "cancelled", "failed"]
+    counts: CrawlSummary
+    pages: list[ExportedPage]
+    uncrawled_urls: list[UncrawledUrl] = Field(default_factory=list)
+    discovery_truncated: bool = False
+    warnings: list[NonEmptyText] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def consistent_index(self) -> Self:
+        if self.finished_at < self.started_at:
+            raise ValueError("finished_at must not precede started_at")
+        urls = [str(item.url) for item in [*self.pages, *self.uncrawled_urls]]
+        files = [item.markdown_file.casefold() for item in self.pages if item.markdown_file]
+        if len(urls) != len(set(urls)) or len(files) != len(set(files)):
+            raise ValueError("Page URLs and Markdown references must be unique")
+        counts = CrawlSummary(
+            successful=sum(item.status == "success" for item in self.pages),
+            failed=sum(item.status == "failed" for item in self.pages),
+            discovered=len(urls),
+            **{
+                name: sum(item.status == name for item in self.uncrawled_urls)
+                for name in ("skipped", "deferred", "external", "pending")
+            },
+        )
+        if self.counts != counts:
+            raise ValueError("Counts do not match exported page and URL entries")
+        return self

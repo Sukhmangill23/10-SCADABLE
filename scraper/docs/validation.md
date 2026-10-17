@@ -1,5 +1,10 @@
 # Stage 4 validation report
 
+This report records the historical Stage 4 checks and live crawl. The current CLI now
+exports Markdown bundles and schema `2.0` summary indexes; its output refactor verification
+is recorded in [output-validation.md](output-validation.md). Existing historical JSON/JSONL
+artifacts below are retained as source data, not current CLI examples.
+
 Implementation base: Stage 3 commit `f801e62`. Stage 4 implementation and its commit
 were explicitly approved by the user. No remote push was performed.
 

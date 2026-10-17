@@ -68,6 +68,10 @@ async def test_transient_page_retries_share_one_frontier_slot_and_record_history
     page = result.pages[0]
     assert page.attempt_count == 3
     history = page.metadata["crawl_diagnostics"]["attempts"]
+    assert (
+        page.metadata["crawl_diagnostics"]["duration_seconds"]
+        >= sum(item["duration_seconds"] for item in history) - 0.00001
+    )
     assert [attempt["failure_kind"] for attempt in history] == ["timeout", "timeout", None]
     assert fetcher.closed
 

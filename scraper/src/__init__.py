@@ -9,14 +9,22 @@ from .config import (
     load_config,
     resolve_config,
 )
-from .models import CompetitorCrawlResult, CrawlRunDocument, DiscoveredUrl, FetchedPage, ScrapedPage
+from .models import (
+    CompetitorCrawlResult,
+    CrawlExportSummary,
+    DiscoveredUrl,
+    ExportedPage,
+    FetchedPage,
+    ScrapedPage,
+)
 from .types import CrawlStatus, DiscoverySource, PageCategory, UrlDisposition
 
 __all__ = [
     "CompetitorCrawlResult",
     "CompetitorInput",
     "CrawlStatus",
-    "CrawlRunDocument",
+    "CrawlExportSummary",
+    "ExportedPage",
     "DiscoveredUrl",
     "DiscoverySource",
     "DynamicRule",

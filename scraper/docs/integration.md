@@ -52,52 +52,45 @@ The analysis team should select pages with `crawl_status == "success"` and use
 omit useful details. Failed pages may retain partial source content and an error message;
 decide explicitly whether to analyze them. Categories are keyword labels, not LLM judgments.
 
-## Reading exported files
+## Exporting and reading results
 
-JSON is a complete versioned document:
+The service API still returns full `CompetitorCrawlResult` objects. To write the compact
+file export, call the synchronous exporter after a competitor completes:
+
+```python
+from scraper.output import export_competitor
+
+# result = await service.crawl(competitor, settings)
+# summary = export_competitor(result, "output/run-001")
+```
+
+Each website has a `crawl_summary.json` and relative content-only Markdown files.
+The file index has schema `2.0`; full in-memory results retain their existing schema `1.0`.
+Read and validate the index, then follow its Markdown references:
 
 ```python
 from pathlib import Path
-from scraper import CrawlRunDocument
+from scraper import CrawlExportSummary
 
-document = CrawlRunDocument.model_validate_json(
-    Path("output/crawl.json").read_text(encoding="utf-8")
-)
-for result in document.results:
-    print(result.homepage_url, result.summary.successful, result.completion_reason)
+index = Path("output/run-001/competitor.example/crawl_summary.json")
+summary = CrawlExportSummary.model_validate_json(index.read_text(encoding="utf-8"))
+for page in summary.pages:
+    if page.status == "success":
+        content = (index.parent / page.markdown_file).read_text(encoding="utf-8")
+        # Supply content, page.url, page.title, page.category and page.crawled_at
+        # to the application's next processing step.
 ```
 
-JSONL groups page records followed by the completed competitor's summary. Reconstruct
-and validate its counts before accepting it:
+`CrawlExportSummary` validates counts, unique references and safe relative Markdown paths.
+Its JSON contains no content bodies, raw SDK metadata or full effective configuration.
+The full Python result retains that information. `pages` lists attempted outcomes;
+`uncrawled_urls` explains skipped, deferred, external or pending discoveries. Each entry
+contains its recorded depth/source/parent relationships. Missing optional values are
+omitted. Detailed naming and timing semantics are in [output-layout.md](output-layout.md).
 
-```python
-from pathlib import Path
-from scraper import CompetitorCrawlResult
-from scraper.output import parse_jsonl_record
-
-pending = {}
-completed = []
-with Path("output/crawl.jsonl").open(encoding="utf-8") as stream:
-    for line in stream:
-        record = parse_jsonl_record(line)
-        if record.record_type == "page":
-            key = str(record.page.homepage_url)
-            pending.setdefault(key, []).append(record.page)
-        else:
-            key = str(record.result.homepage_url)
-            completed.append(
-                CompetitorCrawlResult.model_validate(
-                    {**record.result.model_dump(), "pages": pending.pop(key, [])}
-                )
-            )
-# Any remaining pending pages lack a completion summary and are not complete results.
-```
-
-An interrupted write can leave a malformed final JSONL line. A recovery consumer may
-discard that final partial record and pending pages; malformed earlier records should
-be reported rather than ignored. CLI inputs deduplicate competitor homepages within a run.
-Keep separate run files when collecting the same homepage repeatedly. All models expose
-`model_json_schema()`; output schema remains `1.0`.
+The legacy JSON/JSONL file writers, record models and parsing helpers were removed.
+Existing generated files are left in place. Exporting already-held Python results does
+not fetch the website again. Choose a new output root to retain successive runs.
 
 ## Retry and deadline policy
 
@@ -157,24 +150,31 @@ is enabled. There is no anti-bot bypass or authentication workflow.
 
 ## Output and operational behavior
 
-JSON file output uses a same-directory temporary file, flush/fsync and atomic publication.
-With `--overwrite`, the old file remains until replacement; without it, concurrent creation
-of the target is detected atomically. This requires ordinary local filesystem hard-link
-support. The CLI reports an output error on unsupported filesystems. On handled errors or
-interruption the temporary file is removed; a forced process kill may leave a `.tmp` file.
-Atomic visibility does not promise power-loss durability of the directory entry.
+`--output` is a directory, defaulting to `output/`. Each completed competitor writes one
+Markdown bundle and its index; the CLI logs the saved index path to stderr. Existing
+competitor directories are rejected before starting the CLI crawl and checked again
+when exporting. Use a fresh root such as `--output output/run-002` for repeat runs.
+`--format`, `--overwrite` and `--output -` are no longer supported.
 
-JSONL writes completed competitors and flushes each summary. An interruption retains
-earlier complete competitors. With `--overwrite`, JSONL truncates the old output on start;
-choose a fresh path when the old file must be retained. Stdout is UTF-8 and cannot provide
-atomic-file guarantees. Output/consumer errors close the async iterator immediately.
+All page content and JSON are UTF-8. Files are written to an owned temporary directory
+under the output root before publication. The exporter reserves the final directory
+with an exclusive mkdir, moves its pages and publishes the index last. A staging error
+removes its temporary files. A publication error or forced termination may leave an
+incomplete folder without an index, or a hidden staging directory after a hard kill.
+Require `crawl_summary.json` before accepting the export and use a fresh output root
+instead of replacing an incomplete folder. This is summary-last publication, not a
+filesystem-wide transaction or a power-loss durability guarantee.
+
+Completed competitor bundles survive later cancellation or output errors. The CLI closes
+the async iterator on consumer/output failure, cancelling remaining workers. No existing
+crawl files or unrelated user data are automatically deleted, migrated or overwritten.
 There is no automatic resume or append mode.
 
-Normal INFO logs report competitor start/end and page attempts; `--verbose` enables DEBUG.
-SDK/CLI diagnostics use stderr; stdout remains structured data with `--output -`.
-Exit codes: 0 successful collection, 1 partial/failed competitor, 2 input/output error,
-130 interruption. Check `completion_reason`, warnings, `discovery_truncated` and deferred
-URL reasons even with exit 0. Reaching a page/depth limit does not imply exhaustive coverage.
+Normal INFO logs report competitor start/end, attempts and output locations; `--verbose`
+enables DEBUG. Exit codes remain 0 for successful collection, 1 for a partial/failed
+competitor, 2 for input/output errors and 130 for interruption. Check `completion_reason`,
+optional warnings/truncation flags and uncrawled URL reasons even with exit 0. Page/depth
+limits do not imply exhaustive coverage.
 
 ## Verification and test boundaries
 

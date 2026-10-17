@@ -67,6 +67,7 @@ class _LimitedFetcher:
         await self.fetcher.__aexit__(*exc)
 
     async def fetch(self, url, settings):
+        fetch_started = time.monotonic()
         history = []
         stop = "non_retryable"
         for attempt in range(1, settings.max_retries + 2):
@@ -133,6 +134,7 @@ class _LimitedFetcher:
             **(diagnostics if isinstance(diagnostics, dict) else {}),
             "attempts": history,
             "stop_reason": stop,
+            "duration_seconds": round(time.monotonic() - fetch_started, 6),
         }
         logger.info("Fetched %s: %s after %d attempt(s)", url, page.crawl_status, len(history))
         return page.model_copy(update={"attempt_count": len(history), "metadata": metadata})

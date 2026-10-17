@@ -106,32 +106,26 @@ adds redirect history, load-more click count and up to 20 blocked embedded docum
 Failed SDK results can retain partial content. HTTP errors and empty Markdown are failures.
 Extraction failures are reconciled with URL dispositions so result counts stay consistent.
 
-## JSON and JSONL contracts
+## Markdown bundles and summary indexes
 
-JSON root: `{"schema_version":"1.0", "serialized_at":"...", "results":[...]}`.
-Every result includes pages, effective settings, discovered URL provenance/dispositions,
-derived summary counts, warnings, timing, run status and completion reason.
+The current CLI exports one directory per competitor. Every successful page has a
+content-only Markdown file containing its exact `cleaned_markdown`. Failed pages have
+an index entry with an error and no content file. The schema `2.0` `CrawlExportSummary`
+contains relative file references, counts, timestamps, durations and compact discovery
+relationships; it does not embed page bodies or raw SDK metadata.
 
-JSONL records are independently Pydantic-validatable discriminated records:
+Use `export_competitor(result, output_directory)` to export a completed typed result.
+The exporter stages files, reserves a new competitor directory and publishes
+`crawl_summary.json` last. Consumers should require that completion marker. Completed
+competitors survive later interruption. Existing competitor directories are refused;
+choose a fresh output directory for another run. Old generated JSON/JSONL files are
+not deleted. The old file writers/record models and CLI format/overwrite/stdout options
+have been removed.
 
-```json
-{"schema_version":"1.0","record_type":"page","page":{"...":"ScrapedPage fields"}}
-{"schema_version":"1.0","record_type":"competitor_summary","result":{"...":"result fields except pages"}}
-```
-
-These are shape illustrations; see the models' `model_json_schema()` for complete schemas.
-`parse_jsonl_record(line)` returns a `PageRecord` or `CompetitorSummaryRecord`. To restore
-a complete result, group page records by homepage, then validate the summary payload
-plus those pages using `CompetitorCrawlResult.model_validate()`. That step checks page
-counts against the summary. A summary record alone cannot verify omitted page bodies.
-
-`write_json(document, stream)` and `JsonlSink(stream)` use caller-owned text streams.
-The CLI emits records when a competitor completes; it does not stream pages during that
-competitor's discovery. A JSONL summary flushes its completed competitor. JSON is written
-after all competitors finish. JSON file publication is atomic; an interruption preserves
-the prior file (or leaves a new target absent). JSONL retains completed competitors;
-consumers must require a summary before treating a competitor as complete. Files require
-`--overwrite` to replace existing content. No generated output belongs in Git.
+The in-memory `CompetitorCrawlResult` still preserves full/filtered/cleaned Markdown and
+SDK metadata for direct Python consumers. See [output-layout.md](output-layout.md) for
+path rules, minimal schemas, bounded provenance and interruption details, and
+[integration.md](integration.md) for backend/LLM consumption.
 
 ## Verification and current limits
 

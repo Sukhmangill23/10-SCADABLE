@@ -1,5 +1,8 @@
 # Stage 4 reliability and integration plan
 
+Historical stage plan. Current export/publication behavior is documented in
+[output-layout.md](output-layout.md); prior generated artifacts remain preserved.
+
 Goal: finish the standalone scraper's reliability, verification and integration docs.
 Base: Stage 3 commit `f801e62`. Stage 4 design and live testing on
 `https://scadable.com/` were explicitly approved. No commit until final review approval.

@@ -58,62 +58,58 @@ homepage_url = "https://competitor.example/"
 name = "Example competitor"
 '@ | Set-Content -Encoding ascii output/manual.toml
 
-uv run --locked scraper --config output/manual.toml --output output/manual.json
+uv run --locked scraper --config output/manual.toml --output output/run-001
 ```
 
-You will see progress logs in the terminal. The JSON file appears when the run finishes.
-Existing output requires `--overwrite`; otherwise choose a new filename.
+Progress logs include each saved index path. Each competitor gets a directory containing
+`crawl_summary.json` and readable Markdown files under `pages/`. An existing competitor
+directory is refused; choose a fresh run root such as `output/run-002` for a repeat crawl.
 
 ## See the output
 
-Open `output/manual.json` in your editor, or inspect it with PowerShell:
+Open `output/run-001/competitor.example/pages/index.md` in your editor. Each subpage
+has its own Markdown file, such as `pages/pricing.md` or `pages/products/analytics.md`.
+Substitute the actual hostname you configured for `competitor.example`.
+
+Open `crawl_summary.json` beside `pages/` to see the index, or inspect it in PowerShell:
 
 ```powershell
-$run = Get-Content output/manual.json -Raw -Encoding UTF8 | ConvertFrom-Json
-$result = $run.results[0]
-$result.summary
-$result.completion_reason
-$result.pages | Select-Object source_url, page_title, page_category, crawl_status, http_status, attempt_count
-$result.pages[0].cleaned_markdown
-$result.discovered_urls | Where-Object disposition -eq 'deferred' | Select-Object url, reason
-```
-
-For readable Markdown in your editor:
-
-```powershell
-$result.pages[0].cleaned_markdown | Set-Content -Encoding utf8 output/first-page.md
+$site = "output/run-001/competitor.example"
+$summary = Get-Content "$site/crawl_summary.json" -Raw -Encoding UTF8 | ConvertFrom-Json
+$summary.counts
+$summary.completion_reason
+$summary.pages | Select-Object url, markdown_file, title, category, status, word_count
+$page = $summary.pages | Where-Object status -eq 'success' | Select-Object -First 1
+Get-Content (Join-Path $site $page.markdown_file) -Raw -Encoding UTF8
+$summary.uncrawled_urls | Where-Object status -eq 'deferred' | Select-Object url, reason
 ```
 
 | Field | Meaning |
 | --- | --- |
-| `raw_markdown` | Full SDK Markdown from rendered HTML, retaining source links |
-| `cleaned_markdown` | Conservatively normalized full Markdown; usual analysis input |
-| `filtered_markdown` | Optional SDK-filtered content; it can omit useful details |
-| `source_url` / `final_url` | Requested source and final URL after redirects |
-| `crawl_status` / `error_message` | Page success or failure and its explanation |
-| `metadata.crawl_diagnostics` | Attempt history and why retries stopped |
-| `discovered_urls` | Unique observed URLs, their provenance, disposition and reason |
+| `markdown_file` | Content-only Markdown path, relative to the summary's directory |
+| `url` / `final_url` | Requested source; final URL is included when redirected |
+| `title` / `category` | Page title and keyword category |
+| `status` / `error` | Success or failure; failed pages have no Markdown file |
+| `discovered_from` / `discovery_sources` | Recorded parents and discovery methods |
+| `depth` / `depth_basis` | Traversal depth, or logical sitemap-seed depth |
+| `uncrawled_urls` | Skipped, deferred, external or pending URLs and reasons |
 
-`run_status=success` means page collection succeeded. `completion_reason=page_limit`
-means the configured budget stopped traversal; it does not mean the whole site was read.
-Keyword categories are coarse labels, so a product-focused blog article can be `products`.
+The JSON contains no page bodies, response headers or full configuration. It is a compact
+index for readers and downstream code. Every successful page's conservative cleaned
+Markdown is preserved in its referenced file. Full source/filtered content remains
+available through the Python API.
 
-Generated data is ignored by Git and is not included in a fresh clone.
-See [validation.md](validation.md) for the existing live sample's paths and measured coverage.
+`status=success` means collection succeeded; `completion_reason=page_limit` means the
+budget stopped traversal. It does not mean the whole site was read. Require a
+`crawl_summary.json` before accepting a competitor export; completed competitors survive
+later interruption. A partial publication may leave a folder without that marker.
 
-## JSONL, more websites and configuration
+Generated data is ignored by Git. See [output-layout.md](output-layout.md) for naming,
+collision rules and an example entry. The old JSON/JSONL formats and `--format`,
+`--overwrite`, `--output -` options were replaced by this directory format; existing
+historical crawl data remains untouched.
 
-Choose JSONL for one JSON object per line. Page records are followed by a competitor
-summary; each completed competitor is flushed:
-
-```powershell
-uv run --locked scraper --config output/manual.toml --format jsonl --output output/manual.jsonl
-Get-Content output/manual.jsonl -Encoding UTF8 | ForEach-Object { $_ | ConvertFrom-Json } | Select-Object record_type
-```
-
-Both commands crawl again; changing the output format is not a local conversion. JSON
-files publish atomically. JSONL retains earlier completed competitors on Ctrl+C; require
-a summary record before accepting that competitor as complete.
+## More websites and configuration
 
 For multiple competitors, add more `[[competitors]]` sections to the TOML file. Add
 `[competitors.overrides]` after a competitor to customize its settings. See
@@ -123,8 +119,8 @@ Inputs are homepages with `http://` or `https://`, not individual article URLs.
 Common overrides:
 
 ```powershell
-uv run --locked scraper --config output/manual.toml --max-pages 10 --max-depth 2 --output output/larger.json
-uv run --locked scraper --config output/manual.toml --strategy bfs --output output/bfs.json
+uv run --locked scraper --config output/manual.toml --max-pages 10 --max-depth 2 --output output/larger-run
+uv run --locked scraper --config output/manual.toml --strategy bfs --output output/bfs-run
 ```
 
 CLI options override competitor settings, which override global settings and defaults.
@@ -148,13 +144,13 @@ crawl live competitor websites.
 - SDK cache permission error: set `CRAWL4_AI_BASE_DIRECTORY` before starting Python.
 - Robots or network failure: inspect `warnings`, deferred reasons and page errors.
   Robots checks fail closed; an unavailable robots file can prevent page collection.
-- Failed page: inspect `error_message` and `metadata.crawl_diagnostics`; add `--verbose`
-  to see more logs. Other competitors continue.
-- Reusing filenames: choose a new output path or explicitly pass `--overwrite`.
+- Failed page: inspect its `error`, optional HTTP status/retry fields and logs;
+  add `--verbose` for more detail. Other competitors continue.
+- Existing competitor directory: choose a fresh `--output` root for the next run.
 
 Exit codes are 0 for successful collection, 1 for a partial/failed competitor, 2 for
 input/output errors and 130 for interruption. In PowerShell, inspect `$LASTEXITCODE`
 immediately after the CLI command.
 
-For importing the asynchronous service into another application or validating JSONL,
+For importing the asynchronous service or reading validated summary/Markdown bundles,
 see [integration.md](integration.md).

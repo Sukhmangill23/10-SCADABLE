@@ -60,14 +60,6 @@ class ContentExtractor(Protocol):
         ...
 
 
-class ResultSink(Protocol):
-    async def write_page(self, page: ScrapedPage) -> None: ...
-
-    async def write_summary(self, result: CompetitorCrawlResult) -> None:
-        """Write a final summary; JSONL implementations omit repeated page bodies."""
-        ...
-
-
 class ScraperService(Protocol):
     async def crawl(
         self, competitor: CompetitorInput, settings: ScraperConfig

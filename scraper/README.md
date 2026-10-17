@@ -4,9 +4,9 @@ Standalone Python package for discovering and collecting source-linked competito
 It is independent of the backend, database, LLM and frontend.
 
 **Current status: all four stages implemented and approved.** Sitemap/link discovery,
-BestFirst/BFS traversal, Crawl4AI rendering, conservative extraction, JSON/JSONL output
+BestFirst/BFS traversal, Crawl4AI rendering, conservative extraction, Markdown page exports
 and the multiple-homepage CLI are available, with bounded retries, resource cleanup,
-interruption-safe file output and offline/browser verification. See the
+concise JSON indexes and offline/browser verification. See the
 [integration guide](docs/integration.md) for reliability and downstream consumption.
 The approved three-page live crawl and packaging checks are recorded in the
 [validation report](docs/validation.md).
@@ -86,16 +86,19 @@ shared ceilings for `crawl_many()`; individual competitors cannot raise those ce
 Replace the placeholders with competitor homepages you are authorized to crawl:
 
 ```powershell
-uv run --locked scraper https://competitor-a.example https://competitor-b.example --output output/crawl.json
-uv run --locked scraper --config config.toml --format jsonl --output output/crawl.jsonl
+uv run --locked scraper https://competitor-a.example https://competitor-b.example --output output/run-001
+uv run --locked scraper --config config.toml --output output/run-002
 uv run --locked python -m scraper --help
 ```
 
 Positional homepages select matching competitors from TOML, preserving their names and
 overrides; unmatched homepages use global defaults. With no positional URLs, all TOML
 competitors run. `--max-pages`, `--max-depth`, `--strategy` and `--max-concurrency` override
-configuration. Existing output requires `--overwrite`; `--output -` emits structured
-output to stdout. Diagnostics go to stderr. Exit codes: 0 successful page collection,
+configuration. `--output` is a directory (default `output/`). Each website receives
+`<hostname>/crawl_summary.json` and content-only Markdown under `<hostname>/pages/`.
+Existing competitor directories are refused before crawling; choose a fresh output
+directory for another run. Diagnostics and saved index paths go to stderr.
+Exit codes: 0 successful page collection,
 1 at least one partial/failed competitor, 2 input/output error, 130 interruption. Check
 `completion_reason` and deferred URLs to assess coverage even when the exit code is 0.
 
@@ -152,9 +155,29 @@ registry entries, not pretend fetch results. Discovered/skipped/deferred/externa
 records preserve reasons and provenance. A discovery cap is reported explicitly.
 
 Models support `model_dump(mode="json")`, `model_dump_json()` and `model_json_schema()`.
-JSON uses `CrawlRunDocument` with `schema_version`, `serialized_at` and `results`.
-JSONL contains typed `page` records followed by a `competitor_summary` record per
-competitor, without repeated page bodies. Records are emitted as competitors complete.
+The file export is schema `2.0`: `CrawlExportSummary` contains concise counts, timing,
+page references and discovery relationships. Each successful page writes its exact
+`cleaned_markdown` to a relative `.md` path. JSON contains no page bodies, response headers
+or full configuration. Failed pages have an error and no Markdown file.
+
+```python
+from pathlib import Path
+from scraper import CrawlExportSummary
+from scraper.output import export_competitor
+
+# result = await CompetitorScraper().crawl(competitor, settings)
+# summary = export_competitor(result, "output/run-003")
+index = Path("output/run-001/competitor-a.example/crawl_summary.json")
+summary = CrawlExportSummary.model_validate_json(index.read_text(encoding="utf-8"))
+for page in summary.pages:
+    if page.status == "success":
+        content = (index.parent / page.markdown_file).read_text(encoding="utf-8")
+```
+
+The in-memory `CompetitorCrawlResult` stays unchanged and retains full source/filtered
+content for direct Python consumers. Legacy JSON/JSONL file writers, `--format`,
+`--overwrite` and stdout exports were removed. Existing generated files are preserved.
+See [output layout](docs/output-layout.md) for naming, relationships and publication rules.
 
 ## Boundaries and tests
 

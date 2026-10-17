@@ -1,6 +1,5 @@
 """Opt-in real Chromium checks. Every HTTP request uses a loopback fixture server."""
 
-import json
 import os
 import subprocess
 import sys
@@ -158,7 +157,7 @@ async def test_redirects_are_blocked_before_destination_request(website, path, r
         assert paths.count("/loop") == 3
 
 
-def test_real_cli_pipeline_writes_parseable_jsonl(website, tmp_path):
+def test_real_cli_pipeline_writes_markdown_and_summary(website, tmp_path):
     base, requests = website
     config = tmp_path / "local.toml"
     config.write_text(
@@ -172,10 +171,8 @@ def test_real_cli_pipeline_writes_parseable_jsonl(website, tmp_path):
             base,
             "--config",
             str(config),
-            "--format",
-            "jsonl",
             "--output",
-            "-",
+            str(tmp_path / "exports"),
         ],
         cwd=tmp_path,
         capture_output=True,
@@ -184,10 +181,21 @@ def test_real_cli_pipeline_writes_parseable_jsonl(website, tmp_path):
         timeout=45,
     )
     assert process.returncode == 0, process.stderr
-    records = [json.loads(line) for line in process.stdout.splitlines()]
-    assert [record["record_type"] for record in records] == ["page", "page", "competitor_summary"]
-    assert records[-1]["result"]["summary"]["successful"] == 2
-    assert all("Starter $49" in record["page"]["raw_markdown"] for record in records[:2])
+    from scraper.models import CrawlExportSummary
+
+    indexes = list((tmp_path / "exports").rglob("crawl_summary.json"))
+    assert len(indexes) == 1
+    summary = CrawlExportSummary.model_validate_json(indexes[0].read_text(encoding="utf-8"))
+    assert summary.counts.successful == 2
+    assert len(summary.pages) == 2
+    assert all(
+        "Starter $49" in (indexes[0].parent / page.markdown_file).read_text(encoding="utf-8")
+        for page in summary.pages
+    )
+    assert all(page.duration_seconds is not None for page in summary.pages)
+    assert summary.counts.deferred > 0
+    assert any(page.discovered_from for page in summary.pages)
+    assert "raw_markdown" not in indexes[0].read_text(encoding="utf-8")
     assert "Starting" in process.stderr
     assert "/embedded" not in [path for _, path in requests]
 

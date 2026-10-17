@@ -1,5 +1,9 @@
 # Stage 3 implementation plan
 
+Historical stage plan. The current file export is documented in
+[output-layout.md](output-layout.md); its Markdown-plus-summary format replaces the
+original JSON/JSONL design below.
+
 Goal: connect the approved shared discovery frontier to Crawl4AI rendering, conservative
 content extraction, structured output and a multiple-homepage CLI. Stage 2 is committed
 as `1d8e50e`. Files stay directly under `src/` in the installed `scraper` package.
