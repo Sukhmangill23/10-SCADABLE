@@ -36,7 +36,7 @@ SETTINGS = ScraperConfig(
         budget_usd=0.03,  # Estimated per website; not a guaranteed billing ceiling.
         trace_enabled=False,  # True saves bounded evidence/answers in decisions.jsonl.
     ),
-    max_pages=5,
+    max_pages=10,
     max_depth=3,
     max_concurrency=3,
     max_concurrent_competitors=3,
@@ -46,8 +46,10 @@ SETTINGS = ScraperConfig(
     max_sitemap_requests=8,
 )
 
-# EDIT if needed. A new timestamped folder makes repeated runs easy to compare.
-OUTPUT_DIRECTORY = PROJECT_DIRECTORY / "output" / f"manual-{datetime.now(UTC):%Y%m%d-%H%M%S-%f}"
+# EDIT if needed. Readable UTC timestamps keep runs sorted by date and time.
+OUTPUT_DIRECTORY = (
+    PROJECT_DIRECTORY / "output" / f"manual-{datetime.now(UTC):%Y-%m-%d_%H-%M-%S}_UTC"
+)
 
 logger = logging.getLogger(__name__)
 

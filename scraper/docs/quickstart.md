@@ -49,7 +49,9 @@ Open [manual_test.py](../manual_test.py) and edit the values at the top:
 - `SETTINGS`: page/depth limits, concurrency, request spacing and sitemap bounds.
 - `SETTINGS.selection`: `mode` (`llm` or `structural`), `objective`, `budget_usd`, and
   `trace_enabled` (save request evidence and answers for review).
-- `OUTPUT_DIRECTORY`: defaults to a fresh timestamped folder under `output/`.
+- `OUTPUT_DIRECTORY`: defaults to a readable UTC folder under `output/`, such as
+  `manual-2026-10-18_23-26-46_UTC`. Runs started within the same second share a name;
+  an existing folder is refused, so wait a second or choose a different name.
 
 Start with one website and `max_pages=3`. For LLM mode, open `scraper/.env` in your editor
 and enter your key after `=`:

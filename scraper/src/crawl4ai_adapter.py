@@ -57,7 +57,7 @@ def build_run_config(
         word_count_threshold=0,
         markdown_generator=DefaultMarkdownGenerator(
             content_source="raw_html",
-            options={"ignore_links": False},
+            options={"ignore_links": False, "ignore_images": True},
             content_filter=PruningContentFilterLXML(threshold=0.2, min_word_threshold=0),
         ),
         exclude_external_links=False,

@@ -87,7 +87,9 @@ click/time limits. Source content and links come from the final rendered DOM sna
 ## Content and categorization
 
 - `raw_markdown`: unchanged SDK Markdown generated from rendered `raw_html`, retaining
-  links. It is full readable Markdown, not byte-for-byte HTML or a script archive.
+  text links. Images are omitted during SDK Markdown generation (`ignore_images=True`),
+  including from filtered/cleaned content and Markdown excerpts sent to Decisions.
+  It is readable source Markdown, not byte-for-byte HTML or a script archive.
 - `filtered_markdown`: SDK `PruningContentFilterLXML` output (threshold 0.2, minimum word
   threshold 0). This representation can omit useful material and is never substituted
   for the source or conservative cleaned version.
