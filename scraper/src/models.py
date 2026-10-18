@@ -225,6 +225,7 @@ class ExportedPage(ExportDiscovery):
     error: NonEmptyText | None = None
     attempt_count: PositiveInt | None = None
     retry_stop_reason: str | None = None
+    selection: SelectionDiagnostics | None = None
 
     @field_validator("markdown_file")
     @classmethod
@@ -267,7 +268,7 @@ class UncrawledUrl(ExportDiscovery):
 class CrawlExportSummary(ContractModel):
     """Versioned, content-free index for one competitor's Markdown export."""
 
-    schema_version: Literal["2.0"] = "2.0"
+    schema_version: Literal["2.1"] = "2.1"
     competitor_name: NonEmptyText
     homepage_url: HomepageUrl
     started_at: UtcTimestamp
@@ -280,6 +281,8 @@ class CrawlExportSummary(ContractModel):
     uncrawled_urls: list[UncrawledUrl] = Field(default_factory=list)
     discovery_truncated: bool = False
     warnings: list[NonEmptyText] = Field(default_factory=list)
+    decision_usage: DecisionUsageSummary | None = None
+    decision_trace_file: Literal["decisions.jsonl"] | None = None
 
     @model_validator(mode="after")
     def consistent_index(self) -> Self:

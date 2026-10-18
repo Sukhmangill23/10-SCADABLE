@@ -118,7 +118,8 @@ strategies, source preservation, deduplication, shorter paths, page/depth/discov
 external hosts, robots failures, redirects, XML/gzip bounds, concurrency and cancellation.
 No browser or live competitor website is contacted by these default checks. Live testing
 requires explicit approval. The original discovery stage was committed as `1d8e50e`;
-the subsequent OpenAI-guided selection update is awaiting review.
+the OpenAI-guided discovery update was committed as `f97af15`. Its subsequent export and
+documentation stage is awaiting review; see [decision-validation.md](decision-validation.md).
 See [integration.md](integration.md) for the service retry and shared pacing policy.
 
 References: [Crawl4AI deep crawling](https://docs.crawl4ai.com/core/deep-crawling/),

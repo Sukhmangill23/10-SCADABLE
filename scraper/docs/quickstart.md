@@ -16,11 +16,11 @@ External document domains require explicit approval/configuration; relevant exte
 links are recorded. Third-party resources needed for rendering are allowed. The scraper
 runs independently of the backend, database and downstream company analysis.
 
-**Selection update:** default LLM crawling now requires `OPENAI_API_KEY`. Set it in your
-environment before running. To crawl without API requests, add
-`selection={"mode": "structural"}` to `ScraperConfig(...)` or add a TOML section
-`[global.selection]` with `mode="structural"`. Structural pages use category `other`.
-See [decisions.md](decisions.md) for the $0.03 estimated allowance and structural fallback.
+Default LLM crawling requires `OPENAI_API_KEY`. It scores discovered links from their URL
+and nearby text, then assesses fetched excerpts for usefulness, novelty and category.
+The estimated allowance is $0.03 **per website**, with structural fallback when exhausted;
+it is not a guaranteed billing ceiling. See [decisions.md](decisions.md) for accounting.
+Explicit structural mode makes no OpenAI calls and uses category `other`.
 
 ## Set up on Windows
 
@@ -47,21 +47,31 @@ Open [manual_test.py](../manual_test.py) and edit the values at the top:
 
 - `WEBSITES`: homepage URLs and optional competitor names; add an entry per website.
 - `SETTINGS`: page/depth limits, concurrency, request spacing and sitemap bounds.
+- `SETTINGS.selection`: `mode` (`llm` or `structural`), `objective`, `budget_usd`, and
+  `trace_enabled` (save request evidence and answers for review).
 - `OUTPUT_DIRECTORY`: defaults to a fresh timestamped folder under `output/`.
 
-After the one-time setup above, run it from `scraper/`:
+Start with one website and `max_pages=3`. For LLM mode, set your key in the current
+PowerShell session, then run the editable file from `scraper/`:
 
 ```powershell
+$env:OPENAI_API_KEY = [System.Net.NetworkCredential]::new("", (Read-Host "OpenAI API key" -AsSecureString)).Password
 uv run --locked python manual_test.py
 ```
 
+To make an API-free manual run, edit `mode="structural"` in the Python file and omit the
+key command. Keys belong in the environment, never in the Python/TOML settings.
+
 You can also select the project's `.venv` Python interpreter in VS Code and run the file
 using **Run Python File**, or execute `.venv/Scripts/python.exe manual_test.py` directly.
+That process must inherit the key for LLM mode; the terminal command above uses the
+environment you just configured.
 The runner configures the SDK cache and detects the local browser cache automatically;
 explicit environment settings take precedence. Paths are relative to the script's project
 directory, so changing your terminal's working directory does not move the output.
 
-The log shows the exact output directory and each saved `crawl_summary.json`. Markdown
+The log shows the exact output directory, each saved `crawl_summary.json`, selection mode
+and estimated usage cost. Markdown
 files are under each website's `pages/` directory. A fixed custom output directory must
 be new; existing output is never replaced. The tests for this runner mock crawling;
 executing the runner itself contacts the configured websites.
@@ -84,8 +94,13 @@ request_delay_seconds = [2.0, 2.0]
 max_sitemap_documents = 3
 max_sitemap_requests = 8
 
+[global.selection]
+mode = "llm"
+budget_usd = 0.03
+trace_enabled = false
+
 [[competitors]]
-homepage_url = "https://scadable.com/"
+homepage_url = "https://competitor.example/"
 name = "Example competitor"
 '@ | Set-Content -Encoding ascii output/manual.toml
 
@@ -112,8 +127,30 @@ $summary.completion_reason
 $summary.pages | Select-Object url, markdown_file, title, category, status, word_count
 $page = $summary.pages | Where-Object status -eq 'success' | Select-Object -First 1
 Get-Content (Join-Path $site $page.markdown_file) -Raw -Encoding UTF8
-$summary.uncrawled_urls | Where-Object status -eq 'deferred' | Select-Object url, reason=
+$summary.uncrawled_urls | Where-Object status -eq 'deferred' | Select-Object url, reason
+$summary.decision_usage
+$summary.pages | Select-Object url, selection
 ```
+
+Schema `2.1` adds per-page `selection` and competitor `decision_usage`. Compare
+`requested_mode` and `effective_mode`, check `fallback_events`, and distinguish
+`reported_input_tokens` from conservative `uncertain_input_tokens`. The latter covers
+dispatched requests whose actual usage could not be recovered.
+
+Enable `trace_enabled=True` in the manual runner or pass `--decision-trace` in the CLI
+to save `decisions.jsonl`. Its path appears in `decision_trace_file`; it contains bounded
+website evidence, validated answers, timings and accounting. To inspect it:
+
+```powershell
+if ($summary.decision_trace_file) {
+    Get-Content (Join-Path $site $summary.decision_trace_file) -Encoding UTF8 |
+        ForEach-Object { $_ | ConvertFrom-Json } |
+        Select-Object operation, attempt, duration_seconds, reported_input_tokens, error_code
+}
+```
+
+An enabled trace can be empty when no decision was dispatched. With tracing disabled,
+the file and reference are absent. Normal summary JSON contains no request evidence.
 
 | Field | Meaning |
 | --- | --- |
@@ -124,6 +161,8 @@ $summary.uncrawled_urls | Where-Object status -eq 'deferred' | Select-Object url
 | `discovered_from` / `discovery_sources` | Recorded parents and discovery methods |
 | `depth` / `depth_basis` | Traversal depth, or logical sitemap-seed depth |
 | `uncrawled_urls` | Skipped, deferred, external or pending URLs and reasons |
+| `selection` | Selection method, available relevance score, assessment availability |
+| `decision_usage` | Requested/effective modes, model/prompt version, usage, estimate and fallbacks |
 
 The JSON contains no page bodies, response headers or full configuration. It is a compact
 index for readers and downstream code. Every successful page's conservative cleaned
@@ -152,7 +191,14 @@ Common overrides:
 ```powershell
 uv run --locked scraper --config output/manual.toml --max-pages 10 --max-depth 2 --output output/larger-run
 uv run --locked scraper --config output/manual.toml --strategy bfs --output output/bfs-run
+uv run --locked scraper --config output/manual.toml --selection-mode structural --output output/no-api-run
+uv run --locked scraper --config output/manual.toml --decision-budget-usd 0.01 --decision-trace --output output/traced-run
 ```
+
+`--research-objective "Customer wins and product capabilities"` changes the selection
+objective. `--no-decision-trace` overrides enabled tracing in TOML. BFS skips candidate
+scoring but still assesses fetched content in LLM mode; combine BFS with structural mode
+to disable all decision requests. All other selection controls are in Python/TOML.
 
 CLI options override competitor settings, which override global settings and defaults.
 Keep crawl budgets small while checking content quality. Add specific CSS waits or
@@ -178,6 +224,10 @@ crawl live competitor websites.
 - Failed page: inspect its `error`, optional HTTP status/retry fields and logs;
   add `--verbose` for more detail. Other competitors continue.
 - Existing competitor directory: choose a fresh `--output` root for the next run.
+- Missing API key: set `OPENAI_API_KEY` or choose structural mode before crawling.
+- HTTP 401/403 from Decisions: check the key and project/model access. The affected
+  competitor stops and retains collected pages. Budget or transient API fallback is a
+  warning; it does not make successfully scraped pages fail.
 
 Exit codes are 0 for successful collection, 1 for a partial/failed competitor, 2 for
 input/output errors and 130 for interruption. In PowerShell, inspect `$LASTEXITCODE`
@@ -185,3 +235,4 @@ immediately after the CLI command.
 
 For importing the asynchronous service or reading validated summary/Markdown bundles,
 see [integration.md](integration.md).
+For upgrading old configuration or strict summary readers, see [migration.md](migration.md).

@@ -28,8 +28,11 @@ wait_timeout_seconds = 10.0
 # LLM selection requires OPENAI_API_KEY; use "structural" for API-free crawling.
 [global.selection]
 mode = "llm"
+# Optional research goal; omitting it uses the company-specific default.
+# objective = "Research the company's offerings, customers and observable expansion evidence."
 budget_usd = 0.03
 exploration_fraction = 0.20
+# Opt-in bounded evidence/answers in decisions.jsonl; not included in the normal summary.
 trace_enabled = false
 timeout_seconds = 15.0
 max_retries = 2

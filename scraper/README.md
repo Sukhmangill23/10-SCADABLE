@@ -16,8 +16,11 @@ and inspecting the output.
 The [OpenAI-guided selection workflow](docs/decisions.md) now replaces keyword ranking.
 LLM mode is the default and requires `OPENAI_API_KEY` before crawling starts. For API-free
 crawling, set `selection={"mode": "structural"}` in Python or `[global.selection]` with
-`mode="structural"` in TOML. Old keyword settings produce migration errors. Stage 2 is
-awaiting review; disk decision diagnostics and additional CLI controls arrive in Stage 3.
+`mode="structural"` in TOML, or pass `--selection-mode structural`. Old keyword settings
+produce migration errors. The adaptive update's Stage 3 is implemented and awaiting review:
+schema `2.1` diagnostics, opt-in decision traces, CLI/manual-runner controls and offline
+evaluation fixtures. See the [migration guide](docs/migration.md) and
+[decision verification](docs/decision-validation.md). No paid live pilot has been run.
 
 The Python package and CLI are named `scraper`. After upgrading an existing checkout,
 run `uv sync --locked`; update imports to `from scraper import ...` and commands to
@@ -155,17 +158,22 @@ application's conservative normalized version. These fields are not interchangea
 All timestamps require a timezone and serialize in UTC. Metadata must contain JSON values.
 `source_url` is the requested source; `final_url` records redirects.
 
-`CompetitorCrawlResult` includes schema version `1.0`, effective settings, page outcomes,
+`CompetitorCrawlResult` includes schema version `1.1`, effective settings, page outcomes,
 observed URL dispositions, derived counts, timing, warnings and the completion reason.
 Failed pages require an error message and may preserve partial content. Skipped URLs are
 registry entries, not pretend fetch results. Discovered/skipped/deferred/external URL
 records preserve reasons and provenance. A discovery cap is reported explicitly.
 
 Models support `model_dump(mode="json")`, `model_dump_json()` and `model_json_schema()`.
-The file export is schema `2.0`: `CrawlExportSummary` contains concise counts, timing,
+The file export is schema `2.1`: `CrawlExportSummary` contains concise counts, timing,
 page references and discovery relationships. Each successful page writes its exact
 `cleaned_markdown` to a relative `.md` path. JSON contains no page bodies, response headers
 or full configuration. Failed pages have an error and no Markdown file.
+Per-page `selection` and competitor `decision_usage` explain selection and estimated
+cost/fallbacks. `--decision-trace` saves bounded evidence and typed answers in an optional
+`decisions.jsonl`; it is published before the summary completion marker. Tracing is off
+by default. `--decision-budget-usd` sets the estimated per-competitor allowance and
+`--research-objective` customizes the research goal.
 
 ```python
 from pathlib import Path
@@ -181,7 +189,7 @@ for page in summary.pages:
         content = (index.parent / page.markdown_file).read_text(encoding="utf-8")
 ```
 
-The in-memory `CompetitorCrawlResult` stays unchanged and retains full source/filtered
+The in-memory `CompetitorCrawlResult` retains full source/filtered
 content for direct Python consumers. Legacy JSON/JSONL file writers, `--format`,
 `--overwrite` and stdout exports were removed. Existing generated files are preserved.
 See [output layout](docs/output-layout.md) for naming, relationships and publication rules.
@@ -194,7 +202,9 @@ See [output layout](docs/output-layout.md) for naming, relationships and publica
 - [crawl4ai_adapter.py](src/crawl4ai_adapter.py): verified SDK configuration
   factories, with lazy SDK imports and no browser creation.
 - [browser.py](src/browser.py): rendering, guarded document requests and dynamic rules.
-- [extraction.py](src/extraction.py): cleaning and keyword categories without network I/O.
+- [extraction.py](src/extraction.py): conservative cleaning and consumption of typed categories without network I/O.
+- [decisions.py](src/decisions.py): owned asynchronous API client, typed answers and budget/failure controls.
+- [discovery/selection.py](src/discovery/selection.py): bounded scoring cycles and content feedback.
 - [service.py](src/service.py): reusable async service and shared page concurrency.
 - [reliability.py](src/reliability.py): transient failure policy and bounded retry delays.
 - [output.py](src/output.py) and [cli.py](src/cli.py): serialization and standalone execution.

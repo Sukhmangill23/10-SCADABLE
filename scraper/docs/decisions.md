@@ -1,15 +1,32 @@
 # OpenAI Decisions — adaptive discovery
 
-Stage 1 supplies the typed API adapter and budget accounting. Stage 2 connects it to the
-shared discovery frontier, removes keyword scoring, and uses content-based categories.
+The typed API adapter, budget accounting and shared discovery frontier replace keyword
+scoring and use content-based categories. Stage 3 adds reviewable exports and controls.
 The default CLI and Python service now require `OPENAI_API_KEY`. Explicit structural mode
 requires no key and makes no OpenAI calls. No paid requests or live competitor crawls are
 required to review this stage.
 
 In-memory results use schema `1.1`, carrying page assessments/selection diagnostics and
-competitor `decision_usage` and optional `decision_trace`. Disk exports retain schema `2.0`
-and the existing Markdown bundle: Stage 3 adds disk diagnostics, trace publication,
-CLI/manual-runner controls, and schema `2.1`.
+competitor `decision_usage` and optional `decision_trace`. Disk exports use schema `2.1`
+with compact diagnostics and an optional `decisions.jsonl`, preserving Markdown paths.
+See [migration.md](migration.md) for configuration and strict-reader changes.
+
+```mermaid
+flowchart LR
+    H[Homepage and bounded sitemaps] --> F[Shared URL frontier]
+    F --> E[Bounded link evidence]
+    E --> D[Decisions candidate scores]
+    D --> S[Ranked selection or exploration]
+    S --> C[Crawl4AI fetch]
+    C --> F
+    C --> A[Content assessment and evidence ledger]
+    A --> S
+    C --> M[Conservative Markdown extraction]
+    M --> O[Markdown bundle and summary]
+```
+
+In structural mode, the frontier selects by section exploration without the decision
+operations. The application owns every URL choice, domain/robots check and crawl limit.
 
 ## Selection behavior
 
@@ -118,7 +135,25 @@ already-fetched pages and closing resources.
 
 Enabled traces contain request evidence, validated answers, timing, and token accounting.
 SDK exception bodies/messages, authorization headers, and API keys are not recorded.
-Traces remain in memory; Stage 3 will publish `decisions.jsonl` when requested.
+The exporter publishes `decisions.jsonl` only when the result's effective
+`selection.trace_enabled` is true. It is UTF-8 JSONL: one `DecisionTraceRecord` per
+dispatched attempt, including retries. No request occurs merely to generate diagnostics.
+An enabled trace with no attempts is an empty file. Without opt-in, no trace file or
+reference is written, even if a custom result contains in-memory trace records.
+
+Schema `2.1` exports `pages[].selection` (method, relevance when known, assessment
+availability) and `decision_usage` (requested/effective modes, model, prompt version,
+budget, request count, reported/uncertain/reserved input tokens, estimated cost, fallback
+events). Custom results without these diagnostics omit them. Assessment availability
+means at least one answer was valid, not that every question was answered or collection
+was exhaustive. Detailed usefulness/novelty scores remain in the typed Python result;
+traces expose validated rubric answers when enabled. No page content is dropped for
+low usefulness or repeated evidence.
+
+The optional `decision_trace_file` points to the fixed relative path `decisions.jsonl`.
+Pages and trace are staged together, then published before `crawl_summary.json`. A trace
+failure cannot publish the summary completion marker. Existing directories are refused;
+use a fresh output root. See [output-layout.md](output-layout.md) for publication semantics.
 
 Official references, verified October 18, 2026:
 
@@ -133,9 +168,13 @@ From the `scraper` directory, use the existing project environment:
 uv sync --locked --offline --cache-dir .uv-cache
 .\.venv\Scripts\python.exe -m pytest tests/unit/test_selection_contracts.py tests/unit/test_decision_budget.py tests/unit/test_decisions.py -q
 .\.venv\Scripts\python.exe -m pytest tests/unit/test_adaptive_discovery.py tests/unit/test_adaptive_frontier.py tests/unit/test_link_context.py -q
+.\.venv\Scripts\python.exe -m pytest tests/integration/test_decision_workflow.py tests/unit/test_output.py tests/unit/test_cli.py -q
 .\.venv\Scripts\python.exe -m pytest tests/unit -q
 ```
 
 The adapter tests use injected SDK stubs and the installed SDK with a mock HTTP transport.
 They do not contact OpenAI or websites and do not need a real API key. The OpenAI SDK is
 now a direct dependency (`openai>=3.26,<4`); the existing locked 3.32.0 version is retained.
+The synthetic scenarios and the approval-gated live pilot procedure are documented in
+[decision-validation.md](decision-validation.md). Scripted answers verify orchestration;
+they do not establish real model relevance, latency, or per-website cost.

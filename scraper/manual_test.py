@@ -7,7 +7,7 @@ from contextlib import aclosing
 from datetime import UTC, datetime
 from pathlib import Path
 
-from scraper import CompetitorInput, ScraperConfig
+from scraper import CompetitorInput, ScraperConfig, SelectionConfig
 from scraper.output import competitor_directory, export_competitor
 from scraper.service import CompetitorScraper
 
@@ -23,6 +23,18 @@ WEBSITES = [
 
 # EDIT: these are the same settings as the small manual CLI test.
 SETTINGS = ScraperConfig(
+    # EDIT: "llm" requires OPENAI_API_KEY; "structural" makes no OpenAI calls.
+    selection=SelectionConfig(
+        mode="llm",
+        objective=(
+            "Understand the company's offerings, customers, differentiation, commercial "
+            "activity, and observable evidence of expansion or contraction. Favor "
+            "company-specific evidence over general industry articles. Collect evidence "
+            "rather than predicting growth."
+        ),
+        budget_usd=0.03,  # Estimated per website; not a guaranteed billing ceiling.
+        trace_enabled=False,  # True saves bounded evidence/answers in decisions.jsonl.
+    ),
     max_pages=3,
     max_depth=5,
     max_concurrency=3,
@@ -75,6 +87,18 @@ async def main() -> int:
                 summary.counts.failed,
                 index,
             )
+            if summary.decision_usage:
+                usage = summary.decision_usage
+                logger.info(
+                    "Selection %s -> %s; estimated $%.6f (%d reported, %d uncertain tokens)",
+                    usage.requested_mode,
+                    usage.effective_mode,
+                    usage.estimated_cost_usd,
+                    usage.reported_input_tokens,
+                    usage.uncertain_input_tokens,
+                )
+            if summary.decision_trace_file:
+                logger.info("Decision trace: %s", index.parent / summary.decision_trace_file)
     return 1 if failed else 0
 
 

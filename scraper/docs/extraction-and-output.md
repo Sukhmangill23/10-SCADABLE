@@ -109,9 +109,13 @@ Extraction failures are reconciled with URL dispositions so result counts stay c
 
 The current CLI exports one directory per competitor. Every successful page has a
 content-only Markdown file containing its exact `cleaned_markdown`. Failed pages have
-an index entry with an error and no content file. The schema `2.0` `CrawlExportSummary`
+an index entry with an error and no content file. The schema `2.1` `CrawlExportSummary`
 contains relative file references, counts, timestamps, durations and compact discovery
 relationships; it does not embed page bodies or raw SDK metadata.
+It adds per-page selection diagnostics and competitor usage/fallback accounting.
+Opt-in `decisions.jsonl` contains bounded request evidence and typed answers and is staged
+with the Markdown before the summary completion marker. See [migration.md](migration.md)
+for strict-reader changes from schema `2.0`.
 
 Use `export_competitor(result, output_directory)` to export a completed typed result.
 The exporter stages files, reserves a new competitor directory and publishes

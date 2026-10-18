@@ -104,7 +104,74 @@ def test_cli_default_output_is_a_directory(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     monkeypatch.setattr(cli, "CompetitorScraper", FixtureService)
     assert cli.main(["https://one.example"]) == 0
-    assert read_summary(tmp_path / "output")["schema_version"] == "2.0"
+    assert read_summary(tmp_path / "output")["schema_version"] == "2.1"
+
+
+def test_selection_cli_overrides_are_sparse_and_preserve_nested_precedence(tmp_path):
+    from scraper.cli import _inputs, _parser
+    from scraper.config import resolve_config
+
+    config = tmp_path / "config.toml"
+    config.write_text(
+        '[global.selection]\nmode="llm"\nbudget_usd=0.02\ntrace_enabled=true\n'
+        'max_retries=1\n[[competitors]]\nhomepage_url="https://one.example/"\n'
+        '[competitors.overrides.selection]\nobjective="Research customer evidence"\n',
+        encoding="utf-8",
+    )
+    args = _parser().parse_args(
+        [
+            "--config",
+            str(config),
+            "--selection-mode",
+            "structural",
+            "--decision-budget-usd",
+            "0.01",
+            "--no-decision-trace",
+        ]
+    )
+    competitors, project, overrides = _inputs(args)
+    effective = resolve_config(project.global_settings, competitors[0].overrides, overrides)
+    assert effective.selection.mode == "structural"
+    assert effective.selection.budget_usd == 0.01
+    assert effective.selection.trace_enabled is False
+    assert effective.selection.objective == "Research customer evidence"
+    assert effective.selection.max_retries == 1
+    assert overrides.model_dump(exclude_unset=True) == {
+        "selection": {"mode": "structural", "budget_usd": 0.01, "trace_enabled": False},
+    }
+    _, _, omitted = _inputs(_parser().parse_args(["--config", str(config)]))
+    assert omitted.model_dump(exclude_unset=True) == {}
+
+
+def test_cli_research_objective_and_trace_reach_exporter(tmp_path, monkeypatch):
+    from scraper import cli
+
+    monkeypatch.setattr(cli, "CompetitorScraper", FixtureService)
+    assert (
+        cli.main(
+            [
+                "https://one.example",
+                "--output",
+                str(tmp_path),
+                "--research-objective",
+                "Company expansion and customer wins",
+                "--decision-trace",
+                "--selection-mode",
+                "structural",
+            ]
+        )
+        == 0
+    )
+    assert read_summary(tmp_path)["decision_trace_file"] == "decisions.jsonl"
+    assert (tmp_path / "one.example/decisions.jsonl").read_bytes() == b""
+
+
+@pytest.mark.parametrize("allowance", ["-0.1", "nan", "inf"])
+def test_invalid_decision_allowance_fails_before_crawler(allowance, capsys):
+    from scraper import cli
+
+    assert cli.main(["https://one.example", "--decision-budget-usd", allowance]) == 2
+    assert "budget_usd" in capsys.readouterr().err
 
 
 @pytest.mark.parametrize(

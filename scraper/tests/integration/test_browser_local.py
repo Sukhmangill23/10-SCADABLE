@@ -257,3 +257,92 @@ async def test_real_sdk_wrapped_selector_timeouts_are_retried(website):
         attempt["failure_kind"] for attempt in page.metadata["crawl_diagnostics"]["attempts"]
     } == {"timeout"}
     assert [path for _, path in requests].count("/") == 3
+
+
+async def test_real_browser_with_mock_decisions_publishes_context_assessment_and_trace(
+    website, tmp_path, monkeypatch
+):
+    import json
+
+    import httpx2
+    from openai import AsyncOpenAI
+
+    from scraper import CompetitorInput
+    from scraper.decisions import OpenAIDecisionProvider
+    from scraper.output import competitor_directory, export_competitor
+    from scraper.service import CompetitorScraper
+
+    base, requests = website
+    calls = []
+    clients = []
+    monkeypatch.setenv("OPENAI_API_KEY", "test-not-a-real-key")
+
+    def handle(request):
+        assert str(request.url) == "https://api.openai.com/v1/decisions"
+        payload = json.loads(request.content)
+        calls.append(payload)
+        evidence = json.loads(payload["input"])
+        if "candidates" in evidence:
+            answers = [
+                {
+                    "name": f"candidate_{i}",
+                    "type": "score",
+                    "confidence": 0.9,
+                    "score": 3 if item["url"].endswith("/products") else 0,
+                }
+                for i, item in enumerate(evidence["candidates"])
+            ]
+        else:
+            answers = [
+                {"name": name, "type": "score", "confidence": 0.9, "score": 3}
+                for name in ("usefulness", "novelty")
+            ] + [{"name": "category", "type": "choice", "confidence": 0.9, "choice": "pricing"}]
+        return httpx2.Response(
+            200,
+            json={
+                "answers": answers,
+                "model": "gpt-6-luna",
+                "usage": {"input_tokens": 100},
+            },
+        )
+
+    def factory(competitor, settings, limiter):
+        def client_factory(**kwargs):
+            client = AsyncOpenAI(
+                **kwargs, http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(handle))
+            )
+            clients.append(client)
+            return client
+
+        return OpenAIDecisionProvider(
+            settings.selection, request_limiter=limiter, client_factory=client_factory
+        )
+
+    result = await CompetitorScraper(decision_provider_factory=factory).crawl(
+        CompetitorInput(homepage_url=base),
+        ScraperConfig(
+            max_pages=2,
+            max_depth=1,
+            max_concurrency=1,
+            request_delay_seconds=(0.0, 0.0),
+            selection={"trace_enabled": True},
+        ),
+    )
+    assert result.run_status == "success"
+    assert str(result.pages[1].source_url) == base + "/products"
+    candidates = [
+        json.loads(call["input"])["candidates"]
+        for call in calls
+        if "candidates" in json.loads(call["input"])
+    ]
+    product = next(item for item in candidates[0] if item["url"].endswith("/products"))
+    assert product["observations"][0]["location"] == "main_content"
+    assert product["observations"][0]["heading"] == "Pricing"
+    summary = export_competitor(result, tmp_path)
+    folder = tmp_path / competitor_directory(base)
+    assert summary.pages[1].selection.assessment_available
+    assert summary.pages[1].category == "pricing"
+    assert summary.decision_usage.reported_input_tokens == len(calls) * 100
+    assert (folder / summary.decision_trace_file).is_file()
+    assert all(client.is_closed() for client in clients)
+    assert "/embedded" not in [path for _, path in requests]

@@ -172,9 +172,11 @@ do not claim all sitemap or site URLs were enumerated. `pending` is available fo
 interrupted run; normal completion must finalize eligible remaining URLs as deferred.
 
 The CLI exports one directory per competitor as it completes: content-only `.md` files
-and a schema `2.0` `CrawlExportSummary` index containing relative file references, counts,
+and a schema `2.1` `CrawlExportSummary` index containing relative file references, counts,
 timing and bounded discovery provenance. The exporter stages the files and publishes the
-index last as a completion marker. Existing directories require a fresh output root.
+index last as a completion marker. It includes compact selection/usage diagnostics;
+opt-in `decisions.jsonl` is published before that marker. Existing directories require a
+fresh output root.
 The previous JSON/JSONL file formats were replaced; historical generated data is retained.
 Backend and LLM teams can read the index plus Markdown or await the unchanged
 `CompetitorScraper` API directly. See [output-layout.md](output-layout.md).

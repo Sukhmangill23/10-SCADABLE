@@ -34,6 +34,23 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--max-depth", type=int)
     parser.add_argument("--strategy", choices=("best_first", "bfs"))
     parser.add_argument("--max-concurrency", type=int)
+    parser.add_argument(
+        "--selection-mode",
+        choices=("llm", "structural"),
+        help="LLM selection requires OPENAI_API_KEY; structural makes no OpenAI calls",
+    )
+    parser.add_argument("--research-objective", help="Company research objective for Decisions")
+    parser.add_argument(
+        "--decision-budget-usd",
+        type=float,
+        help="Estimated allowance per competitor (default 0.03); not a billing ceiling",
+    )
+    parser.add_argument(
+        "--decision-trace",
+        action=argparse.BooleanOptionalAction,
+        default=None,
+        help="Save bounded request evidence and typed answers in decisions.jsonl",
+    )
     parser.add_argument("--verbose", action="store_true")
     return parser
 
@@ -55,13 +72,24 @@ def _inputs(args) -> tuple[list[CompetitorInput], ProjectConfig, ScraperConfig]:
         competitors = project.competitors
     if not competitors:
         raise ValueError("Provide homepage URLs or competitors in --config")
-    overrides = ScraperConfig.model_validate(
-        {
-            key: getattr(args, key)
-            for key in ("max_pages", "max_depth", "strategy", "max_concurrency")
-            if getattr(args, key) is not None
-        }
-    )
+    values = {
+        key: getattr(args, key)
+        for key in ("max_pages", "max_depth", "strategy", "max_concurrency")
+        if getattr(args, key) is not None
+    }
+    selection = {
+        field: getattr(args, option)
+        for option, field in (
+            ("selection_mode", "mode"),
+            ("research_objective", "objective"),
+            ("decision_budget_usd", "budget_usd"),
+            ("decision_trace", "trace_enabled"),
+        )
+        if getattr(args, option) is not None
+    }
+    if selection:
+        values["selection"] = selection
+    overrides = ScraperConfig.model_validate(values)
     for competitor in competitors:
         resolve_config(project.global_settings, competitor.overrides, overrides)
     return competitors, project, overrides
@@ -90,11 +118,23 @@ async def _run(args, competitors, project, overrides) -> int:
     ) as iterator:
         async for result in iterator:
             failed |= result.run_status != "success"
-            export_competitor(result, args.output)
+            summary = export_competitor(result, args.output)
             logger.info(
                 "Saved %s",
                 args.output / competitor_directory(str(result.homepage_url)) / "crawl_summary.json",
             )
+            if summary.decision_usage:
+                usage = summary.decision_usage
+                logger.info(
+                    "%s selection: %s -> %s; %d reported + %d uncertain input tokens; "
+                    "estimated $%.6f",
+                    summary.competitor_name,
+                    usage.requested_mode,
+                    usage.effective_mode,
+                    usage.reported_input_tokens,
+                    usage.uncertain_input_tokens,
+                    usage.estimated_cost_usd,
+                )
     return 1 if failed else 0
 
 
