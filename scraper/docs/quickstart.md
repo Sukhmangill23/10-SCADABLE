@@ -4,22 +4,28 @@
 
 You provide homepage URLs. For each competitor, the scraper checks robots.txt, renders
 the homepage with Crawl4AI, reads bounded sitemaps and discovers internal links. One
-shared frontier scores known URLs using configured category keywords and chooses the
-next pages with BestFirst (or BFS). Default limits are 50 distinct pages and depth 3.
+shared frontier scores bounded link context with OpenAI Decisions and chooses subsequent
+pages using BestFirst plus exploration (or BFS). Default limits are 50 pages and depth 3.
 
 Each fetched page contributes Markdown, metadata and more links. The extractor preserves
-full source Markdown, creates a conservative cleaned version and assigns a keyword
-category. Transient failures get bounded retries. The result contains page outcomes
+full source Markdown, creates a conservative cleaned version and consumes content-based
+categories. Transient failures get bounded retries. The result contains page outcomes
 plus a URL registry explaining what was skipped, deferred or external.
 
 External document domains require explicit approval/configuration; relevant external
 links are recorded. Third-party resources needed for rendering are allowed. The scraper
-runs independently of the backend, database and LLM.
+runs independently of the backend, database and downstream company analysis.
+
+**Selection update:** default LLM crawling now requires `OPENAI_API_KEY`. Set it in your
+environment before running. To crawl without API requests, add
+`selection={"mode": "structural"}` to `ScraperConfig(...)` or add a TOML section
+`[global.selection]` with `mode="structural"`. Structural pages use category `other`.
+See [decisions.md](decisions.md) for the $0.03 estimated allowance and structural fallback.
 
 ## Set up on Windows
 
 Install Python 3.12 and uv first. Run these commands in PowerShell from the repository
-root. No virtual-environment activation or API keys are required:
+root. Installation and offline tests need no virtual-environment activation or API key:
 
 ```powershell
 cd scraper
@@ -113,7 +119,7 @@ $summary.uncrawled_urls | Where-Object status -eq 'deferred' | Select-Object url
 | --- | --- |
 | `markdown_file` | Content-only Markdown path, relative to the summary's directory |
 | `url` / `final_url` | Requested source; final URL is included when redirected |
-| `title` / `category` | Page title and keyword category |
+| `title` / `category` | Page title and content-based category (`other` if unassessed) |
 | `status` / `error` | Success or failure; failed pages have no Markdown file |
 | `discovered_from` / `discovery_sources` | Recorded parents and discovery methods |
 | `depth` / `depth_basis` | Traversal depth, or logical sitemap-seed depth |

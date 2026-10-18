@@ -97,6 +97,7 @@ def website():
 async def test_render_redirect_wait_load_more_links_and_external_script(website):
     base, requests = website
     settings = ScraperConfig(
+        selection={"mode": "structural"},
         request_delay_seconds=(0.0, 0.0),
         dynamic_rules=[
             {
@@ -145,7 +146,9 @@ async def test_render_redirect_wait_load_more_links_and_external_script(website)
 )
 async def test_redirects_are_blocked_before_destination_request(website, path, reason, forbidden):
     base, requests = website
-    settings = ScraperConfig(max_redirects=2, request_delay_seconds=(0.0, 0.0))
+    settings = ScraperConfig(
+        selection={"mode": "structural"}, max_redirects=2, request_delay_seconds=(0.0, 0.0)
+    )
     async with GuardedHttpClient(base, settings) as guard:
         async with Crawl4AIFetcher(base, settings, guard) as fetcher:
             page = await fetcher.fetch(base + path, settings)
@@ -161,7 +164,9 @@ def test_real_cli_pipeline_writes_markdown_and_summary(website, tmp_path):
     base, requests = website
     config = tmp_path / "local.toml"
     config.write_text(
-        "[global]\nmax_pages=2\nmax_depth=1\nrequest_delay_seconds=[0.0,0.0]\n", encoding="utf-8"
+        "[global]\nmax_pages=2\nmax_depth=1\nrequest_delay_seconds=[0.0,0.0]\n"
+        '[global.selection]\nmode="structural"\n',
+        encoding="utf-8",
     )
     process = subprocess.run(
         [
@@ -206,7 +211,11 @@ async def test_real_browser_retries_and_partial_results_preserve_page_budget(web
 
     base, requests = website
     settings = ScraperConfig(
-        max_pages=4, max_depth=1, max_backoff_seconds=0.01, request_delay_seconds=(0.0, 0.0)
+        selection={"mode": "structural"},
+        max_pages=4,
+        max_depth=1,
+        max_backoff_seconds=0.01,
+        request_delay_seconds=(0.0, 0.0),
     )
     result = await CompetitorScraper().crawl(CompetitorInput(homepage_url=base), settings)
     assert result.run_status == "partial"
@@ -231,6 +240,7 @@ async def test_real_sdk_wrapped_selector_timeouts_are_retried(website):
 
     base, requests = website
     settings = ScraperConfig(
+        selection={"mode": "structural"},
         max_pages=1,
         max_depth=0,
         max_backoff_seconds=0.01,

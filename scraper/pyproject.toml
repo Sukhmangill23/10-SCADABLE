@@ -17,6 +17,7 @@ dependencies = [
     "playwright>=1.64,<2",
     "rich>=14,<16",
     "openai>=3.26,<4",
+    "lxml>=5.3,<7",
 ]
 
 [project.scripts]

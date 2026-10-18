@@ -8,7 +8,9 @@ the directory to the installed `scraper` package. No source files were moved.
 | Module | API | Responsibility |
 | --- | --- | --- |
 | `urls.py` | `normalize_url`, `DomainScope` | Conservative URL identities and exact approved hosts |
-| `relevance.py` | `UrlPolicy` | Crawl4AI keyword scoring and URL-pattern exclusions |
+| `relevance.py` | `UrlPolicy` | URL eligibility, scope, extension and pattern exclusions |
+| `evidence.py` | `link_observations`, `EvidenceLedger` | Bounded HTML context and source-linked feedback |
+| `selection.py` | `AdaptiveSelection` | Decision cycles, content assessment and fallback |
 | `traversal.py` | `UrlFrontier` | Deduplicated records, budgets, priorities, depth and dispositions |
 | `http.py` | `GuardedHttpClient` | Explicit user agent, robots, redirect gates and bounded HTTP |
 | `sitemaps.py` | `BoundedSitemapDiscoverer` | Sitemap roots, robots directives, indexes and gzip |
@@ -51,19 +53,20 @@ deferred URL record; it does not pretend that page content was fetched.
 
 - Homepage is fetched first at depth 0. Sitemap seeds have logical depth 1 and a
   `sitemap_seed` depth basis; this does not assert a known internal-link distance.
-- BestFirst orders currently known candidates by relevance, then depth and discovery
-  order. BFS orders by depth and discovery order. Work already dispatched in a bounded
-  batch is not reordered when a later page reveals a more relevant URL.
-- Relevance is the strongest category-keyword match, using the SDK scorer. URL scoring
-  uses path/query text, not the hostname. Known titles/link text provide an additional
-  weighted signal without probe requests. Weights and minimum score are configurable;
-  a zero threshold keeps navigation hubs eligible. There is no LLM classification.
+- BestFirst uses Decisions relevance, section diversity, and observed content novelty,
+  with a configurable exploration fraction (20% by default). BFS orders by depth and
+  discovery order and skips candidate-scoring calls. Fetch batches stop at scoring
+  checkpoints; already-dispatched work is not reordered.
+- Keyword scoring and thresholds have been removed. The default LLM mode requires
+  `OPENAI_API_KEY`; `selection.mode="structural"` is API-free. Rendered HTML supplies
+  bounded anchor/heading/nearby-text context without probe requests. See
+  [Decisions](decisions.md) for caching, budgets, feedback, and migration details.
 - Normalize relative references, scheme/host/default ports, fragments and known tracking
   parameters. Preserve meaningful query bytes/order, repeated keys, path case and trailing
   slash distinctions. Requested/observed source URLs remain available in the registry.
 - Exact homepage/apex-www hosts and explicitly approved extra hosts are eligible. An
-  approved host does not approve its subdomains. Relevant external links are recorded
-  without being scheduled; asset/login exclusions receive explicit skipped reasons.
+  approved host does not approve its subdomains. Otherwise eligible external links are
+  recorded without being scored or scheduled; asset/login exclusions receive skipped reasons.
 - Distinct page attempts consume the budget, including failures. Service retries reuse
   that reservation. Standalone `DiscoveryCrawler` remains a single-attempt orchestrator.
   Robots refusals occur before fetching and do not consume a page slot.
@@ -92,7 +95,8 @@ the next destination. Unapproved external sitemap hosts are reported, not follow
 
 HTTPX and defusedxml were already SDK dependencies and are now declared directly because
 our code imports them. Protego is a small additional parser dependency. Crawl4AI remains
-pinned at 0.9.5; its public keyword scorer and pattern filter are used rather than copied.
+pinned at 0.9.5; its public pattern filter is used rather than copied. Lxml is declared
+directly for local HTML context parsing; its already-locked version is retained.
 Setuptools supports the requested flat source directory in both editable and wheel builds.
 
 ## Offline review
@@ -113,7 +117,8 @@ only HTTP and rendering are replaced with synthetic fixtures. Tests cover both t
 strategies, source preservation, deduplication, shorter paths, page/depth/discovery limits,
 external hosts, robots failures, redirects, XML/gzip bounds, concurrency and cancellation.
 No browser or live competitor website is contacted by these default checks. Live testing
-requires explicit approval. Stage 2 was approved and committed as `1d8e50e`.
+requires explicit approval. The original discovery stage was committed as `1d8e50e`;
+the subsequent OpenAI-guided selection update is awaiting review.
 See [integration.md](integration.md) for the service retry and shared pacing policy.
 
 References: [Crawl4AI deep crawling](https://docs.crawl4ai.com/core/deep-crawling/),

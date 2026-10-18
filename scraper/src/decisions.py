@@ -1,4 +1,4 @@
-"""Explicitly owned OpenAI Decisions adapter; not wired into traversal until Stage 2."""
+"""Explicitly owned OpenAI Decisions adapter for adaptive crawl selection."""
 
 from __future__ import annotations
 

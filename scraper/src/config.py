@@ -4,7 +4,7 @@ import re
 import tomllib
 from copy import deepcopy
 from pathlib import Path
-from typing import Annotated, Any, Literal, Self
+from typing import Annotated, Any, Literal
 
 from pydantic import (
     ConfigDict,
@@ -15,7 +15,7 @@ from pydantic import (
     model_validator,
 )
 
-from .types import ContractModel, HomepageUrl, NonEmptyText, PageCategory
+from .types import ContractModel, HomepageUrl, NonEmptyText
 
 PositiveInt = Annotated[int, Field(strict=True, gt=0)]
 NonNegativeInt = Annotated[int, Field(strict=True, ge=0)]
@@ -41,22 +41,6 @@ class SelectionConfig(ContractModel):
     timeout_seconds: PositiveSeconds = 15.0
     max_retries: NonNegativeInt = 2
     max_concurrency: PositiveInt = 2
-
-
-def _default_keywords() -> dict[PageCategory, list[str]]:
-    return {
-        PageCategory.POSITIONING: ["about", "company", "why"],
-        PageCategory.PRICING: ["pricing", "plans", "price"],
-        PageCategory.PRODUCTS: ["product", "platform", "solution"],
-        PageCategory.SERVICES: ["service", "consulting"],
-        PageCategory.FEATURES: ["feature", "capability"],
-        PageCategory.INTEGRATIONS: ["integration", "connector", "marketplace"],
-        PageCategory.CAREERS: ["careers", "career"],
-        PageCategory.HIRING: ["jobs", "hiring", "openings"],
-        PageCategory.NEWS: ["news", "announcement"],
-        PageCategory.BLOG: ["blog", "insights", "articles"],
-        PageCategory.PRESS_RELEASE: ["press", "press-release", "newsroom"],
-    }
 
 
 class DynamicSettings(ContractModel):
@@ -117,20 +101,30 @@ class ScraperConfig(ContractModel):
             "*/terms*",
         ]
     )
-    category_keywords: dict[PageCategory, list[NonEmptyText]] = Field(
-        default_factory=_default_keywords
-    )
-    minimum_relevance_score: Annotated[float, Field(strict=True, ge=0, le=1)] = 0.0
-    url_keyword_weight: Annotated[float, Field(strict=True, ge=0, le=1)] = 0.7
-    title_keyword_weight: Annotated[float, Field(strict=True, ge=0, le=1)] = 0.3
     dynamic: DynamicSettings = Field(default_factory=DynamicSettings)
     dynamic_rules: list[DynamicRule] = Field(default_factory=list)
 
-    @model_validator(mode="after")
-    def usable_relevance_weights(self) -> Self:
-        if self.url_keyword_weight + self.title_keyword_weight == 0:
-            raise ValueError("At least one relevance signal must have positive weight")
-        return self
+    @model_validator(mode="before")
+    @classmethod
+    def reject_keyword_settings(cls, value):
+        if isinstance(value, dict):
+            obsolete = sorted(
+                set(value)
+                & {
+                    "category_keywords",
+                    "minimum_relevance_score",
+                    "url_keyword_weight",
+                    "title_keyword_weight",
+                }
+            )
+            if obsolete:
+                raise ValueError(
+                    "Removed keyword settings: " + ", ".join(obsolete) + ". "
+                    "Remove these fields. Use selection.objective for research relevance, "
+                    "selection.mode='structural' for API-free selection, or strategy='bfs' "
+                    "for breadth-first traversal. Categories now use fetched content."
+                )
+        return value
 
     @field_validator("request_delay_seconds")
     @classmethod

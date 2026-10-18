@@ -94,12 +94,11 @@ click/time limits. Source content and links come from the final rendered DOM sna
 - `cleaned_markdown`: full Markdown with normalized line endings and unsafe control
   characters removed. Indentation, hard breaks, blank lines, tables and code are preserved.
 
-`MarkdownExtractor` requires no network access. Categories use the same official keyword
-scorer and configured URL/title weights as discovery. The strongest weighted category
-wins; ties use `PageCategory` enum order (pricing precedes products/features/blog; careers
-precedes hiring). The final URL is preferred when available. Unmatched homepage content
-falls back to positioning; other unmatched pages use `other`. One category is a coarse
-source label, not a claim that a mixed page contains only that kind of information.
+`MarkdownExtractor` requires no network access. Categories now consume the content-based
+Decisions assessment attached during discovery, or use `other` when unavailable, including
+structural mode. No URL/title keyword classifier remains. One category is a coarse source
+label, not a claim that a mixed page contains only that kind of information. See
+[adaptive selection](decisions.md) for the model boundary and API-free alternative.
 
 SDK metadata and response headers are JSON-normalized and preserved. Adapter metadata
 adds redirect history, load-more click count and up to 20 blocked embedded document URLs.

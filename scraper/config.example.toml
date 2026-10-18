@@ -9,8 +9,6 @@ max_sitemap_requests = 50
 max_sitemap_depth = 3
 max_sitemap_bytes = 2097152
 max_redirects = 5
-url_keyword_weight = 0.7
-title_keyword_weight = 0.3
 max_concurrency = 4
 max_concurrent_competitors = 2
 per_domain_concurrency = 1
@@ -27,7 +25,7 @@ scan_full_page = false
 max_scroll_steps = 5
 wait_timeout_seconds = 10.0
 
-# Stage 1 adapter settings; traversal integration arrives in Stage 2.
+# LLM selection requires OPENAI_API_KEY; use "structural" for API-free crawling.
 [global.selection]
 mode = "llm"
 budget_usd = 0.03

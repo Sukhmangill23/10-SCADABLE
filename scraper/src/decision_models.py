@@ -57,6 +57,12 @@ class PageAssessment(ContractModel):
     ] = Field(default_factory=dict)
 
 
+class SelectionDiagnostics(ContractModel):
+    method: Literal["homepage", "ranked", "exploration", "structural", "bfs"]
+    relevance_score: UnitScore | None = None
+    assessment_available: bool = False
+
+
 class DecisionFallback(ContractModel):
     reason: NonEmptyText
     occurred_at: UtcTimestamp = Field(default_factory=utc_now)

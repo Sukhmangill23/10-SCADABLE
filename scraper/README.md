@@ -1,7 +1,7 @@
 # Competitor scraper
 
 Standalone Python package for discovering and collecting source-linked competitor content.
-It is independent of the backend, database, LLM and frontend.
+It is independent of the backend, database, downstream analysis and frontend.
 
 **Current status: all four stages implemented and approved.** Sitemap/link discovery,
 BestFirst/BFS traversal, Crawl4AI rendering, conservative extraction, Markdown page exports
@@ -13,9 +13,11 @@ The approved three-page live crawl and packaging checks are recorded in the
 Start with the [quickstart guide](docs/quickstart.md) for setup, manual website tests
 and inspecting the output.
 
-The [OpenAI Decisions Stage 1 foundation](docs/decisions.md) adds independently testable
-selection contracts, an API adapter, and budget accounting. It is awaiting review and is
-not connected to traversal yet; the CLI/manual runner retain their existing behavior.
+The [OpenAI-guided selection workflow](docs/decisions.md) now replaces keyword ranking.
+LLM mode is the default and requires `OPENAI_API_KEY` before crawling starts. For API-free
+crawling, set `selection={"mode": "structural"}` in Python or `[global.selection]` with
+`mode="structural"` in TOML. Old keyword settings produce migration errors. Stage 2 is
+awaiting review; disk decision diagnostics and additional CLI controls arrive in Stage 3.
 
 The Python package and CLI are named `scraper`. After upgrading an existing checkout,
 run `uv sync --locked`; update imports to `from scraper import ...` and commands to
@@ -43,8 +45,8 @@ python -m venv .venv
 ```
 
 The pip path installs runtime dependencies; uv is the supported way to reproduce the
-locked development environment. No environment variables, service credentials or API
-keys are needed. Python 3.12 is the supported baseline for this first release.
+locked development environment. Offline tests and structural crawling need no API key;
+LLM-guided crawling requires `OPENAI_API_KEY`. Python 3.12 is the supported baseline.
 
 The default tests do not require browser binaries. Real crawling requires Chromium.
 On Linux, Playwright may also require OS libraries. See the official
@@ -53,7 +55,7 @@ On Linux, Playwright may also require OS libraries. See the official
 Crawl4AI is pinned to 0.9.5. Pydantic provides validated, JSON-compatible contracts;
 `tomllib` and the CLI's `argparse` come from Python. Crawl4AI itself brings
 LLM-related transitive dependencies. OpenAI is now also a direct dependency for the separate
-Decisions adapter; the current crawl service does not call it yet.
+Decisions adapter used by adaptive traversal. Lxml supplies network-free HTML context parsing.
 
 ## Review the configuration
 

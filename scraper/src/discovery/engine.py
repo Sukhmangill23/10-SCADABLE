@@ -1,8 +1,4 @@
-"""Incremental homepage/sitemap/link discovery over an injected, policy-aware fetcher.
-
-This stage returns reusable FetchedPage objects. Cleaning, categories, output writers and
-the concrete SDK browser adapter are Stage 3 work; no second content fetch is necessary.
-"""
+"""Shared discovery budget, policy preflight, and adaptive selection over guarded fetches."""
 
 import asyncio
 import random
@@ -13,11 +9,16 @@ from urllib.parse import urlsplit
 from pydantic import Field
 
 from ..config import CompetitorInput, ScraperConfig, resolve_config
-from ..interfaces import PageFetcher, RobotsGuard, SitemapDiscoverer
+from ..decision_models import DecisionTraceRecord, DecisionUsageSummary
+from ..decisions import DecisionAccessError, OpenAIDecisionProvider
+from ..interfaces import DecisionProvider, PageFetcher, RobotsGuard, SitemapDiscoverer
 from ..models import DiscoveredUrl, FetchedPage
 from ..types import ContractModel, UtcTimestamp, utc_now
+from .evidence import link_observations
 from .http import RequestBlocked
+from .selection import AdaptiveSelection
 from .traversal import UrlFrontier
+from .urls import normalize_url
 
 
 class DiscoveryRun(ContractModel):
@@ -29,8 +30,10 @@ class DiscoveryRun(ContractModel):
     discovered_urls: list[DiscoveredUrl] = Field(default_factory=list)
     attempted_pages: int
     discovery_truncated: bool
-    completion_reason: Literal["completed", "page_limit", "discovery_limit"]
+    completion_reason: Literal["completed", "page_limit", "discovery_limit", "failed"]
     warnings: list[str] = Field(default_factory=list)
+    decision_usage: DecisionUsageSummary | None = None
+    decision_trace: list[DecisionTraceRecord] = Field(default_factory=list)
 
 
 class DiscoveryCrawler:
@@ -41,11 +44,13 @@ class DiscoveryCrawler:
         *,
         robots_guard: RobotsGuard,
         managed_attempts: bool = False,
+        decision_provider: DecisionProvider | None = None,
     ):
         self._fetcher = fetcher
         self._sitemaps = sitemaps
         self._robots = robots_guard
         self._managed_attempts = managed_attempts
+        self._decision_provider = decision_provider
 
     async def run(
         self,
@@ -61,7 +66,7 @@ class DiscoveryCrawler:
         warnings: list[str] = []
         pace_locks: dict[str, asyncio.Lock] = {}
 
-        async def attempt(record):
+        async def preflight(record):
             url = str(record.normalized_url)
             try:
                 async with asyncio.timeout(settings.discovery_timeout_seconds):
@@ -70,6 +75,10 @@ class DiscoveryCrawler:
                 return RequestBlocked("robots_unavailable", url)
             except RequestBlocked as error:
                 return error
+            return robots_delay
+
+        async def attempt(record, robots_delay):
+            url = str(record.normalized_url)
             if self._managed_attempts:
                 # The service owns capacity waits, attempt deadlines, pacing and retries.
                 return await fetcher.fetch(record.normalized_url, settings)
@@ -107,86 +116,119 @@ class DiscoveryCrawler:
                 warnings.append(f"sitemap_discovery_failed: {type(error).__name__}: {error}")
 
         seeded = False
-        async with self._fetcher as fetcher:
-            while True:
-                hosts = Counter()
-                batch = []
-                while len(batch) < settings.max_concurrency:
-                    record = frontier.pop_next(
-                        eligible=lambda item, counts=hosts: (
-                            counts[urlsplit(str(item.normalized_url)).hostname]
-                            < settings.per_domain_concurrency
+        selection_failed = False
+        provider = self._decision_provider or OpenAIDecisionProvider(settings.selection)
+        async with provider as decisions, self._fetcher as fetcher:
+            selection = AdaptiveSelection(frontier, settings, decisions)
+            try:
+                while True:
+                    await selection.rank_if_needed()
+                    hosts = Counter()
+                    batch = []
+                    while len(batch) < settings.max_concurrency:
+                        record = frontier.pop_next(
+                            eligible=lambda item, counts=hosts: (
+                                counts[urlsplit(str(item.normalized_url)).hostname]
+                                < settings.per_domain_concurrency
+                            )
                         )
-                    )
-                    if record is None:
+                        if record is None:
+                            break
+                        delay = await preflight(record)
+                        if isinstance(delay, RequestBlocked):
+                            frontier.reject_reserved(
+                                str(record.normalized_url),
+                                reason=delay.reason,
+                                deferred=delay.reason != "robots_disallowed",
+                            )
+                            warnings.append(str(delay))
+                            continue
+                        batch.append((record, delay))
+                        hosts[urlsplit(str(record.normalized_url)).hostname] += 1
+                        if selection.evaluation_due:
+                            break
+                    if not batch:
                         break
-                    batch.append(record)
-                    hosts[urlsplit(str(record.normalized_url)).hostname] += 1
-                if not batch:
-                    break
-                async with asyncio.TaskGroup() as group:
-                    tasks = [group.create_task(attempt(record)) for record in batch]
-                # Process in dispatch order so network completion timing cannot reorder
-                # discovery evidence or priorities for the next batch.
-                for record, task in zip(batch, tasks, strict=True):
-                    outcome = task.result()
-                    url = str(record.normalized_url)
-                    if isinstance(outcome, RequestBlocked):
-                        frontier.reject_reserved(
-                            url,
-                            reason=outcome.reason,
-                            deferred=outcome.reason != "robots_disallowed",
-                        )
-                        warnings.append(str(outcome))
-                        continue
-                    if outcome.final_url and not frontier.policy.scope.allows(
-                        str(outcome.final_url)
-                    ):
-                        frontier.discover(
-                            str(outcome.final_url),
-                            parent_url=url,
-                            depth=record.depth,
-                            title=outcome.page_title or "",
-                            source="external_link",
-                        )
-                        outcome = FetchedPage(
-                            source_url=url,
-                            final_url=outcome.final_url,
-                            crawl_timestamp=outcome.crawl_timestamp,
-                            crawl_status="failed",
-                            error_message="domain_not_approved_redirect",
-                        )
-                    success = outcome.crawl_status == "success"
-                    frontier.complete(url, success=success, error=outcome.error_message)
-                    if outcome.page_title:
-                        frontier.note_title(url, outcome.page_title)
-                    pages.append(outcome)
-                    if success:
-                        depth = frontier.get(url).depth + 1
-                        for link in outcome.links:
-                            source = (
-                                "internal_link"
-                                if frontier.policy.scope.allows(str(link.url))
-                                else "external_link"
-                            )
+                    async with asyncio.TaskGroup() as group:
+                        tasks = [
+                            group.create_task(attempt(record, delay)) for record, delay in batch
+                        ]
+                    # Process in dispatch order so network completion timing cannot reorder
+                    # discovery evidence or priorities for the next batch.
+                    assessments = []
+                    for (record, _), task in zip(batch, tasks, strict=True):
+                        outcome = task.result()
+                        url = str(record.normalized_url)
+                        if outcome.final_url and not frontier.policy.scope.allows(
+                            str(outcome.final_url)
+                        ):
                             frontier.discover(
-                                str(link.url),
+                                str(outcome.final_url),
                                 parent_url=url,
-                                depth=depth,
-                                source=source,
-                                title=link.title or link.text,
+                                depth=record.depth,
+                                title=outcome.page_title or "",
+                                source="external_link",
                             )
-                if not seeded:
-                    await seed_sitemaps()
-                    seeded = True
-        frontier.finalize()
+                            outcome = FetchedPage(
+                                source_url=url,
+                                final_url=outcome.final_url,
+                                crawl_timestamp=outcome.crawl_timestamp,
+                                crawl_status="failed",
+                                error_message="domain_not_approved_redirect",
+                            )
+                        success = outcome.crawl_status == "success"
+                        frontier.complete(url, success=success, error=outcome.error_message)
+                        pages.append(selection.attach(outcome, record))
+                        if success:
+                            assessments.append((len(pages) - 1, record))
+                            depth = frontier.get(url).depth + 1
+                            observations = link_observations(outcome)
+                            for link in outcome.links:
+                                source = (
+                                    "internal_link"
+                                    if frontier.policy.scope.allows(str(link.url))
+                                    else "external_link"
+                                )
+                                normalized = normalize_url(str(link.url))
+                                contexts = (
+                                    observations.get(normalized.normalized, [])
+                                    if normalized
+                                    else []
+                                )
+                                for observation in contexts or [None]:
+                                    frontier.discover(
+                                        str(link.url),
+                                        parent_url=url,
+                                        depth=depth,
+                                        source=source,
+                                        title=link.text or link.title or "",
+                                        observation=observation,
+                                    )
+                    if not seeded:
+                        await seed_sitemaps()
+                        seeded = True
+                    # All fetches have released browser slots and all outcomes are retained
+                    # before a fatal decision error can stop this competitor.
+                    for index, record in assessments:
+                        pages[index] = await selection.assess(pages[index], record)
+            except DecisionAccessError as error:
+                selection_failed = True
+                warnings.append(f"decision_access_failed: {error}")
+        frontier.finalize(reason="decision_access_failed" if selection_failed else None)
+        warnings.extend(
+            f"decision_fallback: {item.reason}" for item in provider.summary.fallback_events
+        )
         if frontier.invalid_links:
             warnings.append(f"invalid_links_ignored: {frontier.invalid_links}")
         records = frontier.records
         reason = (
-            "page_limit"
-            if any(item.reason == "page_limit" for item in records)
-            else ("discovery_limit" if frontier.truncated else "completed")
+            "failed"
+            if selection_failed
+            else (
+                "page_limit"
+                if any(item.reason == "page_limit" for item in records)
+                else ("discovery_limit" if frontier.truncated else "completed")
+            )
         )
         return DiscoveryRun(
             competitor=competitor,
@@ -199,4 +241,6 @@ class DiscoveryCrawler:
             discovery_truncated=frontier.truncated,
             completion_reason=reason,
             warnings=list(dict.fromkeys(warnings)),
+            decision_usage=provider.summary,
+            decision_trace=provider.trace_records,
         )

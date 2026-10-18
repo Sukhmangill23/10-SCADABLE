@@ -6,3 +6,5 @@ import pytest
 @pytest.fixture(autouse=True)
 def sdk_cache_directory(tmp_path, monkeypatch):
     monkeypatch.setenv("CRAWL4_AI_BASE_DIRECTORY", str(tmp_path))
+    # Never inherit billable credentials. Adapter tests explicitly install a dummy key.
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)

@@ -23,12 +23,14 @@ implemented APIs, verification commands and current limitations.
 2. Resolve defaults, global settings, competitor overrides and explicit CLI overrides.
 3. Fetch the homepage once, discover sitemaps, and collect internal/external links.
 4. Normalize URLs and apply the shared domain, relevance, exclusion and deduplication policy.
-5. Put allowed candidates into one per-competitor frontier: BestFirst by keyword relevance,
-   or BFS by depth. Reuse the SDK keyword scorer and URL/domain filters where suitable.
+5. Put allowed candidates into one per-competitor frontier: BestFirst by adaptive relevance,
+   or BFS by depth. BestFirst now uses OpenAI Decisions plus structural diversity and
+   exploration; the Crawl4AI URL-pattern filter remains an eligibility gate.
 6. Reserve page budget before dispatch. Run bounded batches under global and per-domain
    concurrency controls. Process each fetch for both content and further link discovery.
-7. Extract conservative Markdown and categories from the existing fetch result without
-   another request. Preserve full source Markdown and metadata even when filtering is used.
+7. Assess fetched content with Decisions outside browser capacity slots; feed novelty and
+   source-linked excerpts into subsequent selection. Extract conservative Markdown and
+   consume the assessment category without additional extraction requests.
 8. Emit pages and finish with URL dispositions, counts and a reason for completion.
 
 The frontier ranks currently known candidates. Concurrency means an already scheduled
@@ -38,7 +40,8 @@ BestFirst traversal, not a guarantee of the globally most relevant 50 pages on a
 ## Why a shared frontier
 
 Approved choice: own a small frontier and registry, while using the official Crawl4AI SDK
-for rendering, links and scoring/filtering where appropriate. During Stage 2 the user
+for rendering, links and URL-pattern filtering. OpenAI Decisions evaluates usefulness;
+explicit structural mode remains API-free. During the original Stage 2 the user
 approved bounded sitemap fetching/parsing with HTTPX and defusedxml, because the native
 seeder's default recursion and redirects do not enforce the required resource/scope policies.
 Protego handles robots matching, including longest-match precedence and wildcard rules.
@@ -87,8 +90,8 @@ results; it does not block an application's event loop with a nested `asyncio.ru
 - Relevant external links are recorded; unapproved external pages are not traversed.
   External news coverage that is not linked from crawled pages is not discovered by a
   website-only crawl. A search/news-provider integration is outside this component.
-- Scoring uses configured category keywords in URLs, known link titles and fetched page
-  titles. No extra page request is made just to learn a title, and no LLM classifies relevance.
+- Decisions scores bounded link context and assesses fetched content; no extra probe request
+  is made to obtain context. Structural mode is API-free. See [decisions.md](decisions.md).
   A fetched title cannot retroactively affect that page's original dispatch priority.
 - Keep low-scoring navigational pages eligible by default so useful descendants can be
   found. Exclude clearly irrelevant patterns, unsupported schemes/assets and login pages.
@@ -160,7 +163,7 @@ work. `discovery_count` retains the total observations; at most 8 distinct evide
 per URL bound provenance storage. Shallower paths update descendant depths without refetching
 their parents. Skipped/deferred/external entries require a reason; they do not create pages.
 
-`CompetitorCrawlResult` uses schema version `1.0`, timing, effective config, result status,
+`CompetitorCrawlResult` uses schema version `1.1`, timing, effective config, result status,
 completion reason, page list, URL registry, truncation flag and warnings. Summary fields
 are derived from its pages and registry; supplied mismatching counts are rejected.
 `successful`/`failed` count page outcomes, `skipped`/`deferred`/`external`/`pending` count

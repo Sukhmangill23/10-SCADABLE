@@ -1,7 +1,6 @@
 """Conservative, network-free extraction from application-owned fetched pages."""
 
 import re
-from urllib.parse import unquote, urlsplit
 
 from .config import CompetitorInput, ScraperConfig
 from .models import FetchedPage, ScrapedPage
@@ -20,24 +19,8 @@ def clean_markdown(markdown: str) -> str:
 
 
 def categorize(page: FetchedPage, settings: ScraperConfig) -> PageCategory:
-    from crawl4ai.deep_crawling.scorers import KeywordRelevanceScorer
-
-    parts = urlsplit(str(page.final_url or page.source_url))
-    text = unquote(parts.path + ("?" + parts.query if parts.query else ""))
-    best, highest = PageCategory.OTHER, 0.0
-    # Enum order is the documented tie-breaker, independent of TOML map ordering.
-    for category in PageCategory:
-        keywords = settings.category_keywords.get(category, [])
-        if not keywords:
-            continue
-        scorer = KeywordRelevanceScorer(keywords=list(dict.fromkeys(w.lower() for w in keywords)))
-        score = settings.url_keyword_weight * scorer.score(text)
-        score += settings.title_keyword_weight * scorer.score(page.page_title or "")
-        if score > highest:
-            best, highest = category, score
-    if highest == 0 and parts.path in ("", "/"):
-        return PageCategory.POSITIONING
-    return best
+    """Consume an existing assessment; extraction never makes model/network calls."""
+    return page.content_assessment.category if page.content_assessment else PageCategory.OTHER
 
 
 class MarkdownExtractor:

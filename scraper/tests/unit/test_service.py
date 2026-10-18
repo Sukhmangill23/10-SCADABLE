@@ -54,7 +54,9 @@ async def test_service_composes_discovery_extraction_and_competitor_overrides():
     )
     result = await service.crawl(
         CompetitorInput(homepage_url="https://example.com", overrides={"max_pages": 1}),
-        ScraperConfig(max_pages=4, request_delay_seconds=(0.0, 0.0)),
+        ScraperConfig(
+            selection={"mode": "structural"}, max_pages=4, request_delay_seconds=(0.0, 0.0)
+        ),
     )
     assert result.summary.successful == 1
     assert result.summary.deferred == 1
@@ -74,6 +76,7 @@ async def test_many_limits_global_page_concurrency_even_if_competitor_requests_m
         http_transport=httpx.MockTransport(http_fixture),
     )
     settings = ScraperConfig(
+        selection={"mode": "structural"},
         max_pages=1,
         max_concurrency=1,
         max_concurrent_competitors=2,
@@ -104,23 +107,27 @@ async def test_failed_competitor_does_not_abort_other_competitors():
     results = [
         r
         async for r in service.crawl_many(
-            inputs, ScraperConfig(max_pages=1, request_delay_seconds=(0.0, 0.0))
+            inputs,
+            ScraperConfig(
+                selection={"mode": "structural"}, max_pages=1, request_delay_seconds=(0.0, 0.0)
+            ),
         )
     ]
     assert {r.run_status for r in results} == {"failed", "success"}
     assert next(r for r in results if r.run_status == "failed").warnings
 
 
-async def test_invalid_merged_settings_fail_before_starting_workers():
+async def test_missing_credentials_fail_before_starting_workers(monkeypatch):
     from scraper.service import CompetitorScraper
 
     service = CompetitorScraper()
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     competitor = CompetitorInput(
-        homepage_url="https://example.com", overrides={"title_keyword_weight": 0.0}
+        homepage_url="https://example.com", overrides={"selection": {"mode": "llm"}}
     )
-    settings = ScraperConfig(url_keyword_weight=0.0)
+    settings = ScraperConfig(selection={"mode": "structural"})
     iterator = service.crawl_many([competitor], settings)
-    with pytest.raises(ValueError, match="positive weight"):
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
         await asyncio.wait_for(anext(iterator), timeout=0.2)
 
 
@@ -141,7 +148,9 @@ async def test_shared_hostname_spacing_across_competitors():
     inputs = [
         CompetitorInput(homepage_url="https://example.com", name=name) for name in ["One", "Two"]
     ]
-    settings = ScraperConfig(max_pages=1, request_delay_seconds=(0.08, 0.08))
+    settings = ScraperConfig(
+        selection={"mode": "structural"}, max_pages=1, request_delay_seconds=(0.08, 0.08)
+    )
     results = [r async for r in service.crawl_many(inputs, settings)]
     assert len(results) == 2
     assert starts[1] - starts[0] >= 0.07
@@ -170,7 +179,12 @@ async def test_closing_many_iterator_cancels_running_competitor():
     ]
     iterator = service.crawl_many(
         inputs,
-        ScraperConfig(max_pages=1, per_domain_concurrency=2, request_delay_seconds=(0.0, 0.0)),
+        ScraperConfig(
+            selection={"mode": "structural"},
+            max_pages=1,
+            per_domain_concurrency=2,
+            request_delay_seconds=(0.0, 0.0),
+        ),
     )
     first = await anext(iterator)
     assert first.competitor_name == "fast"

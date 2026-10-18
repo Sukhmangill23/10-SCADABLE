@@ -1,6 +1,7 @@
 import pytest
 
 from scraper import CompetitorInput, FetchedPage, ScraperConfig
+from scraper.decision_models import PageAssessment
 from scraper.types import utc_now
 
 
@@ -21,7 +22,7 @@ def fetched(**updates):
 def test_extract_preserves_sources_and_prices_while_normalizing_line_endings():
     from scraper.extraction import MarkdownExtractor
 
-    source = fetched(page_title="Our plans")
+    source = fetched(page_title="Our plans", content_assessment=PageAssessment(category="pricing"))
     result = MarkdownExtractor().extract(
         source, CompetitorInput(homepage_url="https://example.com"), ScraperConfig()
     )
@@ -49,15 +50,15 @@ def test_cleaning_preserves_fenced_code_indentation_and_markdown_hard_breaks():
 @pytest.mark.parametrize(
     "url,title,category",
     [
-        ("/", "", "positioning"),
-        ("/opaque", "Our integrations", "integrations"),
-        ("/careers/jobs", "", "careers"),
-        ("/blog/pricing", "", "pricing"),
+        ("/", "", "other"),
+        ("/opaque", "Our integrations", "other"),
+        ("/careers/jobs", "", "other"),
+        ("/blog/pricing", "", "other"),
         ("/opaque", "", "other"),
-        ("/press-release/launch", "", "press_release"),
+        ("/press-release/launch", "", "other"),
     ],
 )
-def test_category_uses_url_title_and_stable_specificity(url, title, category):
+def test_category_without_assessment_does_not_guess_from_url_or_title(url, title, category):
     from scraper.extraction import MarkdownExtractor
 
     result = MarkdownExtractor().extract(

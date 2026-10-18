@@ -1,10 +1,11 @@
 # Reliability and integration
 
-The package runs without a backend, database or LLM. Install with Python 3.12 using
+The package runs without a backend, database or downstream analysis service. Install using
 `uv sync --locked`, then `uv run --locked python -m playwright install chromium`.
 Run the CLI from any directory after installation; use an explicit TOML/output path.
 For a custom browser location, set `PLAYWRIGHT_BROWSERS_PATH` during both installation
-and execution. No service credentials are required.
+and execution. Default LLM selection requires `OPENAI_API_KEY`; explicit
+`selection={"mode": "structural"}` needs no API credentials or model requests.
 
 Crawl4AI initializes an import-time SDK cache under the user home even when application
 page caching is disabled. In a restricted deployment, set `CRAWL4_AI_BASE_DIRECTORY`
@@ -50,7 +51,9 @@ The analysis team should select pages with `crawl_status == "success"` and use
 `cleaned_markdown` with `source_url`, `final_url`, title, category and UTC timestamp.
 `raw_markdown` retains the full SDK source Markdown; optional `filtered_markdown` may
 omit useful details. Failed pages may retain partial source content and an error message;
-decide explicitly whether to analyze them. Categories are keyword labels, not LLM judgments.
+decide explicitly whether to analyze them. Categories consume content-based Decisions
+assessments and use `other` when unavailable. Research selection is separate from downstream
+company analysis; see [decisions.md](decisions.md).
 
 ## Exporting and reading results
 
@@ -65,7 +68,8 @@ from scraper.output import export_competitor
 ```
 
 Each website has a `crawl_summary.json` and relative content-only Markdown files.
-The file index has schema `2.0`; full in-memory results retain their existing schema `1.0`.
+The file index retains schema `2.0`; full in-memory results now use schema `1.1` and include
+typed assessments, selection diagnostics, usage, and optional in-memory decision traces.
 Read and validate the index, then follow its Markdown references:
 
 ```python

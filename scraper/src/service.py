@@ -16,7 +16,7 @@ from .discovery.http import GuardedHttpClient, RequestBlocked
 from .discovery.sitemaps import BoundedSitemapDiscoverer
 from .discovery.urls import normalize_url
 from .extraction import MarkdownExtractor
-from .interfaces import ContentExtractor, PageFetcher, RobotsGuard
+from .interfaces import ContentExtractor, DecisionProvider, PageFetcher, RobotsGuard
 from .limits import HostLimiter
 from .models import CompetitorCrawlResult, ScrapedPage
 from .reliability import (
@@ -31,6 +31,15 @@ from .types import UrlDisposition, utc_now
 
 logger = logging.getLogger(__name__)
 FetcherFactory = Callable[[CompetitorInput, ScraperConfig, RobotsGuard], PageFetcher]
+DecisionProviderFactory = Callable[
+    [CompetitorInput, ScraperConfig, asyncio.Semaphore], DecisionProvider
+]
+
+
+def _decision_factory(competitor, settings, limiter):
+    from .decisions import OpenAIDecisionProvider
+
+    return OpenAIDecisionProvider(settings.selection, request_limiter=limiter)
 
 
 def _browser_factory(competitor, settings, guard, host_limiter):
@@ -43,6 +52,7 @@ class _Capacity:
     def __init__(self, settings: ScraperConfig):
         self.pages = asyncio.Semaphore(settings.max_concurrency)
         self.hosts = HostLimiter(settings.per_domain_concurrency)
+        self.decisions = asyncio.Semaphore(settings.selection.max_concurrency)
 
 
 class _LimitedFetcher:
@@ -163,10 +173,18 @@ class CompetitorScraper:
         fetcher_factory: FetcherFactory | None = None,
         extractor: ContentExtractor | None = None,
         http_transport: httpx.AsyncBaseTransport | None = None,
+        decision_provider_factory: DecisionProviderFactory | None = None,
     ):
         self._fetcher_factory = fetcher_factory
         self._extractor = extractor or MarkdownExtractor()
         self._transport = http_transport
+        self._decision_provider_factory = decision_provider_factory
+
+    def _preflight_selection(self, settings):
+        if self._decision_provider_factory is None:
+            from .decisions import validate_decision_credentials
+
+            validate_decision_credentials(settings.selection)
 
     async def crawl(
         self,
@@ -176,6 +194,7 @@ class CompetitorScraper:
         cli_overrides: ScraperConfig | None = None,
     ) -> CompetitorCrawlResult:
         effective = resolve_config(settings, competitor.overrides, cli_overrides)
+        self._preflight_selection(effective)
         return await self._crawl(competitor, settings, cli_overrides, _Capacity(effective))
 
     async def _crawl(self, competitor, global_settings, cli_overrides, capacity):
@@ -203,6 +222,9 @@ class CompetitorScraper:
                     ),
                     robots_guard=guard,
                     managed_attempts=True,
+                    decision_provider=(self._decision_provider_factory or _decision_factory)(
+                        competitor, settings, capacity.decisions
+                    ),
                 ).run(competitor, global_settings, cli_overrides=cli_overrides)
             pages = []
             for page in discovery.fetched_pages:
@@ -255,7 +277,11 @@ class CompetitorScraper:
             status = (
                 "failed"
                 if not successes
-                else ("partial" if failures or policy_failures else "success")
+                else (
+                    "partial"
+                    if failures or policy_failures or discovery.completion_reason == "failed"
+                    else "success"
+                )
             )
             result = CompetitorCrawlResult(
                 competitor_name=competitor.display_name,
@@ -269,6 +295,8 @@ class CompetitorScraper:
                 discovered_urls=records,
                 discovery_truncated=discovery.discovery_truncated,
                 warnings=discovery.warnings,
+                decision_usage=discovery.decision_usage,
+                decision_trace=discovery.decision_trace,
             )
         except Exception as error:
             # Isolate competitor infrastructure failures, while cancellation propagates.
@@ -308,7 +336,9 @@ class CompetitorScraper:
         # Invalid combinations must fail before workers are created, rather than leave
         # a consumer waiting on a queue after a worker dies during config resolution.
         for competitor in competitors:
-            resolve_config(global_settings, competitor.overrides, cli_overrides)
+            self._preflight_selection(
+                resolve_config(global_settings, competitor.overrides, cli_overrides)
+            )
         capacity = _Capacity(limits)
         count = min(len(competitors), limits.max_concurrent_competitors)
         pending = iter(competitors)

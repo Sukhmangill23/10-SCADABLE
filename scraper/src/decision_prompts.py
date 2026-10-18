@@ -82,12 +82,12 @@ def candidate_batches(candidates: Sequence[DecisionCandidate], settings: Selecti
         yield batch
 
 
-def sample_markdown(markdown: str) -> str:
-    if len(markdown) <= 6000:
+def sample_markdown(markdown: str, limit: int = 6000) -> str:
+    if len(markdown) <= limit:
         return markdown
     middle = len(markdown) // 2
     separator = "\n\n[... excerpt gap ...]\n\n"
-    size = (6000 - 2 * len(separator)) // 3
+    size = (limit - 2 * len(separator)) // 3
     return separator.join(
         (
             markdown[:size],
