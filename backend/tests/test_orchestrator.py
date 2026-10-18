@@ -75,10 +75,11 @@ def test_has_content_changed():
     assert has_content_changed(updated_scrape, initial_scrape) is True
 
 
-@pytest.mark.asyncio
-async def test_mock_crawler():
+import asyncio
+
+def test_mock_crawler():
     crawler = MockCrawl4AICrawler()
-    result = await crawler.crawl("Vanta", "https://vanta.com")
+    result = asyncio.run(crawler.crawl("Vanta", "https://vanta.com"))
 
     assert result["competitor_name"] == "Vanta"
     assert len(result["pages"]) == 3
@@ -88,14 +89,13 @@ async def test_mock_crawler():
     assert "https://vanta.com/docs" in urls
 
 
-@pytest.mark.asyncio
-async def test_mock_analyzer():
+def test_mock_analyzer():
     analyzer = MockOpenAIAnalyzer()
     scraped = {
         "competitor_name": "Drata",
         "base_url": "https://drata.com",
     }
-    result = await analyzer.analyze(scraped, {"baseline": "SCADABLE"})
+    result = asyncio.run(analyzer.analyze(scraped, {"baseline": "SCADABLE"}))
 
     assert result["competitor_name"] == "Drata"
     entries = result["swot_entries"]
@@ -156,20 +156,19 @@ if test_url:
     def competitor(db):
         return create_competitor(db, name="Vanta", website_url="https://vanta.com")
 
-    @pytest.mark.asyncio
-    async def test_execute_research_run_success(db, competitor):
+    def test_execute_research_run_success(db, competitor):
         run = create_research_run(db, competitor.id)
         assert run.status == ResearchStatus.PENDING
 
         crawler = MockCrawl4AICrawler()
         analyzer = MockOpenAIAnalyzer()
 
-        finished_run = await execute_research_run(
+        finished_run = asyncio.run(execute_research_run(
             db=db,
             run_id=run.id,
             crawler=crawler,
             analyzer=analyzer,
-        )
+        ))
 
         assert finished_run.status == ResearchStatus.COMPLETED
         assert finished_run.started_at is not None
@@ -185,50 +184,47 @@ if test_url:
             assert entry.source_url is not None
             assert entry.source_url.startswith("https://vanta.com")
 
-    @pytest.mark.asyncio
-    async def test_execute_research_run_diff_skips_llm(db, competitor):
+    def test_execute_research_run_diff_skips_llm(db, competitor):
         crawler = MockCrawl4AICrawler()
         analyzer = MockOpenAIAnalyzer()
 
         # Run 1: initial run, should call LLM
         run1 = create_research_run(db, competitor.id)
-        res1 = await execute_research_run(db, run1.id, crawler, analyzer)
+        res1 = asyncio.run(execute_research_run(db, run1.id, crawler, analyzer))
         assert res1.status == ResearchStatus.COMPLETED
 
         # Run 2: content has not changed, should skip LLM
         run2 = create_research_run(db, competitor.id)
-        res2 = await execute_research_run(db, run2.id, crawler, analyzer)
+        res2 = asyncio.run(execute_research_run(db, run2.id, crawler, analyzer))
 
         assert res2.status == ResearchStatus.COMPLETED
         assert res2.analysis_result.get("skipped_llm") is True
         assert res2.analysis_result.get("reused_from_run_id") == run1.id
 
-    @pytest.mark.asyncio
-    async def test_execute_research_run_crawler_failure(db, competitor):
+    def test_execute_research_run_crawler_failure(db, competitor):
         run = create_research_run(db, competitor.id)
         failing_crawler = MockCrawl4AICrawler(should_fail=True)
 
-        failed_run = await execute_research_run(
+        failed_run = asyncio.run(execute_research_run(
             db=db,
             run_id=run.id,
             crawler=failing_crawler,
-        )
+        ))
 
         assert failed_run.status == ResearchStatus.FAILED
         assert "simulated failure" in failed_run.error_message
 
-    @pytest.mark.asyncio
-    async def test_execute_research_run_analyzer_failure(db, competitor):
+    def test_execute_research_run_analyzer_failure(db, competitor):
         run = create_research_run(db, competitor.id)
         crawler = MockCrawl4AICrawler()
         failing_analyzer = MockOpenAIAnalyzer(should_fail=True)
 
-        failed_run = await execute_research_run(
+        failed_run = asyncio.run(execute_research_run(
             db=db,
             run_id=run.id,
             crawler=crawler,
             analyzer=failing_analyzer,
-        )
+        ))
 
         assert failed_run.status == ResearchStatus.FAILED
         assert "simulated failure" in failed_run.error_message
