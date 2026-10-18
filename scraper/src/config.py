@@ -23,6 +23,26 @@ PositiveSeconds = Annotated[float, Field(strict=True, gt=0)]
 NonNegativeSeconds = Annotated[float, Field(strict=True, ge=0)]
 
 
+class SelectionConfig(ContractModel):
+    """Decision policy, without credentials or browser/network side effects."""
+
+    mode: Literal["llm", "structural"] = "llm"
+    model: Literal["gpt-6-luna"] = "gpt-6-luna"
+    objective: Annotated[NonEmptyText, Field(max_length=4000)] = (
+        "Understand the company's offerings, customers, differentiation, commercial activity, "
+        "and observable evidence of expansion or contraction. Favor company-specific evidence; "
+        "include general industry articles when they reveal the company's capabilities "
+        "or strategy. "
+        "Collect evidence rather than predicting growth."
+    )
+    budget_usd: Annotated[float, Field(strict=True, ge=0)] = 0.03
+    exploration_fraction: Annotated[float, Field(strict=True, ge=0, le=1)] = 0.20
+    trace_enabled: StrictBool = False
+    timeout_seconds: PositiveSeconds = 15.0
+    max_retries: NonNegativeInt = 2
+    max_concurrency: PositiveInt = 2
+
+
 def _default_keywords() -> dict[PageCategory, list[str]]:
     return {
         PageCategory.POSITIONING: ["about", "company", "why"],
@@ -62,6 +82,7 @@ class ScraperConfig(ContractModel):
     """
 
     strategy: Literal["best_first", "bfs"] = "best_first"
+    selection: SelectionConfig = Field(default_factory=SelectionConfig)
     max_pages: PositiveInt = 50
     max_depth: NonNegativeInt = 3
     max_discovered_urls: PositiveInt = 5000

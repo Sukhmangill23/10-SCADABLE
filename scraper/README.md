@@ -13,6 +13,10 @@ The approved three-page live crawl and packaging checks are recorded in the
 Start with the [quickstart guide](docs/quickstart.md) for setup, manual website tests
 and inspecting the output.
 
+The [OpenAI Decisions Stage 1 foundation](docs/decisions.md) adds independently testable
+selection contracts, an API adapter, and budget accounting. It is awaiting review and is
+not connected to traversal yet; the CLI/manual runner retain their existing behavior.
+
 The Python package and CLI are named `scraper`. After upgrading an existing checkout,
 run `uv sync --locked`; update imports to `from scraper import ...` and commands to
 `uv run --locked scraper ...`. Browser tests use `SCRAPER_BROWSER_TESTS=1`.
@@ -48,7 +52,8 @@ On Linux, Playwright may also require OS libraries. See the official
 
 Crawl4AI is pinned to 0.9.5. Pydantic provides validated, JSON-compatible contracts;
 `tomllib` and the CLI's `argparse` come from Python. Crawl4AI itself brings
-LLM-related transitive dependencies; this package does not configure or call an LLM.
+LLM-related transitive dependencies. OpenAI is now also a direct dependency for the separate
+Decisions adapter; the current crawl service does not call it yet.
 
 ## Review the configuration
 

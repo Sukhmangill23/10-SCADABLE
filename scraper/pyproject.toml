@@ -16,6 +16,7 @@ dependencies = [
     "protego>=0.5,<1",
     "playwright>=1.64,<2",
     "rich>=14,<16",
+    "openai>=3.26,<4",
 ]
 
 [project.scripts]

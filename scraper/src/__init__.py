@@ -6,6 +6,7 @@ from .config import (
     DynamicSettings,
     ProjectConfig,
     ScraperConfig,
+    SelectionConfig,
     load_config,
     resolve_config,
 )
@@ -34,6 +35,7 @@ __all__ = [
     "ProjectConfig",
     "ScrapedPage",
     "ScraperConfig",
+    "SelectionConfig",
     "UrlDisposition",
     "load_config",
     "resolve_config",

@@ -6,6 +6,7 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, JsonValue, field_validator, model_validator
 
 from .config import CompetitorInput, NonNegativeInt, PositiveInt, ScraperConfig
+from .decision_models import PageAssessment
 from .types import (
     ContractModel,
     CrawlStatus,
@@ -87,6 +88,7 @@ class PageContent(ContractModel):
     attempt_count: PositiveInt = 1
     raw_markdown: str = ""
     filtered_markdown: str | None = None
+    content_assessment: PageAssessment | None = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     error_message: NonEmptyText | None = None
 

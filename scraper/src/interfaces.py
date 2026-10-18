@@ -11,6 +11,14 @@ from typing import Protocol, Self
 from pydantic import Field
 
 from .config import CompetitorInput, ScraperConfig
+from .decision_models import (
+    CandidateScore,
+    CollectedExcerpt,
+    DecisionCandidate,
+    DecisionTraceRecord,
+    DecisionUsageSummary,
+    PageAssessment,
+)
 from .models import CompetitorCrawlResult, DiscoveredUrl, FetchedPage, ScrapedPage
 from .types import ContractModel, NonEmptyText, WebUrl
 
@@ -19,6 +27,28 @@ class DiscoveryBatch(ContractModel):
     urls: list[DiscoveredUrl] = Field(default_factory=list)
     truncated: bool = False
     warnings: list[NonEmptyText] = Field(default_factory=list)
+
+
+class DecisionProvider(Protocol):
+    """One competitor's selection evaluator; the service owns its lifetime/capacity."""
+
+    async def __aenter__(self) -> Self: ...
+
+    async def __aexit__(self, *exc) -> None: ...
+
+    async def score_candidates(
+        self, candidates: Sequence[DecisionCandidate]
+    ) -> list[CandidateScore]: ...
+
+    async def assess_content(
+        self, page: FetchedPage, ledger: Sequence[CollectedExcerpt] = ()
+    ) -> PageAssessment: ...
+
+    @property
+    def summary(self) -> DecisionUsageSummary: ...
+
+    @property
+    def trace_records(self) -> list[DecisionTraceRecord]: ...
 
 
 class PageFetcher(Protocol):

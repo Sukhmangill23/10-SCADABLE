@@ -27,6 +27,16 @@ scan_full_page = false
 max_scroll_steps = 5
 wait_timeout_seconds = 10.0
 
+# Stage 1 adapter settings; traversal integration arrives in Stage 2.
+[global.selection]
+mode = "llm"
+budget_usd = 0.03
+exploration_fraction = 0.20
+trace_enabled = false
+timeout_seconds = 15.0
+max_retries = 2
+max_concurrency = 2
+
 [[competitors]]
 homepage_url = "https://example.com/"
 name = "Example"
