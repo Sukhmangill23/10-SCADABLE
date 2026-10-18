@@ -218,6 +218,25 @@ Keep crawl budgets small while checking content quality. Add specific CSS waits 
 bounded scrolling/load-more rules for websites that need them; the scraper does not
 guess arbitrary pagination controls.
 
+New crawls omit semantic navigation and site footers from Markdown while keeping their
+links available for page discovery. Article headers and attribution are preserved.
+For menus/footers built with generic `<div>` elements, add the site's actual CSS selectors
+in the manual runner's `SETTINGS`, or in the corresponding TOML override:
+
+```python
+from scraper import ScraperConfig
+
+settings = ScraperConfig(
+    markdown_remove_navigation_and_footer=True,
+    markdown_excluded_selectors=[".site-menu", ".site-footer"],
+)
+```
+
+Those class names are examples; inspect the website's HTML for the correct containers.
+Set the flag to `False` and the list to `[]` to retain all navigation/footer content.
+Existing generated Markdown stays unchanged. See
+[extraction and output](extraction-and-output.md#navigation-and-footer-removal) for details.
+
 ## Tests and troubleshooting
 
 ```powershell

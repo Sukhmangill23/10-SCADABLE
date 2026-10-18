@@ -86,15 +86,51 @@ click/time limits. Source content and links come from the final rendered DOM sna
 
 ## Content and categorization
 
-- `raw_markdown`: unchanged SDK Markdown generated from rendered `raw_html`, retaining
-  text links. Images are omitted during SDK Markdown generation (`ignore_images=True`),
-  including from filtered/cleaned content and Markdown excerpts sent to Decisions.
+- `raw_markdown`: SDK Markdown generated from a separate copy of rendered `raw_html`,
+  retaining content text links. Navigation and site footers are removed from that copy;
+  images are omitted during conversion (`ignore_images=True`). These exclusions apply
+  to filtered/cleaned content and Markdown excerpts sent to Decisions too.
   It is readable source Markdown, not byte-for-byte HTML or a script archive.
 - `filtered_markdown`: SDK `PruningContentFilterLXML` output (threshold 0.2, minimum word
   threshold 0). This representation can omit useful material and is never substituted
   for the source or conservative cleaned version.
 - `cleaned_markdown`: full Markdown with normalized line endings and unsafe control
   characters removed. Indentation, hard breaks, blank lines, tables and code are preserved.
+
+### Navigation and footer removal
+
+`ContentMarkdownGenerator` extends the SDK's public generation hook. It parses an HTML
+copy with lxml's network-disabled parser and delegates Markdown conversion and the
+existing optional pruning filter to Crawl4AI. The original rendered HTML, SDK link list
+and contextual discovery evidence remain intact. Nothing is removed from the browser DOM.
+
+Default `markdown_remove_navigation_and_footer=true` removes `<nav>`, ARIA navigation,
+and site-level `<footer>`, `banner` and `contentinfo` elements. Footers/banner-like elements
+inside `main`, `article`, `section` or `aside` are retained conservatively. Ordinary
+headers remain, including page/article titles and introductions. Adjacent text outside
+removed elements is preserved. CSS class names and words in prose are not guessed.
+
+For generic `<div>` menus or footers, supply explicit CSS selectors in
+`markdown_excluded_selectors`, globally or per competitor. Invalid selectors fail
+configuration validation before browser startup. Explicit selectors apply even inside
+content containers, so choose the actual menu/footer containers rather than broad tags.
+HTML selectors use case-insensitive tag names; named XML namespace selectors are not
+supported (use plain HTML selectors such as `svg g` instead).
+Lists replace across override layers, consistent with existing settings.
+
+Set `markdown_remove_navigation_and_footer=false` to disable default removal. Explicit
+selectors still apply; use an empty selector list to disable those too. Empty/whitespace
+input passes through, and HTML that cannot be parsed falls back to the original input.
+Fatal recovery errors, such as excessive nesting, also retain the source and log a warning
+instead of silently truncating content. Boilerplate may remain on those exceptional pages.
+An exclusion that removes all readable content can produce the existing empty-content
+failure instead of reintroducing excluded content. No main-only extraction, cross-page
+deduplication or new pruning policy is enabled. `filtered_markdown` remains optional and
+is not substituted for the exported source-based Markdown.
+
+Old output folders are not rewritten. Run again into a fresh directory to see cleanup;
+custom menus not covered by semantics need site-specific selectors. No extra model
+requests or candidate-page probes are introduced.
 
 `MarkdownExtractor` requires no network access. Categories now consume the content-based
 Decisions assessment attached during discovery, or use `other` when unavailable, including

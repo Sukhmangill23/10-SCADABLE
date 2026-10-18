@@ -101,6 +101,8 @@ class ScraperConfig(ContractModel):
             "*/terms*",
         ]
     )
+    markdown_remove_navigation_and_footer: StrictBool = True
+    markdown_excluded_selectors: list[NonEmptyText] = Field(default_factory=list)
     dynamic: DynamicSettings = Field(default_factory=DynamicSettings)
     dynamic_rules: list[DynamicRule] = Field(default_factory=list)
 
@@ -132,6 +134,23 @@ class ScraperConfig(ContractModel):
         if value[0] > value[1]:
             raise ValueError("Request delay minimum must not exceed maximum")
         return value
+
+    @field_validator("markdown_excluded_selectors")
+    @classmethod
+    def valid_markdown_selectors(cls, values: list[str]) -> list[str]:
+        from cssselect import SelectorError
+        from lxml import etree
+
+        from .markdown_cleaning import compile_markdown_selector
+
+        for selector in values:
+            try:
+                compile_markdown_selector(selector)
+            except (SelectorError, etree.XPathError) as error:
+                raise ValueError(
+                    f"Invalid Markdown exclusion CSS selector: {selector!r}"
+                ) from error
+        return values
 
     @field_validator("allowed_domains")
     @classmethod

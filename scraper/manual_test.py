@@ -44,6 +44,8 @@ SETTINGS = ScraperConfig(
     request_delay_seconds=(2.0, 2.0),
     max_sitemap_documents=3,
     max_sitemap_requests=8,
+    markdown_remove_navigation_and_footer=True,
+    markdown_excluded_selectors=[],  # Optional actual site selectors, e.g. [".site-menu"].
 )
 
 # EDIT if needed. Readable UTC timestamps keep runs sorted by date and time.

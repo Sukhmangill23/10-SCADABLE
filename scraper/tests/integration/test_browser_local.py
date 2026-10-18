@@ -65,6 +65,14 @@ def website():
                 body = (
                     "document.getElementById('external').textContent='Third party script rendered';"
                 )
+            elif self.path == "/content-cleanup":
+                body = """<!doctype html><html><head><title>Company evidence</title></head>
+                <body><nav><a href="/nav-only">GLOBAL_NAV</a></nav>
+                <main><article><header><h1>Platform launch</h1></header>
+                <p>Our product supports manufacturers. <a href="/details">Product details</a></p>
+                <footer>Article author: Jane Example.</footer></article></main>
+                <div class="custom-menu"><a href="/custom-only">CUSTOM_MENU</a></div>
+                <footer><a href="/footer-only">GLOBAL_FOOTER</a></footer></body></html>"""
             else:
                 body = f"""<!doctype html><html lang="en"><head><title>Fixture pricing</title>
                 <meta name="description" content="Competitive plans"></head><body>
@@ -134,6 +142,41 @@ async def test_render_redirect_wait_load_more_links_and_external_script(website)
     assert paths.count("/redirect") == paths.count("/pricing") == 1
     assert "/embedded" not in paths
     assert "/popup" not in paths
+
+
+async def test_markdown_cleanup_preserves_original_links_and_discovery_context(website):
+    import json
+
+    from scraper.decision_prompts import content_request
+    from scraper.discovery.evidence import link_observations
+
+    base, requests = website
+    settings = ScraperConfig(
+        selection={"mode": "structural"},
+        request_delay_seconds=(0.0, 0.0),
+        markdown_excluded_selectors=[".custom-menu"],
+    )
+    async with GuardedHttpClient(base, settings) as guard:
+        async with Crawl4AIFetcher(base, settings, guard) as fetcher:
+            page = await fetcher.fetch(base + "/content-cleanup", settings)
+    assert page.crawl_status == "success", page.error_message
+    assert "Platform launch" in page.raw_markdown
+    assert "Article author: Jane Example." in page.raw_markdown
+    assert f"[Product details]({base}/details)" in page.raw_markdown
+    for label in ("GLOBAL_NAV", "GLOBAL_FOOTER", "CUSTOM_MENU"):
+        assert label in page.raw_html
+        assert label not in page.raw_markdown
+        assert label not in (page.filtered_markdown or "")
+    links = {str(link.url) for link in page.links}
+    assert {base + path for path in ("/nav-only", "/footer-only", "/custom-only")} <= links
+    evidence = link_observations(page)
+    assert evidence[base + "/nav-only"][0].location == "navigation"
+    assert any(item.location == "footer" for item in evidence[base + "/footer-only"])
+    excerpt = json.loads(content_request(page, [], settings.selection)["input"])["page"][
+        "markdown_excerpt"
+    ]
+    assert "Platform launch" in excerpt and "GLOBAL_NAV" not in excerpt
+    assert "/nav-only" not in [path for _, path in requests]  # Discovery adds no probe requests.
 
 
 @pytest.mark.parametrize(

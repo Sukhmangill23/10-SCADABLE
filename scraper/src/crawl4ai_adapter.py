@@ -38,7 +38,8 @@ def build_run_config(
 ) -> CrawlerRunConfig:
     from crawl4ai import CacheMode, CrawlerRunConfig
     from crawl4ai.content_filter_strategy import PruningContentFilterLXML
-    from crawl4ai.markdown_generation_strategy import DefaultMarkdownGenerator
+
+    from .markdown_generation import ContentMarkdownGenerator
 
     interaction = dynamic if dynamic is not None else settings.dynamic
     return CrawlerRunConfig(
@@ -55,8 +56,10 @@ def build_run_config(
         max_scroll_steps=interaction.max_scroll_steps,
         scroll_delay=interaction.scroll_delay_seconds,
         word_count_threshold=0,
-        markdown_generator=DefaultMarkdownGenerator(
+        markdown_generator=ContentMarkdownGenerator(
             content_source="raw_html",
+            remove_navigation_and_footer=settings.markdown_remove_navigation_and_footer,
+            excluded_selectors=settings.markdown_excluded_selectors,
             options={"ignore_links": False, "ignore_images": True},
             content_filter=PruningContentFilterLXML(threshold=0.2, min_word_threshold=0),
         ),

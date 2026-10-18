@@ -19,6 +19,9 @@ discovery_timeout_seconds = 30.0
 max_retries = 2
 max_backoff_seconds = 30.0
 respect_robots_txt = true
+# Markdown-only cleanup: original links and rendered HTML remain available to discovery.
+markdown_remove_navigation_and_footer = true
+markdown_excluded_selectors = []
 
 [global.dynamic]
 scan_full_page = false
@@ -46,6 +49,8 @@ name = "Example"
 max_pages = 20
 # Exact extra hosts must be approved before adding them here.
 allowed_domains = []
+# Optional site-specific menu/footer CSS; lists replace the global list.
+# markdown_excluded_selectors = [".site-menu", ".site-footer"]
 
 [[competitors.overrides.dynamic_rules]]
 url_pattern = "https://example.com/careers*"
