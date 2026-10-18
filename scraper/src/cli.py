@@ -9,6 +9,7 @@ from contextlib import aclosing
 from pathlib import Path
 
 from .config import CompetitorInput, ProjectConfig, ScraperConfig, load_config, resolve_config
+from .environment import load_environment
 from .output import competitor_directory, export_competitor
 from .service import CompetitorScraper
 
@@ -23,6 +24,11 @@ def _parser() -> argparse.ArgumentParser:
         "homepages", nargs="*", help="Homepage URLs; select matching TOML overrides when present"
     )
     parser.add_argument("--config", type=Path, help="TOML global settings and competitors")
+    parser.add_argument(
+        "--env-file",
+        type=Path,
+        help="Credential .env file (default: .env in the working directory)",
+    )
     parser.add_argument(
         "--output",
         "-o",
@@ -143,6 +149,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     # argparse owns syntax errors/help and their standard SystemExit behavior.
     args = parser.parse_args(argv)
     try:
+        load_environment(args.env_file, required=args.env_file is not None)
         competitors, project, overrides = _inputs(args)
         logging.basicConfig(
             level=logging.DEBUG if args.verbose else logging.INFO,

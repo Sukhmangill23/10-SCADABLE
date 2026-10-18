@@ -50,6 +50,42 @@ def read_summary(root, hostname="one.example"):
     return json.loads((root / hostname / "crawl_summary.json").read_text(encoding="utf-8"))
 
 
+@pytest.mark.parametrize("explicit", [False, True])
+def test_cli_loads_dotenv_before_starting_service(tmp_path, monkeypatch, explicit):
+    from scraper import cli
+
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PYTHON_DOTENV_DISABLED", raising=False)
+    # Ensure dotenv mutation is restored by monkeypatch at teardown.
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.delenv("OPENAI_API_KEY")
+    env_file = tmp_path / ("custom.env" if explicit else ".env")
+    env_file.write_text("OPENAI_API_KEY=cli-fixture-key\n", encoding="utf-8")
+
+    class DotenvService(FixtureService):
+        async def crawl_many(self, *args, **kwargs):
+            assert os.environ["OPENAI_API_KEY"] == "cli-fixture-key"
+            async for result in super().crawl_many(*args, **kwargs):
+                yield result
+
+    monkeypatch.setattr(cli, "CompetitorScraper", DotenvService)
+    options = ["--env-file", str(env_file)] if explicit else []
+    assert cli.main(["https://one.example", "--output", str(tmp_path / "out"), *options]) == 0
+
+
+def test_cli_rejects_missing_explicit_environment_file_before_crawler(
+    tmp_path, monkeypatch, capsys
+):
+    from scraper import cli
+
+    def forbidden():
+        raise AssertionError("Must not create a crawler")
+
+    monkeypatch.setattr(cli, "CompetitorScraper", forbidden)
+    assert cli.main(["https://one.example", "--env-file", str(tmp_path / "missing.env")]) == 2
+    assert "Environment file not found" in capsys.readouterr().err
+
+
 def test_cli_exports_multiple_competitors_without_browser(tmp_path, monkeypatch):
     from scraper import cli
 

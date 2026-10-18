@@ -14,7 +14,10 @@ Start with the [quickstart guide](docs/quickstart.md) for setup, manual website 
 and inspecting the output.
 
 The [OpenAI-guided selection workflow](docs/decisions.md) now replaces keyword ranking.
-LLM mode is the default and requires `OPENAI_API_KEY` before crawling starts. For API-free
+LLM mode is the default: put `OPENAI_API_KEY=your-openai-api-key` in `scraper/.env`
+(copy [.env.example](.env.example) for a fresh checkout). The manual runner loads this
+file automatically; the CLI uses its working directory's `.env` or `--env-file`.
+Existing process environment values take precedence, and `.env` is ignored by Git. For API-free
 crawling, set `selection={"mode": "structural"}` in Python or `[global.selection]` with
 `mode="structural"` in TOML, or pass `--selection-mode structural`. Old keyword settings
 produce migration errors. The adaptive update's Stage 3 is implemented and awaiting review:
@@ -50,6 +53,8 @@ python -m venv .venv
 The pip path installs runtime dependencies; uv is the supported way to reproduce the
 locked development environment. Offline tests and structural crawling need no API key;
 LLM-guided crawling requires `OPENAI_API_KEY`. Python 3.12 is the supported baseline.
+No terminal key assignment is needed when using `.env`. Direct Python consumers can
+call `scraper.environment.load_environment(path)` during application startup.
 
 The default tests do not require browser binaries. Real crawling requires Chromium.
 On Linux, Playwright may also require OS libraries. See the official

@@ -3,7 +3,11 @@
 ## Configuration and credentials
 
 LLM selection is now the default. Install the locked dependencies with `uv sync --locked`
-and set `OPENAI_API_KEY` in the process environment. Missing credentials fail before
+and put `OPENAI_API_KEY=your-openai-api-key` in a local `.env` copied from `.env.example`.
+The CLI loads the working directory's file or `--env-file`; the manual runner loads the
+file beside `manual_test.py`. Existing process environment values take precedence.
+Python consumers can explicitly call `scraper.environment.load_environment(path)`.
+Missing credentials fail before
 browser/network activity. Choose explicit structural mode for crawling without OpenAI:
 
 ```python

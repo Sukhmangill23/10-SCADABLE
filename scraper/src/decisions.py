@@ -44,7 +44,8 @@ def validate_decision_credentials(settings: SelectionConfig) -> None:
     """Call before starting browser/network work when composing the service."""
     if settings.mode == "llm" and not os.environ.get("OPENAI_API_KEY", "").strip():
         raise DecisionAccessError(
-            "LLM selection requires OPENAI_API_KEY. Set it in the environment or choose "
+            "LLM selection requires OPENAI_API_KEY. Add it to the loaded .env file "
+            "(or process environment), or choose "
             "selection.mode='structural' for API-free crawling."
         )
 

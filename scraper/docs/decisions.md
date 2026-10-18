@@ -2,7 +2,9 @@
 
 The typed API adapter, budget accounting and shared discovery frontier replace keyword
 scoring and use content-based categories. Stage 3 adds reviewable exports and controls.
-The default CLI and Python service now require `OPENAI_API_KEY`. Explicit structural mode
+The default CLI and Python service require `OPENAI_API_KEY`. The CLI loads it from `.env`
+in the working directory or `--env-file`; the manual runner loads the file beside its
+script. Existing environment values take precedence. Explicit structural mode
 requires no key and makes no OpenAI calls. No paid requests or live competitor crawls are
 required to review this stage.
 
@@ -107,6 +109,9 @@ sampled page sections are marked explicitly. Full page Markdown is never changed
 The LLM provider requires `OPENAI_API_KEY` before creating its SDK client. Structural mode
 requires no key, creates no SDK client, and makes no API requests. The service validates all
 competitors' credential requirements before starting workers or browser/network activity.
+Entry points use `load_environment` from `environment.py`, backed by `python-dotenv`,
+before credential validation. Library applications call that helper explicitly or supply
+their own process environment; importing models or the provider does not read `.env`.
 Injected test providers bypass the environment credential check; importing configuration
 reads no keys.
 

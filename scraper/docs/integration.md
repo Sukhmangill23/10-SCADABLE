@@ -4,7 +4,9 @@ The package runs without a backend, database or downstream analysis service. Ins
 `uv sync --locked`, then `uv run --locked python -m playwright install chromium`.
 Run the CLI from any directory after installation; use an explicit TOML/output path.
 For a custom browser location, set `PLAYWRIGHT_BROWSERS_PATH` during both installation
-and execution. Default LLM selection requires `OPENAI_API_KEY`; explicit
+and execution. The CLI loads `.env` from the working directory (or `--env-file`);
+the manual runner loads `scraper/.env` beside the script. Existing process environment
+values take precedence. Default LLM selection requires `OPENAI_API_KEY`; explicit
 `selection={"mode": "structural"}` needs no API credentials or model requests.
 
 Crawl4AI initializes an import-time SDK cache under the user home even when application
@@ -26,10 +28,12 @@ Use the existing event loop in an importing application:
 ```python
 from contextlib import aclosing
 from scraper import CompetitorInput, ScraperConfig, SelectionConfig
+from scraper.environment import load_environment
 from scraper.service import CompetitorScraper
 
 
 async def collect(homepages, consume):
+    load_environment()  # Working directory's .env, or supply your application's path.
     service = CompetitorScraper()
     inputs = [CompetitorInput(homepage_url=url) for url in homepages]
     settings = ScraperConfig(selection=SelectionConfig(budget_usd=0.03))
@@ -43,6 +47,12 @@ For one competitor, `await service.crawl(competitor, settings)` returns a valida
 `aclosing` ensures early loop exit or consumer failure cancels the remaining workers
 and closes their resources. Cancellation propagates; it does not fabricate a complete
 result for the interrupted competitor. The service does not create a nested event loop.
+Library imports and service constructors do not read `.env` implicitly: the importing
+application chooses when and where to load it. `load_environment(path, required=True)`
+rejects a missing explicit file; by default an absent file is optional, supporting
+structural mode or credentials supplied by the host environment. Missing required LLM
+credentials still fail before browser/network activity. Credential values are not logged
+or added to serialized scraper settings.
 
 The FastAPI team can await this interface or consume its exported files. Request lifetime,
 background execution and persistence belong to that application. No endpoints or database

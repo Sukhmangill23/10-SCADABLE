@@ -8,6 +8,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from scraper import CompetitorInput, ScraperConfig, SelectionConfig
+from scraper.environment import load_environment
 from scraper.output import competitor_directory, export_competitor
 from scraper.service import CompetitorScraper
 
@@ -23,7 +24,7 @@ WEBSITES = [
 
 # EDIT: these are the same settings as the small manual CLI test.
 SETTINGS = ScraperConfig(
-    # EDIT: "llm" requires OPENAI_API_KEY; "structural" makes no OpenAI calls.
+    # EDIT: "llm" reads OPENAI_API_KEY from .env; "structural" makes no OpenAI calls.
     selection=SelectionConfig(
         mode="llm",
         objective=(
@@ -35,8 +36,8 @@ SETTINGS = ScraperConfig(
         budget_usd=0.03,  # Estimated per website; not a guaranteed billing ceiling.
         trace_enabled=False,  # True saves bounded evidence/answers in decisions.jsonl.
     ),
-    max_pages=3,
-    max_depth=5,
+    max_pages=5,
+    max_depth=3,
     max_concurrency=3,
     max_concurrent_competitors=3,
     per_domain_concurrency=1,
@@ -53,6 +54,7 @@ logger = logging.getLogger(__name__)
 
 def configure_runtime() -> None:
     """Use the project's writable SDK/browser caches while respecting explicit env settings."""
+    load_environment(PROJECT_DIRECTORY / ".env")
     os.environ.setdefault("CRAWL4_AI_BASE_DIRECTORY", str(PROJECT_DIRECTORY / ".uv-cache"))
     browser_cache = PROJECT_DIRECTORY / ".uv-cache" / "playwright"
     if browser_cache.is_dir():
