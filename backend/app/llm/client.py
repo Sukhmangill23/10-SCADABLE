@@ -19,6 +19,7 @@ class StructuredResult(Generic[OutputModel]):
     input_tokens: int = 0
     output_tokens: int = 0
     cached_input_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 class LLMClientProtocol(Protocol):
@@ -82,14 +83,13 @@ class OpenAIClient:
             )
 
         usage = response.usage
-        cached = 0
-        if usage is not None and usage.input_tokens_details is not None:
-            cached = usage.input_tokens_details.cached_tokens or 0
+        details = usage.input_tokens_details if usage is not None else None
         return StructuredResult(
             output=response.output_parsed,
             input_tokens=usage.input_tokens if usage else 0,
             output_tokens=usage.output_tokens if usage else 0,
-            cached_input_tokens=cached,
+            cached_input_tokens=(details.cached_tokens or 0) if details else 0,
+            cache_write_tokens=(getattr(details, "cache_write_tokens", 0) or 0) if details else 0,
         )
 
     async def close(self) -> None:

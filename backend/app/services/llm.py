@@ -9,7 +9,7 @@ import logging
 from datetime import datetime, timezone
 from typing import Any, Protocol
 
-from app.llm.analyzer import Analyzer, ProgressCallback
+from app.llm.analyzer import Analyzer, ProgressCallback, SpendProvider
 from app.llm.client import LLMClientProtocol, OpenAIClient
 from app.llm.config import LLMSettings
 from app.llm.validation import to_swot_entries
@@ -165,10 +165,15 @@ def _extend_mock_result(
             "input_tokens": 0,
             "output_tokens": 0,
             "cached_input_tokens": 0,
+            "cache_write_tokens": 0,
             "total_tokens": 0,
             "estimated_cost_usd": 0.0,
             "pricing_configured": False,
             "preflight_estimate_usd": 0.0,
+            "max_run_cost_usd": None,
+            "aborted": False,
+            "abort_reason": None,
+            "project_budget": None,
         },
         "warnings": ["Mock analysis: findings are canned fixtures, not real research."],
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -186,7 +191,11 @@ class OpenAIAdapter:
     ``OPENAI_MODEL`` are set. Otherwise it falls back to mock analysis with a
     loud warning and ``analysis_mode="mock"`` in the result, unless
     ``LLM_ALLOW_MOCK=false``, in which case it raises so the run fails.
-    Real API errors always propagate (the run fails and prior findings stay).
+    Real API errors always propagate (the run fails and prior findings stay)
+    as ``AnalysisError`` whose ``usage`` attribute records tokens already spent.
+
+    ``spend_provider`` returns total USD spent across previous runs; when set,
+    runs that would exceed PROJECT_BUDGET_USD are refused.
     """
 
     def __init__(
@@ -194,10 +203,12 @@ class OpenAIAdapter:
         settings: LLMSettings | None = None,
         client: LLMClientProtocol | None = None,
         progress_callback: ProgressCallback | None = None,
+        spend_provider: SpendProvider | None = None,
     ) -> None:
         self.settings = settings
         self.client = client
         self.progress_callback = progress_callback
+        self.spend_provider = spend_provider
 
     async def analyze(
         self,
@@ -229,7 +240,7 @@ class OpenAIAdapter:
             client = OpenAIClient(settings)
             owns_client = True
 
-        analyzer = Analyzer(client, settings, self.progress_callback)
+        analyzer = Analyzer(client, settings, self.progress_callback, self.spend_provider)
         try:
             return await analyzer.run(scraped_data, baseline_context)
         finally:

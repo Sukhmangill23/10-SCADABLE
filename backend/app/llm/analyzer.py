@@ -30,7 +30,8 @@ from app.llm.schemas import (
     ExtractedInformation,
     PageInput,
 )
-from app.llm.usage import UsageTracker, compute_cost_usd, estimate_tokens
+from app.llm.pricing import check_project_budget, get_pricing, request_cost_usd
+from app.llm.usage import UsageTracker, estimate_tokens
 from app.llm.validation import (
     build_url_index,
     filter_citations,
@@ -46,17 +47,31 @@ STAGES = ("extract", "scadable", "compare", "validate")
 _ESTIMATED_OUTPUT_TOKENS = {"extract": 2500, "scadable": 600, "compare": 3000}
 
 ProgressCallback = Callable[[dict[str, Any]], None]
+# Returns total USD spent on LLM calls across all previous runs.
+SpendProvider = Callable[[], float]
 
 # SCADABLE's baseline is static, so its analysis is shared across runs.
 _SCADABLE_CACHE: dict[tuple[str, str, str], CompanyAnalysis] = {}
 
 
-class CostLimitExceeded(RuntimeError):
-    """Raised before any API call when the estimated cost exceeds the cap."""
+class AnalysisError(RuntimeError):
+    """Analysis failed or was aborted; ``usage`` records tokens already spent."""
+
+    def __init__(self, message: str, usage: dict[str, Any] | None = None) -> None:
+        super().__init__(message)
+        self.usage = usage or {}
 
 
-class EmptyInputError(ValueError):
-    """Raised when the crawl produced no page text to analyze."""
+class CostLimitExceeded(AnalysisError):
+    """The run's estimated cost would pass MAX_RUN_COST_USD."""
+
+
+class BudgetExceeded(AnalysisError):
+    """The run would push cumulative spend past PROJECT_BUDGET_USD."""
+
+
+class EmptyInputError(AnalysisError):
+    """The crawl produced no page text to analyze."""
 
 
 def clear_scadable_cache() -> None:
@@ -103,15 +118,16 @@ class Analyzer:
         client: LLMClientProtocol,
         settings: LLMSettings | None = None,
         progress_callback: ProgressCallback | None = None,
+        spend_provider: SpendProvider | None = None,
     ) -> None:
         self.client = client
         self.settings = settings or LLMSettings()
         self.progress_callback = progress_callback
-        self.usage = UsageTracker(
-            model=client.model,
-            price_input_per_1m=self.settings.llm_price_input_per_1m,
-            price_output_per_1m=self.settings.llm_price_output_per_1m,
-        )
+        self.spend_provider = spend_provider
+        self.pricing = get_pricing(client.model)
+        self.usage = UsageTracker(model=client.model, pricing=self.pricing)
+        self._preflight_estimate: float | None = None
+        self._budget_status: dict[str, Any] | None = None
 
     # ------------------------------------------------------------------
     # Progress reporting
@@ -153,7 +169,11 @@ class Analyzer:
             cache_key=f"live-swot-extract-{PROMPT_VERSION}",
         )
         self.usage.record(
-            "extract", result.input_tokens, result.output_tokens, result.cached_input_tokens
+            "extract",
+            result.input_tokens,
+            result.output_tokens,
+            result.cached_input_tokens,
+            result.cache_write_tokens,
         )
         return result.output
 
@@ -173,7 +193,11 @@ class Analyzer:
             cache_key=f"live-swot-scadable-{PROMPT_VERSION}",
         )
         self.usage.record(
-            "scadable", result.input_tokens, result.output_tokens, result.cached_input_tokens
+            "scadable",
+            result.input_tokens,
+            result.output_tokens,
+            result.cached_input_tokens,
+            result.cache_write_tokens,
         )
         _SCADABLE_CACHE[memo_key] = result.output
         return result.output
@@ -204,7 +228,11 @@ class Analyzer:
             cache_key=f"live-swot-compare-{PROMPT_VERSION}",
         )
         self.usage.record(
-            "compare", result.input_tokens, result.output_tokens, result.cached_input_tokens
+            "compare",
+            result.input_tokens,
+            result.output_tokens,
+            result.cached_input_tokens,
+            result.cache_write_tokens,
         )
         return result.output
 
@@ -212,26 +240,100 @@ class Analyzer:
     # Cost guard
     # ------------------------------------------------------------------
 
+    def _estimate_cost(self, input_tokens: int, output_tokens: int) -> float | None:
+        # No cache discount: a deliberately conservative upper bound.
+        return request_cost_usd(self.pricing, input_tokens, output_tokens)
+
+    def _compare_estimate_tokens(
+        self, baseline_text: str, upstream_tokens: int
+    ) -> tuple[int, int]:
+        return (
+            estimate_tokens(COMPARISON_PROMPT + baseline_text) + upstream_tokens,
+            _ESTIMATED_OUTPUT_TOKENS["compare"],
+        )
+
     def estimate_run_cost(
         self, analysis_input: AnalysisInput, baseline: Mapping[str, Any]
     ) -> float | None:
         """Upper-bound USD estimate for one run, or None without pricing."""
         baseline_text = json.dumps(baseline, default=str)
-        page_text = _render_pages(analysis_input)
-        input_tokens = (
-            estimate_tokens(EXTRACTION_PROMPT + page_text)
-            + estimate_tokens(SCADABLE_PROMPT + baseline_text)
-            + estimate_tokens(COMPARISON_PROMPT + baseline_text)
-            + _ESTIMATED_OUTPUT_TOKENS["extract"]  # facts are fed into compare
-            + _ESTIMATED_OUTPUT_TOKENS["scadable"]
+        out = _ESTIMATED_OUTPUT_TOKENS
+        stages = [
+            (estimate_tokens(EXTRACTION_PROMPT + _render_pages(analysis_input)), out["extract"]),
+            (estimate_tokens(SCADABLE_PROMPT + baseline_text), out["scadable"]),
+            self._compare_estimate_tokens(baseline_text, out["extract"] + out["scadable"]),
+        ]
+        costs = [self._estimate_cost(i, o) for i, o in stages]
+        return None if any(c is None for c in costs) else sum(costs)
+
+    def _usage_block(self, aborted: bool = False, reason: str | None = None) -> dict[str, Any]:
+        estimate = self._preflight_estimate
+        return {
+            **self.usage.to_dict(),
+            "preflight_estimate_usd": None if estimate is None else round(estimate, 6),
+            "max_run_cost_usd": self.settings.max_run_cost_usd,
+            "aborted": aborted,
+            "abort_reason": reason,
+            "project_budget": self._budget_status,
+        }
+
+    def _abort(self, exc_type: type[AnalysisError], reason: str) -> AnalysisError:
+        logger.error("LLM run aborted: %s", reason)
+        return exc_type(reason, self._usage_block(aborted=True, reason=reason))
+
+    def _check_budget_before_run(self) -> None:
+        """Enforce the per-run cap and, when spend is known, the project budget."""
+        estimate = self._preflight_estimate
+        cap = self.settings.max_run_cost_usd
+        if estimate is None:
+            logger.warning(
+                "No pricing for model %r in PRICE_TABLE; cost cap and budget cannot be "
+                "enforced for this run.",
+                self.client.model,
+            )
+            return
+        if estimate > cap:
+            raise self._abort(
+                CostLimitExceeded,
+                f"Estimated run cost ${estimate:.4f} exceeds MAX_RUN_COST_USD=${cap:.2f}.",
+            )
+        if self.spend_provider is not None:
+            status = check_project_budget(
+                self.spend_provider(), self.settings.project_budget_usd, estimate
+            )
+            self._budget_status = status
+            if not status["allowed"]:
+                raise self._abort(
+                    BudgetExceeded,
+                    f"Run would exceed PROJECT_BUDGET_USD=${status['budget_usd']:.2f} "
+                    f"(spent ${status['spent_usd']:.2f}, estimate ${estimate:.4f}).",
+                )
+
+    def _check_cap_before_compare(self, baseline: Mapping[str, Any], facts_tokens: int) -> None:
+        """Re-check the cap mid-run using real spend so far."""
+        spent = self.usage.spent_usd
+        if spent is None:
+            return
+        input_tokens, output_tokens = self._compare_estimate_tokens(
+            json.dumps(baseline, default=str), facts_tokens
         )
-        output_tokens = sum(_ESTIMATED_OUTPUT_TOKENS.values())
-        return compute_cost_usd(
-            input_tokens,
-            output_tokens,
-            self.settings.llm_price_input_per_1m,
-            self.settings.llm_price_output_per_1m,
-        )
+        projected = spent + (self._estimate_cost(input_tokens, output_tokens) or 0.0)
+        cap = self.settings.max_run_cost_usd
+        if projected > cap:
+            raise self._abort(
+                CostLimitExceeded,
+                f"Projected run cost ${projected:.4f} (spent ${spent:.4f}) exceeds "
+                f"MAX_RUN_COST_USD=${cap:.2f}; skipped compare stage.",
+            )
+
+    def _log_budget_after_run(self) -> None:
+        """Log 50%/80% budget warnings including this run's spend."""
+        if self.spend_provider is None or self.usage.spent_usd is None:
+            return
+        previous = (self._budget_status or {}).get("spent_usd")
+        if previous is None:
+            previous = self.spend_provider()
+        check_project_budget(previous + self.usage.spent_usd, self.settings.project_budget_usd)
 
     # ------------------------------------------------------------------
     # Full pipeline
@@ -257,34 +359,36 @@ class Analyzer:
 
         analysis_input = AnalysisInput(company_name=company_name, pages=pages)
         versions = build_versions(scraped_data, baseline, self.client.model)
+        self._preflight_estimate = self.estimate_run_cost(analysis_input, baseline)
+        self._check_budget_before_run()
 
-        estimate = self.estimate_run_cost(analysis_input, baseline)
-        cap = self.settings.llm_max_cost_per_run_usd
-        if cap is not None and estimate is not None and estimate > cap:
-            raise CostLimitExceeded(
-                f"Estimated cost ${estimate:.4f} exceeds LLM_MAX_COST_PER_RUN_USD=${cap:.4f}."
+        try:
+            facts, scadable = await asyncio.gather(
+                self._run_stage("extract", self.extract_information(analysis_input)),
+                self._run_stage(
+                    "scadable", self.analyze_scadable(baseline, versions["baseline_version"])
+                ),
             )
-
-        facts, scadable = await asyncio.gather(
-            self._run_stage("extract", self.extract_information(analysis_input)),
-            self._run_stage(
-                "scadable", self.analyze_scadable(baseline, versions["baseline_version"])
-            ),
-        )
-
-        crawled_urls = [p.url for p in pages]
-        comparison: ComparisonResult = await self._run_stage(
-            "compare", self.compare(baseline, scadable, facts, crawled_urls)
-        )
+            self._check_cap_before_compare(
+                baseline, estimate_tokens(facts.model_dump_json() + scadable.model_dump_json())
+            )
+            crawled_urls = [p.url for p in pages]
+            comparison: ComparisonResult = await self._run_stage(
+                "compare", self.compare(baseline, scadable, facts, crawled_urls)
+            )
+        except AnalysisError:
+            raise
+        except Exception as exc:
+            message = f"LLM analysis failed: {str(exc) or exc.__class__.__name__}"
+            raise AnalysisError(message, self._usage_block()) from exc
 
         self._emit("validate", "running")
-        result = self._assemble(
-            company_name, pages, facts, scadable, comparison, versions, estimate
-        )
+        result = self._assemble(company_name, pages, facts, scadable, comparison, versions)
         self._emit(
             "validate", "completed", warnings=len(result["warnings"]),
             findings=len(result["findings"]),
         )
+        self._log_budget_after_run()
         return result
 
     def _assemble(
@@ -295,7 +399,6 @@ class Analyzer:
         scadable: CompanyAnalysis,
         comparison: ComparisonResult,
         versions: dict[str, str],
-        estimate: float | None,
     ) -> dict[str, Any]:
         url_index = build_url_index(p.url for p in pages)
         warnings: list[str] = []
@@ -349,7 +452,7 @@ class Analyzer:
             "scadable_analysis": scadable.model_dump(),
             "sources": [{"url": p.url, "title": p.title} for p in pages],
             "versions": versions,
-            "usage": {**self.usage.to_dict(), "preflight_estimate_usd": estimate},
+            "usage": self._usage_block(),
             "warnings": warnings,
             "generated_at": datetime.now(timezone.utc).isoformat(),
         }

@@ -7,7 +7,9 @@ import pytest
 
 from app.core.baseline import get_scadable_baseline
 from app.llm.analyzer import (
+    AnalysisError,
     Analyzer,
+    BudgetExceeded,
     CostLimitExceeded,
     EmptyInputError,
     clear_scadable_cache,
@@ -123,11 +125,16 @@ def _comparison() -> ComparisonResult:
 class FakeClient:
     """Returns canned outputs per schema and records calls."""
 
-    model = "fake-model"
-
-    def __init__(self, fail_on: type | None = None) -> None:
+    def __init__(
+        self,
+        fail_on: type | None = None,
+        model: str = "gpt-5.6-luna",
+        output_tokens: int = 200,
+    ) -> None:
         self.calls: list[tuple[type, str | None]] = []
         self.fail_on = fail_on
+        self.model = model
+        self.output_tokens = output_tokens
         self.closed = False
 
     async def generate_structured(self, *, instructions, input_text, output_schema, cache_key=None):
@@ -139,8 +146,9 @@ class FakeClient:
             CompanyAnalysis: _scadable,
             ComparisonResult: _comparison,
         }[output_schema]()
-        return StructuredResult(output=output, input_tokens=1000, output_tokens=200,
-                                cached_input_tokens=100)
+        return StructuredResult(output=output, input_tokens=1000,
+                                output_tokens=self.output_tokens,
+                                cached_input_tokens=100, cache_write_tokens=50)
 
     async def close(self) -> None:
         self.closed = True
@@ -182,8 +190,7 @@ def test_prepare_pages_tolerates_shapes_and_trims():
 def test_full_run_shape_and_validation(scraped):
     events = []
     client = FakeClient()
-    analyzer = Analyzer(client, _settings(llm_price_input_per_1m=1.0,
-                                          llm_price_output_per_1m=4.0), events.append)
+    analyzer = Analyzer(client, _settings(), events.append)
     result = asyncio.run(analyzer.run(scraped, get_scadable_baseline()))
 
     # Backward-compatible keys
@@ -208,12 +215,16 @@ def test_full_run_shape_and_validation(scraped):
     assert any("Dropped" in w for w in result["warnings"])
 
     assert result["analysis_mode"] == "real"
-    assert result["versions"]["model"] == "fake-model"
+    assert result["versions"]["model"] == "gpt-5.6-luna"
     assert len(result["versions"]["cache_key"]) == 64
     usage = result["usage"]
     assert usage["input_tokens"] == 3000 and usage["output_tokens"] == 600
-    assert usage["estimated_cost_usd"] == pytest.approx((3000 * 1 + 600 * 4) / 1e6)
+    # Per request: 850 uncached, 100 cached, 50 cache-write input; 200 output.
+    per_request = (850 * 0.20 + 100 * 0.02 + 50 * 0.25 + 200 * 1.20) / 1e6
+    assert usage["estimated_cost_usd"] == pytest.approx(3 * per_request, abs=1e-6)
     assert set(usage["stages"]) == {"extract", "scadable", "compare"}
+    assert usage["aborted"] is False and usage["max_run_cost_usd"] == 0.25
+    assert 0 < usage["preflight_estimate_usd"] < 0.25
 
     statuses = [(e["stage"], e["status"]) for e in events]
     for stage in ("extract", "scadable", "compare", "validate"):
@@ -232,9 +243,12 @@ def test_scadable_analysis_is_memoized(scraped):
 def test_stage_failure_emits_failed_event(scraped):
     events = []
     analyzer = Analyzer(FakeClient(fail_on=ComparisonResult), _settings(), events.append)
-    with pytest.raises(RuntimeError, match="simulated"):
+    with pytest.raises(AnalysisError, match="simulated") as info:
         asyncio.run(analyzer.run(scraped, get_scadable_baseline()))
     assert ("compare", "failed") in [(e["stage"], e["status"]) for e in events]
+    # Tokens spent by the stages that did run are still reported.
+    assert info.value.usage["input_tokens"] == 2000
+    assert info.value.usage["estimated_cost_usd"] > 0
 
 
 def test_empty_pages_raise(scraped):
@@ -245,11 +259,50 @@ def test_empty_pages_raise(scraped):
 
 def test_cost_guard_blocks_before_any_call(scraped):
     client = FakeClient()
-    settings = _settings(llm_price_input_per_1m=1000.0, llm_price_output_per_1m=1000.0,
-                         llm_max_cost_per_run_usd=0.01)
-    with pytest.raises(CostLimitExceeded):
+    settings = _settings(max_run_cost_usd=0.000001)
+    with pytest.raises(CostLimitExceeded) as info:
         asyncio.run(Analyzer(client, settings).run(scraped, get_scadable_baseline()))
     assert client.calls == []
+    assert info.value.usage["aborted"] is True
+    assert "MAX_RUN_COST_USD" in info.value.usage["abort_reason"]
+    assert info.value.usage["estimated_cost_usd"] == 0
+
+
+def test_cost_guard_aborts_mid_run_on_real_spend(scraped):
+    # Huge outputs from the first stages push real spend past the cap.
+    client = FakeClient(output_tokens=150_000)
+    with pytest.raises(CostLimitExceeded, match="skipped compare") as info:
+        asyncio.run(Analyzer(client, _settings()).run(scraped, get_scadable_baseline()))
+    assert ComparisonResult not in [schema for schema, _ in client.calls]
+    assert info.value.usage["aborted"] is True
+    assert info.value.usage["estimated_cost_usd"] > 0.25
+
+
+def test_project_budget_blocks_run(scraped):
+    client = FakeClient()
+    analyzer = Analyzer(client, _settings(project_budget_usd=100.0),
+                        spend_provider=lambda: 99.999)
+    with pytest.raises(BudgetExceeded) as info:
+        asyncio.run(analyzer.run(scraped, get_scadable_baseline()))
+    assert client.calls == []
+    assert info.value.usage["project_budget"]["allowed"] is False
+
+
+def test_project_budget_recorded_and_warns(scraped, caplog):
+    analyzer = Analyzer(FakeClient(), _settings(), spend_provider=lambda: 60.0)
+    with caplog.at_level(logging.WARNING):
+        result = asyncio.run(analyzer.run(scraped, get_scadable_baseline()))
+    budget = result["usage"]["project_budget"]
+    assert budget["allowed"] is True and budget["thresholds_crossed"] == [0.5]
+    assert "past the 50% threshold" in caplog.text
+
+
+def test_unknown_model_has_null_cost_and_skips_cap(scraped, caplog):
+    with caplog.at_level(logging.WARNING):
+        result = asyncio.run(Analyzer(FakeClient(model="other"), _settings()).run(
+            scraped, get_scadable_baseline()))
+    assert result["usage"]["estimated_cost_usd"] is None
+    assert "No pricing for model" in caplog.text
 
 
 def test_adapter_uses_real_analyzer_with_injected_client(scraped):
