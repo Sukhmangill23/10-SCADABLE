@@ -66,6 +66,23 @@ def test_application_guard_disables_only_duplicate_sdk_robots_lookup():
     assert ScraperConfig().respect_robots_txt is True
 
 
+def test_markdown_generation_omits_images_and_preserves_text_links():
+    generator = build_run_config(ScraperConfig()).markdown_generator
+    markdown = generator.generate_markdown(
+        "<main><h1>Plans</h1><p>Our platform offers audit dashboards.</p>"
+        '<img src="/logo.svg" alt="Company logo">'
+        '<a href="/products"><img src="/arrow.png" alt="Arrow">Products</a>'
+        '<picture><img src="/banner.webp" alt="Banner"></picture></main>',
+        base_url="https://example.com/",
+    )
+    assert "# Plans" in markdown.raw_markdown
+    assert "Our platform offers audit dashboards." in markdown.raw_markdown
+    assert "[Products](https://example.com/products)" in markdown.raw_markdown
+    for text in (markdown.raw_markdown, markdown.fit_markdown or ""):
+        assert "![" not in text
+        assert all(asset not in text for asset in ("logo.svg", "arrow.png", "banner.webp"))
+
+
 def test_sitemap_discovery_does_not_probe_candidate_pages_or_common_crawl(tmp_path):
     settings = ScraperConfig(max_discovered_urls=123, per_domain_concurrency=1)
     config = build_seeding_config(settings, base_directory=tmp_path)

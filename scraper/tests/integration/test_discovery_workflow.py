@@ -60,7 +60,9 @@ async def test_robots_sitemaps_and_rendered_links_share_scope_and_limits():
                 links=[DiscoveredLink(url=link) for link in links],
             )
 
-    config = ScraperConfig(max_pages=4, request_delay_seconds=(0.0, 0.0))
+    config = ScraperConfig(
+        selection={"mode": "structural"}, max_pages=4, request_delay_seconds=(0.0, 0.0)
+    )
     fetcher = RenderedFixturePages()
     reader = BoundedSitemapDiscoverer(transport=httpx.MockTransport(documents))
     async with GuardedHttpClient(

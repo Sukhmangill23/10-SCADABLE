@@ -11,12 +11,12 @@ def test_override_precedence_preserves_unspecified_nested_settings():
         max_pages=35,
         max_depth=2,
         dynamic={"wait_timeout_seconds": 8, "scan_full_page": True},
-        category_keywords={"pricing": ["plans", "cost"]},
+        selection={"budget_usd": 0.01, "timeout_seconds": 9},
     )
     competitor = ScraperConfig(
         max_pages=12,
         dynamic={"wait_for_css": "main"},
-        category_keywords={"pricing": ["tariffs"]},
+        selection={"budget_usd": 0.02},
     )
     cli = ScraperConfig(max_pages=5)
 
@@ -27,9 +27,9 @@ def test_override_precedence_preserves_unspecified_nested_settings():
     assert result.dynamic.wait_timeout_seconds == 8
     assert result.dynamic.scan_full_page is True
     assert result.dynamic.wait_for_css == "main"
-    assert result.category_keywords["pricing"] == ["tariffs"]
-    assert result.category_keywords["products"] == ["product", "platform", "solution"]
-    assert global_settings.category_keywords["pricing"] == ["plans", "cost"]
+    assert result.selection.budget_usd == 0.02
+    assert result.selection.timeout_seconds == 9
+    assert global_settings.selection.budget_usd == 0.01
 
 
 def test_explicit_defaults_and_empty_lists_override_global_values():

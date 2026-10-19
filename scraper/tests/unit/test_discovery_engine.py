@@ -78,7 +78,9 @@ def page(url, *links, final_url=None, title=None):
 
 
 def config(**changes):
-    return ScraperConfig(request_delay_seconds=(0.0, 0.0), **changes)
+    return ScraperConfig(
+        selection={"mode": "structural"}, request_delay_seconds=(0.0, 0.0), **changes
+    )
 
 
 async def test_homepage_sitemap_and_links_share_one_deduplicated_budget():
@@ -96,7 +98,7 @@ async def test_homepage_sitemap_and_links_share_one_deduplicated_budget():
     crawler = DiscoveryCrawler(fetcher, FixtureSitemaps(), robots_guard=FixtureRobots())
     result = await crawler.run(
         CompetitorInput(homepage_url="https://example.com/"),
-        config(max_pages=3, category_keywords={"features": []}),
+        config(max_pages=3),
     )
     assert set(fetcher.requested) == set(fetcher.pages)
     assert len(result.fetched_pages) == 3

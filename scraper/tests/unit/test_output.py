@@ -56,7 +56,7 @@ def test_export_separates_exact_cleaned_content_from_validated_summary(tmp_path)
     text = (folder / "crawl_summary.json").read_text(encoding="utf-8")
     payload = json.loads(text)
     assert CrawlExportSummary.model_validate_json(text) == summary
-    assert payload["schema_version"] == "2.0"
+    assert payload["schema_version"] == "2.1"
     assert payload["duration_seconds"] == 10.0
     assert payload["counts"]["successful"] == payload["counts"]["discovered"] == 1
     assert payload["pages"][0]["markdown_file"] == "pages/pricing.md"
@@ -66,6 +66,141 @@ def test_export_separates_exact_cleaned_content_from_validated_summary(tmp_path)
     assert "Full source" not in text and "€49" not in text
     assert "effective_config" not in payload and "metadata" not in payload["pages"][0]
     assert "duration_seconds" not in payload["pages"][0]
+
+
+def decision_result(*, trace_enabled=False):
+    from scraper.decision_models import (
+        DecisionFallback,
+        DecisionTraceRecord,
+        DecisionUsageSummary,
+        SelectionDiagnostics,
+    )
+
+    return result(
+        [
+            page(
+                selection=SelectionDiagnostics(
+                    method="ranked", relevance_score=0.9, assessment_available=True
+                )
+            )
+        ],
+        effective_config={"selection": {"trace_enabled": trace_enabled}},
+        decision_usage=DecisionUsageSummary(
+            requested_mode="llm",
+            effective_mode="structural",
+            budget_usd=0.03,
+            request_count=2,
+            reported_input_tokens=300,
+            uncertain_input_tokens=1200,
+            estimated_cost_usd=0.00015,
+            fallback_events=[DecisionFallback(reason="api_unavailable")],
+        ),
+        decision_trace=[
+            DecisionTraceRecord(
+                operation="content",
+                attempt=1,
+                request={"input": "Company evidence \u20ac49"},
+                answers=[{"type": "score", "name": "usefulness", "score": 3}],
+                duration_seconds=0.5,
+                reported_input_tokens=300,
+            ),
+            DecisionTraceRecord(
+                operation="content",
+                attempt=2,
+                request={"input": "Company evidence"},
+                duration_seconds=1.0,
+                uncertain_input_tokens=1200,
+                error_code="timeout",
+            ),
+        ],
+    )
+
+
+def test_export_includes_compact_selection_and_usage_but_trace_is_opt_in(tmp_path):
+    from scraper.output import export_competitor
+
+    source = decision_result()
+    summary = export_competitor(source, tmp_path)
+    payload = json.loads((tmp_path / "example.com/crawl_summary.json").read_text())
+    assert summary.decision_usage == source.decision_usage
+    assert payload["pages"][0]["selection"] == {
+        "method": "ranked",
+        "relevance_score": 0.9,
+        "assessment_available": True,
+    }
+    assert payload["decision_usage"]["uncertain_input_tokens"] == 1200
+    assert "decision_trace_file" not in payload
+    assert not (tmp_path / "example.com/decisions.jsonl").exists()
+    assert "Company evidence" not in str(payload)
+
+
+def test_trace_is_utf8_jsonl_and_is_published_before_completion_marker(tmp_path, monkeypatch):
+    from scraper import output
+    from scraper.decision_models import DecisionTraceRecord
+
+    original = output.os.rename
+    published = []
+
+    def record(source, target):
+        published.append(source.name)
+        return original(source, target)
+
+    monkeypatch.setattr(output.os, "rename", record)
+    source = decision_result(trace_enabled=True)
+    summary = output.export_competitor(source, tmp_path)
+    assert summary.decision_trace_file == "decisions.jsonl"
+    lines = (tmp_path / "example.com/decisions.jsonl").read_text(encoding="utf-8").splitlines()
+    assert [
+        DecisionTraceRecord.model_validate_json(line) for line in lines
+    ] == source.decision_trace
+    assert published == ["pages", "decisions.jsonl", "crawl_summary.json"]
+
+
+def test_enabled_trace_without_decisions_is_an_empty_file(tmp_path):
+    from scraper.output import export_competitor
+
+    source = decision_result(trace_enabled=True).model_copy(update={"decision_trace": []})
+    summary = export_competitor(source, tmp_path)
+    assert summary.decision_trace_file == "decisions.jsonl"
+    assert (tmp_path / "example.com/decisions.jsonl").read_bytes() == b""
+
+
+@pytest.mark.parametrize("during", ["staging", "publication"])
+def test_trace_failure_never_publishes_completion_marker(tmp_path, monkeypatch, during):
+    from scraper import output
+
+    if during == "staging":
+        original = Path.open
+
+        def fail(path, *args, **kwargs):
+            if path.name == "decisions.jsonl":
+                raise OSError("trace failure")
+            return original(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "open", fail)
+    else:
+        original = output.os.rename
+
+        def fail(source, target):
+            if source.name == "decisions.jsonl":
+                raise OSError("trace failure")
+            return original(source, target)
+
+        monkeypatch.setattr(output.os, "rename", fail)
+    with pytest.raises(OSError, match="trace failure"):
+        output.export_competitor(decision_result(trace_enabled=True), tmp_path)
+    assert not (tmp_path / "example.com/crawl_summary.json").exists()
+    assert not list(tmp_path.glob(".scraper-export-*"))
+
+
+def test_trace_reference_cannot_escape_bundle(tmp_path):
+    from scraper.models import CrawlExportSummary
+    from scraper.output import export_competitor
+
+    payload = export_competitor(result(), tmp_path).model_dump(mode="json")
+    payload["decision_trace_file"] = "../secrets.jsonl"
+    with pytest.raises(ValidationError):
+        CrawlExportSummary.model_validate(payload)
 
 
 @pytest.mark.parametrize(

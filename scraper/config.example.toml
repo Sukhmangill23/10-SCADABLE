@@ -9,8 +9,6 @@ max_sitemap_requests = 50
 max_sitemap_depth = 3
 max_sitemap_bytes = 2097152
 max_redirects = 5
-url_keyword_weight = 0.7
-title_keyword_weight = 0.3
 max_concurrency = 4
 max_concurrent_competitors = 2
 per_domain_concurrency = 1
@@ -21,11 +19,27 @@ discovery_timeout_seconds = 30.0
 max_retries = 2
 max_backoff_seconds = 30.0
 respect_robots_txt = true
+# Markdown-only cleanup: original links and rendered HTML remain available to discovery.
+markdown_remove_navigation_and_footer = true
+markdown_excluded_selectors = []
 
 [global.dynamic]
 scan_full_page = false
 max_scroll_steps = 5
 wait_timeout_seconds = 10.0
+
+# LLM selection requires OPENAI_API_KEY; use "structural" for API-free crawling.
+[global.selection]
+mode = "llm"
+# Optional research goal; omitting it uses the company-specific default.
+# objective = "Research the company's offerings, customers and observable expansion evidence."
+budget_usd = 0.03
+exploration_fraction = 0.20
+# Opt-in bounded evidence/answers in decisions.jsonl; not included in the normal summary.
+trace_enabled = false
+timeout_seconds = 15.0
+max_retries = 2
+max_concurrency = 2
 
 [[competitors]]
 homepage_url = "https://example.com/"
@@ -35,6 +49,8 @@ name = "Example"
 max_pages = 20
 # Exact extra hosts must be approved before adding them here.
 allowed_domains = []
+# Optional site-specific menu/footer CSS; lists replace the global list.
+# markdown_excluded_selectors = [".site-menu", ".site-footer"]
 
 [[competitors.overrides.dynamic_rules]]
 url_pattern = "https://example.com/careers*"

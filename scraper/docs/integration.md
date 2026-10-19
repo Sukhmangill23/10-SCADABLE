@@ -1,10 +1,13 @@
 # Reliability and integration
 
-The package runs without a backend, database or LLM. Install with Python 3.12 using
+The package runs without a backend, database or downstream analysis service. Install using
 `uv sync --locked`, then `uv run --locked python -m playwright install chromium`.
 Run the CLI from any directory after installation; use an explicit TOML/output path.
 For a custom browser location, set `PLAYWRIGHT_BROWSERS_PATH` during both installation
-and execution. No service credentials are required.
+and execution. The CLI loads `.env` from the working directory (or `--env-file`);
+the manual runner loads `scraper/.env` beside the script. Existing process environment
+values take precedence. Default LLM selection requires `OPENAI_API_KEY`; explicit
+`selection={"mode": "structural"}` needs no API credentials or model requests.
 
 Crawl4AI initializes an import-time SDK cache under the user home even when application
 page caching is disabled. In a restricted deployment, set `CRAWL4_AI_BASE_DIRECTORY`
@@ -24,14 +27,17 @@ Use the existing event loop in an importing application:
 
 ```python
 from contextlib import aclosing
-from scraper import CompetitorInput, ScraperConfig
+from scraper import CompetitorInput, ScraperConfig, SelectionConfig
+from scraper.environment import load_environment
 from scraper.service import CompetitorScraper
 
 
 async def collect(homepages, consume):
+    load_environment()  # Working directory's .env, or supply your application's path.
     service = CompetitorScraper()
     inputs = [CompetitorInput(homepage_url=url) for url in homepages]
-    async with aclosing(service.crawl_many(inputs, ScraperConfig())) as results:
+    settings = ScraperConfig(selection=SelectionConfig(budget_usd=0.03))
+    async with aclosing(service.crawl_many(inputs, settings)) as results:
         async for result in results:
             await consume(result.model_dump(mode="json"))
 ```
@@ -41,6 +47,12 @@ For one competitor, `await service.crawl(competitor, settings)` returns a valida
 `aclosing` ensures early loop exit or consumer failure cancels the remaining workers
 and closes their resources. Cancellation propagates; it does not fabricate a complete
 result for the interrupted competitor. The service does not create a nested event loop.
+Library imports and service constructors do not read `.env` implicitly: the importing
+application chooses when and where to load it. `load_environment(path, required=True)`
+rejects a missing explicit file; by default an absent file is optional, supporting
+structural mode or credentials supplied by the host environment. Missing required LLM
+credentials still fail before browser/network activity. Credential values are not logged
+or added to serialized scraper settings.
 
 The FastAPI team can await this interface or consume its exported files. Request lifetime,
 background execution and persistence belong to that application. No endpoints or database
@@ -50,7 +62,9 @@ The analysis team should select pages with `crawl_status == "success"` and use
 `cleaned_markdown` with `source_url`, `final_url`, title, category and UTC timestamp.
 `raw_markdown` retains the full SDK source Markdown; optional `filtered_markdown` may
 omit useful details. Failed pages may retain partial source content and an error message;
-decide explicitly whether to analyze them. Categories are keyword labels, not LLM judgments.
+decide explicitly whether to analyze them. Categories consume content-based Decisions
+assessments and use `other` when unavailable. Research selection is separate from downstream
+company analysis; see [decisions.md](decisions.md).
 
 ## Exporting and reading results
 
@@ -65,7 +79,8 @@ from scraper.output import export_competitor
 ```
 
 Each website has a `crawl_summary.json` and relative content-only Markdown files.
-The file index has schema `2.0`; full in-memory results retain their existing schema `1.0`.
+The file index uses schema `2.1`; full in-memory results use schema `1.1` and include
+typed assessments, selection diagnostics, usage, and optional in-memory decision traces.
 Read and validate the index, then follow its Markdown references:
 
 ```python
@@ -79,7 +94,30 @@ for page in summary.pages:
         content = (index.parent / page.markdown_file).read_text(encoding="utf-8")
         # Supply content, page.url, page.title, page.category and page.crawled_at
         # to the application's next processing step.
+
+if summary.decision_usage:
+    usage = summary.decision_usage
+    print(usage.effective_mode, usage.estimated_cost_usd, usage.fallback_events)
 ```
+
+`page.selection` exposes method, available relevance score and assessment availability.
+It describes why the application fetched that page; it is not verified company analysis.
+The Python page's `content_assessment` retains independent usefulness/novelty/category
+results and question-level issues. Successful pages remain available regardless of score.
+
+For opt-in traces, set `selection.trace_enabled=True` before crawling, then read the
+fixed relative `summary.decision_trace_file` if present. Each UTF-8 JSONL line validates
+as `scraper.decision_models.DecisionTraceRecord`. It contains bounded request evidence,
+typed rubric answers, timings, token accounting and sanitized error codes; keys and
+authorization headers are absent. This trace is published before the summary marker.
+An enabled trace may be empty. Disabled tracing never exports the result's trace list.
+
+`decision_usage` distinguishes reported input tokens from uncertain reservations for
+dispatched requests without usage. Estimated cost is not a guaranteed billing ceiling.
+Budget/transient API fallback records a warning and effective structural mode without
+making otherwise successful collection fail. Authentication/access errors stop the
+affected competitor and retain already-collected pages. Missing credentials fail before
+browser/network activity. See [migration.md](migration.md) for strict-reader changes.
 
 `CrawlExportSummary` validates counts, unique references and safe relative Markdown paths.
 Its JSON contains no content bodies, raw SDK metadata or full effective configuration.
@@ -158,8 +196,8 @@ when exporting. Use a fresh root such as `--output output/run-002` for repeat ru
 
 All page content and JSON are UTF-8. Files are written to an owned temporary directory
 under the output root before publication. The exporter reserves the final directory
-with an exclusive mkdir, moves its pages and publishes the index last. A staging error
-removes its temporary files. A publication error or forced termination may leave an
+with an exclusive mkdir, moves its pages and optional trace, and publishes the index last.
+A staging error removes its temporary files. A publication error or forced termination may leave an
 incomplete folder without an index, or a hidden staging directory after a hard kill.
 Require `crawl_summary.json` before accepting the export and use a fresh output root
 instead of replacing an incomplete folder. This is summary-last publication, not a

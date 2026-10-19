@@ -1,6 +1,7 @@
 """Network-free traversal rules, independent of the pending sitemap implementation."""
 
 from scraper import ScraperConfig
+from scraper.decision_models import CandidateScore
 from scraper.discovery.traversal import UrlFrontier
 
 
@@ -17,6 +18,18 @@ def test_best_first_prioritizes_known_relevant_candidates_after_homepage():
     frontier = UrlFrontier("https://example.com/", ScraperConfig(max_pages=3))
     frontier.discover("/misc", parent_url="https://example.com/", depth=1)
     frontier.discover("/pricing", parent_url="https://example.com/", depth=1)
+    candidates = frontier.evaluation_candidates()
+    frontier.apply_scores(
+        candidates,
+        [
+            CandidateScore(
+                candidate_id=item.candidate_id,
+                score=0.9 if str(item.url).endswith("pricing") else 0.1,
+                status="scored",
+            )
+            for item in candidates
+        ],
+    )
     assert drain(frontier) == [
         "https://example.com/",
         "https://example.com/pricing",
@@ -98,10 +111,11 @@ def test_discovery_limit_counts_unique_records_including_skipped_urls():
     assert frontier.records[1].disposition == "skipped"
 
 
-def test_new_title_can_make_an_opaque_candidate_relevant_without_a_probe():
-    frontier = UrlFrontier("https://example.com/", ScraperConfig(minimum_relevance_score=0.01))
+def test_new_title_is_available_to_decisions_without_a_probe():
+    frontier = UrlFrontier("https://example.com/", ScraperConfig())
     frontier.discover("/a1b2", depth=1)
     frontier.discover("/a1b2", depth=1, title="Pricing plans")
+    assert frontier.evaluation_candidates()[0].observations[0].anchor_text == "Pricing plans"
     assert drain(frontier) == ["https://example.com/", "https://example.com/a1b2"]
 
 

@@ -133,7 +133,7 @@ def test_result_derives_counts_and_round_trips_without_losing_url_dispositions()
         ],
     )
     payload = json.loads(result.model_dump_json())
-    assert payload["schema_version"] == "1.0"
+    assert payload["schema_version"] == "1.1"
     assert payload["summary"] == {
         "successful": 1,
         "failed": 0,

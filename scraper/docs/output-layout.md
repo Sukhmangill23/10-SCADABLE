@@ -9,6 +9,7 @@ to page content. Failed pages do not create Markdown files.
 output/run-001/
   competitor-a.example/
     crawl_summary.json
+    decisions.jsonl          # only when tracing is enabled
     pages/
       index.md
       pricing.md
@@ -54,10 +55,14 @@ The summary's relative paths always use `/`, on both Windows and POSIX.
 
 ## Summary schema and relationships
 
-`CrawlExportSummary` is schema `2.0`. It contains competitor identity, UTC start/finish
+`CrawlExportSummary` is schema `2.1`. It contains competitor identity, UTC start/finish
 timestamps, total duration, run status/completion reason, counts, attempted `pages` and
 `uncrawled_urls`. Warnings and `discovery_truncated` appear when relevant. Empty pending
 counts and unavailable optional metadata are omitted.
+It also carries compact `decision_usage` when supplied by the provider and
+`pages[].selection` diagnostics when available. See [decisions.md](decisions.md) for
+model/prompt version, reported versus uncertain input tokens, cost estimate and fallback
+events. `decision_trace_file` appears only for opt-in trace export.
 
 A page entry corresponds to its Markdown file, for example:
 
@@ -75,7 +80,12 @@ A page entry corresponds to its Markdown file, for example:
   "depth": 1,
   "depth_basis": "link",
   "discovery_sources": ["internal_link"],
-  "discovered_from": ["https://competitor-a.example/"]
+  "discovered_from": ["https://competitor-a.example/"],
+  "selection": {
+    "method": "ranked",
+    "relevance_score": 0.9,
+    "assessment_available": true
+  }
 }
 ```
 
@@ -131,15 +141,15 @@ at publication. Use `--output output/run-002` for a repeat run. Other competitor
 unrelated files in the root can coexist and are not changed.
 
 All content is staged in a temporary directory under the same root. An exclusive mkdir
-reserves the final competitor directory; pages move first and `crawl_summary.json` moves
-last. The summary is the completion marker. A write/staging error cleans the owned
-temporary directory. An interruption/publication failure can leave an incomplete folder
+reserves the final competitor directory; pages and optional `decisions.jsonl` move first
+and `crawl_summary.json` moves last. The summary is the completion marker. A write/staging
+error cleans the owned temporary directory. An interruption/publication failure can leave an incomplete folder
 without a summary; a hard process kill can leave a hidden staging folder. Consumers
 should require the index before accepting an export and use a fresh root for retries.
 This is not a directory-wide atomic transaction or a power-loss durability guarantee.
 
 The old JSON/JSONL writers and record models were removed, along with `--format`,
 `--overwrite` and stdout-export CLI options. Existing generated data is not deleted or
-automatically converted. The Python `CompetitorCrawlResult` interface and its full
-in-memory content remain unchanged. See [integration.md](integration.md) for validated
-index loading and reading referenced files without a backend, database or LLM.
+automatically converted. The Python `CompetitorCrawlResult` retains full
+in-memory content with additive schema `1.1` diagnostics. See [integration.md](integration.md)
+for validated index loading and reading referenced files without a backend or database.

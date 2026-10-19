@@ -1,23 +1,23 @@
 # Competitor scraper
 
 Standalone Python package for discovering and collecting source-linked competitor content.
-It is independent of the backend, database, LLM and frontend.
+It runs independently of the backend, database, downstream analysis and frontend.
 
-**Current status: all four stages implemented and approved.** Sitemap/link discovery,
-BestFirst/BFS traversal, Crawl4AI rendering, conservative extraction, Markdown page exports
-and the multiple-homepage CLI are available, with bounded retries, resource cleanup,
-concise JSON indexes and offline/browser verification. See the
-[integration guide](docs/integration.md) for reliability and downstream consumption.
-The approved three-page live crawl and packaging checks are recorded in the
-[validation report](docs/validation.md).
-Start with the [quickstart guide](docs/quickstart.md) for setup, manual website tests
-and inspecting the output.
+Start with the [architecture and integration guide](docs/SCRAPER_ARCHITECTURE.md) for the
+component flow, Decisions scoring, Python interfaces and backend/LLM handoff. Use the
+[quickstart](docs/quickstart.md) for setup, editable manual tests and inspecting outputs.
 
-The Python package and CLI are named `scraper`. After upgrading an existing checkout,
-run `uv sync --locked`; update imports to `from scraper import ...` and commands to
-`uv run --locked scraper ...`. Browser tests use `SCRAPER_BROWSER_TESTS=1`.
+Provide homepage URLs. The scraper combines sitemap and internal-link discovery,
+BestFirst/exploration or BFS, Crawl4AI rendering, and conservative Markdown extraction.
+Each website produces cleaned page files and a compact `crawl_summary.json` index.
+Existing output directories are never overwritten.
+
+LLM selection is the default. Set `OPENAI_API_KEY` in `.env` (copy [.env.example](.env.example)
+if needed), or select `--selection-mode structural` for API-free crawling. There are no
+HTTP endpoints or downstream company-analysis prompts in this package.
 
 ## Setup and checks
+
 
 Use Python 3.12 and [uv](https://docs.astral.sh/uv/). From the repository root:
 
@@ -39,8 +39,10 @@ python -m venv .venv
 ```
 
 The pip path installs runtime dependencies; uv is the supported way to reproduce the
-locked development environment. No environment variables, service credentials or API
-keys are needed. Python 3.12 is the supported baseline for this first release.
+locked development environment. Offline tests and structural crawling need no API key;
+LLM-guided crawling requires `OPENAI_API_KEY`. Python 3.12 is the supported baseline.
+No terminal key assignment is needed when using `.env`. Direct Python consumers can
+call `scraper.environment.load_environment(path)` during application startup.
 
 The default tests do not require browser binaries. Real crawling requires Chromium.
 On Linux, Playwright may also require OS libraries. See the official
@@ -48,161 +50,30 @@ On Linux, Playwright may also require OS libraries. See the official
 
 Crawl4AI is pinned to 0.9.5. Pydantic provides validated, JSON-compatible contracts;
 `tomllib` and the CLI's `argparse` come from Python. Crawl4AI itself brings
-LLM-related transitive dependencies; this package does not configure or call an LLM.
+LLM-related transitive dependencies. OpenAI is now also a direct dependency for the separate
+Decisions adapter used by adaptive traversal. Lxml supplies network-free HTML context parsing.
 
-## Review the configuration
+## Documentation
 
-```python
-from scraper import ScraperConfig, load_config, resolve_config
+| Guide | Contents |
+| --- | --- |
+| [Architecture and integration](docs/SCRAPER_ARCHITECTURE.md) | Start here: workflow, Decisions, Python/FastAPI integration, settings and limits |
+| [Quickstart](docs/quickstart.md) | Installation, manual runner, CLI and output inspection |
+| [Decisions](docs/decisions.md) | Prompts, adaptive selection, credentials, usage and fallback |
+| [Discovery](docs/discovery.md) | URL policy, frontier, sitemap and robots behavior |
+| [Extraction](docs/extraction-and-output.md) | Browser interactions, Markdown cleanup and categorization |
+| [Output layout](docs/output-layout.md) | File naming, schema, provenance and publication |
+| [Integration and reliability](docs/integration.md) | Async consumers, retries, deadlines and cancellation |
+| [Migration](docs/migration.md) | Removed keyword settings and schema changes |
+| [Selection verification](docs/decision-validation.md) | Synthetic scenarios and live comparison procedure |
 
-project = load_config("config.example.toml")
-cli_overrides = ScraperConfig(max_pages=5)
+## Project files
 
-for competitor in project.competitors:
-    settings = resolve_config(
-        project.global_settings,
-        competitor.overrides,
-        cli_overrides,
-    )
-    print(competitor.display_name, competitor.homepage_url, settings.max_pages)
-```
+- `manual_test.py`: edit websites, settings and output location, then run with the project interpreter.
+- `config.example.toml`: global settings and per-competitor overrides.
+- `src/`: installed as the `scraper` Python package; `service.py` is the async entry point.
+- `tests/`: mocked/offline tests and opt-in Chromium tests using loopback servers.
+- `output/`: ignored generated bundles and diagnostics. Use a fresh run directory each time.
 
-Precedence is defaults < global settings < competitor overrides < explicit CLI overrides.
-Only explicitly supplied fields override lower layers. Nested maps merge; lists replace,
-including empty lists. Use `resolve_config()` rather than Pydantic's unvalidated
-`model_copy(update=...)`. Competitor override serialization remains sparse, so saving and
-reloading input JSON does not turn omitted settings into explicit overrides.
-
-Unknown options, invalid limits, credentials embedded in URLs and subpage inputs are
-rejected. Inputs must include `http://` or `https://`. An omitted competitor name falls
-back to the homepage hostname with `www.` removed.
-
-See [config.example.toml](config.example.toml) for two competitor inputs and a dynamic-page
-rule. Its example domains are not live test targets. Global concurrency settings are
-shared ceilings for `crawl_many()`; individual competitors cannot raise those ceilings.
-
-## Run the scraper
-
-Replace the placeholders with competitor homepages you are authorized to crawl:
-
-```powershell
-uv run --locked scraper https://competitor-a.example https://competitor-b.example --output output/run-001
-uv run --locked scraper --config config.toml --output output/run-002
-uv run --locked python -m scraper --help
-```
-
-Positional homepages select matching competitors from TOML, preserving their names and
-overrides; unmatched homepages use global defaults. With no positional URLs, all TOML
-competitors run. `--max-pages`, `--max-depth`, `--strategy` and `--max-concurrency` override
-configuration. `--output` is a directory (default `output/`). Each website receives
-`<hostname>/crawl_summary.json` and content-only Markdown under `<hostname>/pages/`.
-Existing competitor directories are refused before crawling; choose a fresh output
-directory for another run. Diagnostics and saved index paths go to stderr.
-Exit codes: 0 successful page collection,
-1 at least one partial/failed competitor, 2 input/output error, 130 interruption. Check
-`completion_reason` and deferred URLs to assess coverage even when the exit code is 0.
-
-For an importing application, use the asynchronous service directly:
-
-```python
-from scraper import CompetitorInput, ScraperConfig
-from scraper.service import CompetitorScraper
-
-
-async def collect(homepages: list[str]):
-    scraper = CompetitorScraper()
-    inputs = [CompetitorInput(homepage_url=url) for url in homepages]
-    return [result async for result in scraper.crawl_many(inputs, ScraperConfig())]
-```
-
-No nested event loop, database, API server or LLM is required. See
-[extraction guide](docs/extraction-and-output.md) for dynamic rules and streaming integration.
-
-## Data contracts
-
-```python
-from datetime import UTC, datetime
-from scraper import ScrapedPage
-
-page = ScrapedPage(
-    competitor_name="Example",
-    homepage_url="https://example.com/",
-    source_url="https://example.com/pricing",
-    final_url="https://example.com/pricing",
-    page_title="Pricing",
-    page_category="pricing",
-    crawl_timestamp=datetime.now(UTC),
-    crawl_status="success",
-    http_status=200,
-    raw_markdown="# Pricing\n\nPro: $49/month",
-    filtered_markdown="# Pricing\n\nPro: $49/month",
-    cleaned_markdown="# Pricing\n\nPro: $49/month",
-)
-print(page.model_dump_json(indent=2))
-restored = ScrapedPage.model_validate_json(page.model_dump_json())
-```
-
-`raw_markdown` preserves the full Markdown generated from the rendered source HTML.
-`filtered_markdown` is the SDK's optional filtered version; `cleaned_markdown` is the
-application's conservative normalized version. These fields are not interchangeable.
-All timestamps require a timezone and serialize in UTC. Metadata must contain JSON values.
-`source_url` is the requested source; `final_url` records redirects.
-
-`CompetitorCrawlResult` includes schema version `1.0`, effective settings, page outcomes,
-observed URL dispositions, derived counts, timing, warnings and the completion reason.
-Failed pages require an error message and may preserve partial content. Skipped URLs are
-registry entries, not pretend fetch results. Discovered/skipped/deferred/external URL
-records preserve reasons and provenance. A discovery cap is reported explicitly.
-
-Models support `model_dump(mode="json")`, `model_dump_json()` and `model_json_schema()`.
-The file export is schema `2.0`: `CrawlExportSummary` contains concise counts, timing,
-page references and discovery relationships. Each successful page writes its exact
-`cleaned_markdown` to a relative `.md` path. JSON contains no page bodies, response headers
-or full configuration. Failed pages have an error and no Markdown file.
-
-```python
-from pathlib import Path
-from scraper import CrawlExportSummary
-from scraper.output import export_competitor
-
-# result = await CompetitorScraper().crawl(competitor, settings)
-# summary = export_competitor(result, "output/run-003")
-index = Path("output/run-001/competitor-a.example/crawl_summary.json")
-summary = CrawlExportSummary.model_validate_json(index.read_text(encoding="utf-8"))
-for page in summary.pages:
-    if page.status == "success":
-        content = (index.parent / page.markdown_file).read_text(encoding="utf-8")
-```
-
-The in-memory `CompetitorCrawlResult` stays unchanged and retains full source/filtered
-content for direct Python consumers. Legacy JSON/JSONL file writers, `--format`,
-`--overwrite` and stdout exports were removed. Existing generated files are preserved.
-See [output layout](docs/output-layout.md) for naming, relationships and publication rules.
-
-## Boundaries and tests
-
-- [models.py](src/models.py): application-owned fetch, result and output-record models.
-- [config.py](src/config.py): validated settings, inputs and TOML resolution.
-- [interfaces.py](src/interfaces.py): async component contracts.
-- [crawl4ai_adapter.py](src/crawl4ai_adapter.py): verified SDK configuration
-  factories, with lazy SDK imports and no browser creation.
-- [browser.py](src/browser.py): rendering, guarded document requests and dynamic rules.
-- [extraction.py](src/extraction.py): cleaning and keyword categories without network I/O.
-- [service.py](src/service.py): reusable async service and shared page concurrency.
-- [reliability.py](src/reliability.py): transient failure policy and bounded retry delays.
-- [output.py](src/output.py) and [cli.py](src/cli.py): serialization and standalone execution.
-- [architecture.md](docs/architecture.md): approved policies, flow and stage boundaries.
-- [integration.md](docs/integration.md): deadlines, interruption behavior and consumer examples.
-- [tests](tests): fixture-based workflow checks and opt-in loopback browser tests.
-
-The public package and interface imports do not import Crawl4AI. Default tests use
-synthetic fixtures and mocked HTTP/rendering boundaries. Opt-in tests launch Chromium
-against loopback fixture servers only; no competitor website or LLM is contacted:
-
-```powershell
-$env:SCRAPER_BROWSER_TESTS = "1"
-uv run --locked pytest tests/integration/test_browser_local.py -q
-```
-
-Generated output, environments, caches, build artifacts and secrets are ignored by Git.
-Each stage is reviewed and explicitly approved before its commit; no remote push is automatic.
+Source dependencies and reproducible versions are defined in `pyproject.toml` and `uv.lock`.
+Generated output, environments, caches, build artifacts and credentials are ignored by Git.

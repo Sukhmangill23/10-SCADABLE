@@ -22,7 +22,11 @@ def response(url, status=200, **kwargs):
 
 def settings(**kwargs):
     return ScraperConfig(
-        max_pages=1, max_backoff_seconds=0.001, request_delay_seconds=(0.0, 0.0), **kwargs
+        selection={"mode": "structural"},
+        max_pages=1,
+        max_backoff_seconds=0.001,
+        request_delay_seconds=(0.0, 0.0),
+        **kwargs,
     )
 
 
@@ -158,7 +162,9 @@ async def test_one_extraction_error_preserves_other_pages_and_source():
     scraper = service(Fetcher(operation), extractor=Extractor())
     result = await scraper.crawl(
         CompetitorInput(homepage_url="https://example.com"),
-        ScraperConfig(max_pages=3, request_delay_seconds=(0.0, 0.0)),
+        ScraperConfig(
+            selection={"mode": "structural"}, max_pages=3, request_delay_seconds=(0.0, 0.0)
+        ),
     )
     assert result.summary.successful == 2
     assert result.summary.failed == 1
@@ -267,7 +273,9 @@ async def test_long_retry_after_prevents_requests_to_other_pages_on_same_host():
     fetcher = Fetcher(operation)
     result = await service(fetcher).crawl(
         CompetitorInput(homepage_url="https://example.com"),
-        ScraperConfig(max_pages=3, request_delay_seconds=(0.0, 0.0)),
+        ScraperConfig(
+            selection={"mode": "structural"}, max_pages=3, request_delay_seconds=(0.0, 0.0)
+        ),
     )
     assert fetcher.calls == ["https://example.com/", "https://example.com/pricing"]
     assert result.summary.successful == 1

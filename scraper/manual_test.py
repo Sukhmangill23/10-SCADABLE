@@ -7,7 +7,8 @@ from contextlib import aclosing
 from datetime import UTC, datetime
 from pathlib import Path
 
-from scraper import CompetitorInput, ScraperConfig
+from scraper import CompetitorInput, ScraperConfig, SelectionConfig
+from scraper.environment import load_environment
 from scraper.output import competitor_directory, export_competitor
 from scraper.service import CompetitorScraper
 
@@ -23,24 +24,41 @@ WEBSITES = [
 
 # EDIT: these are the same settings as the small manual CLI test.
 SETTINGS = ScraperConfig(
-    max_pages=3,
-    max_depth=5,
+    # EDIT: "llm" reads OPENAI_API_KEY from .env; "structural" makes no OpenAI calls.
+    selection=SelectionConfig(
+        mode="llm",
+        objective=(
+            "Understand the company's offerings, customers, differentiation, commercial "
+            "activity, and observable evidence of expansion or contraction. Favor "
+            "company-specific evidence over general industry articles. Collect evidence "
+            "rather than predicting growth."
+        ),
+        budget_usd=0.03,  # Estimated per website; not a guaranteed billing ceiling.
+        trace_enabled=False,  # True saves bounded evidence/answers in decisions.jsonl.
+    ),
+    max_pages=10,
+    max_depth=3,
     max_concurrency=3,
     max_concurrent_competitors=3,
     per_domain_concurrency=1,
     request_delay_seconds=(2.0, 2.0),
     max_sitemap_documents=3,
     max_sitemap_requests=8,
+    markdown_remove_navigation_and_footer=True,
+    markdown_excluded_selectors=[],  # Optional actual site selectors, e.g. [".site-menu"].
 )
 
-# EDIT if needed. A new timestamped folder makes repeated runs easy to compare.
-OUTPUT_DIRECTORY = PROJECT_DIRECTORY / "output" / f"manual-{datetime.now(UTC):%Y%m%d-%H%M%S-%f}"
+# EDIT if needed. Readable UTC timestamps keep runs sorted by date and time.
+OUTPUT_DIRECTORY = (
+    PROJECT_DIRECTORY / "output" / f"manual-{datetime.now(UTC):%Y-%m-%d_%H-%M-%S}_UTC"
+)
 
 logger = logging.getLogger(__name__)
 
 
 def configure_runtime() -> None:
     """Use the project's writable SDK/browser caches while respecting explicit env settings."""
+    load_environment(PROJECT_DIRECTORY / ".env")
     os.environ.setdefault("CRAWL4_AI_BASE_DIRECTORY", str(PROJECT_DIRECTORY / ".uv-cache"))
     browser_cache = PROJECT_DIRECTORY / ".uv-cache" / "playwright"
     if browser_cache.is_dir():
@@ -75,6 +93,18 @@ async def main() -> int:
                 summary.counts.failed,
                 index,
             )
+            if summary.decision_usage:
+                usage = summary.decision_usage
+                logger.info(
+                    "Selection %s -> %s; estimated $%.6f (%d reported, %d uncertain tokens)",
+                    usage.requested_mode,
+                    usage.effective_mode,
+                    usage.estimated_cost_usd,
+                    usage.reported_input_tokens,
+                    usage.uncertain_input_tokens,
+                )
+            if summary.decision_trace_file:
+                logger.info("Decision trace: %s", index.parent / summary.decision_trace_file)
     return 1 if failed else 0
 
 

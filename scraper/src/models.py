@@ -6,6 +6,13 @@ from typing import Annotated, Literal, Self
 from pydantic import Field, JsonValue, field_validator, model_validator
 
 from .config import CompetitorInput, NonNegativeInt, PositiveInt, ScraperConfig
+from .decision_models import (
+    CandidateObservation,
+    DecisionTraceRecord,
+    DecisionUsageSummary,
+    PageAssessment,
+    SelectionDiagnostics,
+)
 from .types import (
     ContractModel,
     CrawlStatus,
@@ -46,6 +53,7 @@ class DiscoveryEvidence(ContractModel):
     parent_url: WebUrl | None = None
     depth: NonNegativeInt | None = None
     title: str = ""
+    observation: CandidateObservation | None = None
 
 
 class DiscoveredUrl(ContractModel):
@@ -56,7 +64,10 @@ class DiscoveredUrl(ContractModel):
     parent_url: WebUrl | None = None
     depth: NonNegativeInt | None = None
     depth_basis: Literal["homepage", "link", "sitemap_seed"] = "link"
-    relevance_score: Annotated[float, Field(ge=0, le=1)] = 0.0
+    relevance_score: Annotated[float, Field(ge=0, le=1)] | None = None
+    selection_method: Literal["homepage", "ranked", "exploration", "structural", "bfs"] | None = (
+        None
+    )
     disposition: UrlDisposition = UrlDisposition.PENDING
     reason: NonEmptyText | None = None
     discovery_count: PositiveInt = 1
@@ -87,6 +98,8 @@ class PageContent(ContractModel):
     attempt_count: PositiveInt = 1
     raw_markdown: str = ""
     filtered_markdown: str | None = None
+    content_assessment: PageAssessment | None = None
+    selection: SelectionDiagnostics | None = None
     metadata: dict[str, JsonValue] = Field(default_factory=dict)
     error_message: NonEmptyText | None = None
 
@@ -135,7 +148,7 @@ class CrawlSummary(ContractModel):
 class CompetitorSummary(ContractModel):
     """Shared in-memory crawl accounting and provenance."""
 
-    schema_version: Literal["1.0"] = "1.0"
+    schema_version: Literal["1.1"] = "1.1"
     competitor_name: NonEmptyText
     homepage_url: HomepageUrl
     started_at: UtcTimestamp
@@ -146,6 +159,7 @@ class CompetitorSummary(ContractModel):
     discovered_urls: list[DiscoveredUrl] = Field(default_factory=list)
     discovery_truncated: bool = False
     warnings: list[NonEmptyText] = Field(default_factory=list)
+    decision_usage: DecisionUsageSummary | None = None
     summary: CrawlSummary = Field(default_factory=CrawlSummary)
 
     @model_validator(mode="after")
@@ -157,6 +171,7 @@ class CompetitorSummary(ContractModel):
 
 class CompetitorCrawlResult(CompetitorSummary):
     pages: list[ScrapedPage] = Field(default_factory=list)
+    decision_trace: list[DecisionTraceRecord] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def validate_result_and_derive_summary(self) -> Self:
@@ -210,6 +225,7 @@ class ExportedPage(ExportDiscovery):
     error: NonEmptyText | None = None
     attempt_count: PositiveInt | None = None
     retry_stop_reason: str | None = None
+    selection: SelectionDiagnostics | None = None
 
     @field_validator("markdown_file")
     @classmethod
@@ -252,7 +268,7 @@ class UncrawledUrl(ExportDiscovery):
 class CrawlExportSummary(ContractModel):
     """Versioned, content-free index for one competitor's Markdown export."""
 
-    schema_version: Literal["2.0"] = "2.0"
+    schema_version: Literal["2.1"] = "2.1"
     competitor_name: NonEmptyText
     homepage_url: HomepageUrl
     started_at: UtcTimestamp
@@ -265,6 +281,8 @@ class CrawlExportSummary(ContractModel):
     uncrawled_urls: list[UncrawledUrl] = Field(default_factory=list)
     discovery_truncated: bool = False
     warnings: list[NonEmptyText] = Field(default_factory=list)
+    decision_usage: DecisionUsageSummary | None = None
+    decision_trace_file: Literal["decisions.jsonl"] | None = None
 
     @model_validator(mode="after")
     def consistent_index(self) -> Self:

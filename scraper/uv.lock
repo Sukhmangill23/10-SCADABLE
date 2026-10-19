@@ -1382,11 +1382,15 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "crawl4ai" },
+    { name = "cssselect" },
     { name = "defusedxml" },
     { name = "httpx" },
+    { name = "lxml" },
+    { name = "openai" },
     { name = "playwright" },
     { name = "protego" },
     { name = "pydantic" },
+    { name = "python-dotenv" },
     { name = "rich" },
 ]
 
@@ -1400,11 +1404,15 @@ dev = [
 [package.metadata]
 requires-dist = [
     { name = "crawl4ai", specifier = "==0.9.5" },
+    { name = "cssselect", specifier = ">=1.2,<2" },
     { name = "defusedxml", specifier = ">=0.7,<1" },
     { name = "httpx", specifier = ">=0.28,<1" },
+    { name = "lxml", specifier = ">=5.3,<7" },
+    { name = "openai", specifier = ">=3.26,<4" },
     { name = "playwright", specifier = ">=1.64,<2" },
     { name = "protego", specifier = ">=0.5,<1" },
     { name = "pydantic", specifier = ">=2.12,<3" },
+    { name = "python-dotenv", specifier = ">=1.2,<2" },
     { name = "rich", specifier = ">=14,<16" },
 ]
 

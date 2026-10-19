@@ -188,6 +188,7 @@ def _summary(result: CompetitorCrawlResult, paths: dict[str, PurePosixPath]) -> 
                 markdown_file=str(paths[url]) if not failed else None,
                 title=page.page_title,
                 category=page.page_category,
+                selection=page.selection,
                 word_count=len(re.findall(r"\b\w+(?:['’-]\w+)*\b", page.cleaned_markdown))
                 if not failed
                 else 0,
@@ -239,6 +240,10 @@ def _summary(result: CompetitorCrawlResult, paths: dict[str, PurePosixPath]) -> 
         uncrawled_urls=uncrawled,
         discovery_truncated=result.discovery_truncated,
         warnings=[_compact_error(value) for value in result.warnings],
+        decision_usage=result.decision_usage,
+        decision_trace_file="decisions.jsonl"
+        if result.effective_config.selection.trace_enabled
+        else None,
     )
 
 
@@ -267,6 +272,12 @@ def export_competitor(
                 path = stage / paths[str(page.source_url)]
                 path.parent.mkdir(parents=True, exist_ok=True)
                 path.write_text(page.cleaned_markdown, encoding="utf-8", newline="\n")
+        if summary.decision_trace_file:
+            with (stage / summary.decision_trace_file).open(
+                "w", encoding="utf-8", newline="\n"
+            ) as trace:
+                for record in result.decision_trace:
+                    trace.write(record.model_dump_json(exclude_none=True) + "\n")
         payload = summary.model_dump(mode="json", exclude_none=True)
         for key in ("warnings", "discovery_truncated"):
             if not payload[key]:
@@ -280,5 +291,7 @@ def export_competitor(
         # directory created during staging is never replaced by a rename.
         target.mkdir()
         os.rename(stage / "pages", target / "pages")
+        if summary.decision_trace_file:
+            os.rename(stage / summary.decision_trace_file, target / summary.decision_trace_file)
         os.rename(stage / "crawl_summary.json", target / "crawl_summary.json")
     return summary

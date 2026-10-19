@@ -1,4 +1,5 @@
 import importlib.util
+import os
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,33 @@ def load_runner():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def test_manual_runner_exposes_selection_controls_without_credentials():
+    runner = load_runner()
+    # Edit selection settings beside the existing crawl limits; no config file needed.
+    assert "selection" in runner.SETTINGS.model_fields_set
+    assert {"mode", "objective", "budget_usd", "trace_enabled"} <= (
+        runner.SETTINGS.selection.model_fields_set
+    )
+    assert runner.SETTINGS.selection.mode == "llm"
+    assert runner.SETTINGS.selection.budget_usd == 0.03
+    assert runner.SETTINGS.selection.trace_enabled is False
+    assert "api_key" not in runner.SETTINGS.model_dump_json()
+
+
+def test_manual_runner_loads_project_dotenv_from_any_working_directory(tmp_path, monkeypatch):
+    runner = load_runner()
+    project = tmp_path / "project"
+    project.mkdir()
+    (project / ".env").write_text("OPENAI_API_KEY=runner-fixture-key\n", encoding="utf-8")
+    monkeypatch.setattr(runner, "PROJECT_DIRECTORY", project)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.delenv("PYTHON_DOTENV_DISABLED", raising=False)
+    monkeypatch.setenv("OPENAI_API_KEY", "")
+    monkeypatch.delenv("OPENAI_API_KEY")
+    runner.configure_runtime()
+    assert os.environ["OPENAI_API_KEY"] == "runner-fixture-key"
 
 
 async def test_manual_runner_uses_editable_settings_and_exports_each_website(tmp_path, monkeypatch):
