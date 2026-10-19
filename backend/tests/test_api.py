@@ -403,3 +403,19 @@ def test_unexpected_error_returns_clean_500(client, monkeypatch):
     response = client.get("/competitors")
     assert response.status_code == 500
     assert response.json() == {"detail": "Internal server error."}
+
+
+def test_get_swot_matches_overview(client, researched):
+    assert client.get("/swot").json() == client.get("/swot/overview").json()
+
+
+def test_get_swot_for_one_competitor(client, researched, store):
+    other = store.add_competitor("Drata", "https://drata.com")
+    run = store.add_run(other, ResearchStatus.COMPLETED, analysis={"summary": "x"})
+    store.add_entry(run, "threat", "Drata threat", "https://drata.com")
+
+    body = client.get(f"/swot?competitorId={other.id}").json()
+    assert [f["text"] for f in body["threats"]] == ["Drata threat"]
+    assert body["strengths"] == []
+    assert client.get("/swot?competitorId=999").status_code == 404
+    assert client.get("/swot?competitorId=0").status_code == 422
