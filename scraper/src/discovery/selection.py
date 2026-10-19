@@ -19,7 +19,7 @@ class AdaptiveSelection:
         self.frontier.set_mode(mode)
         return mode
 
-    async def rank_if_needed(self) -> None:
+    async def rank_if_needed() -> None:
         if self._mode() != "llm" or self.settings.strategy == "bfs":
             return
         if self.frontier.attempted_pages >= self.settings.max_pages:

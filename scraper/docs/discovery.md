@@ -1,4 +1,4 @@
-# Stage 2: discovery and traversal
+# Discovery and traversal
 
 Implemented under `src/discovery/`. Files remain directly under `src/`; setuptools maps
 the directory to the installed `scraper` package. No source files were moved.
@@ -117,9 +117,8 @@ only HTTP and rendering are replaced with synthetic fixtures. Tests cover both t
 strategies, source preservation, deduplication, shorter paths, page/depth/discovery limits,
 external hosts, robots failures, redirects, XML/gzip bounds, concurrency and cancellation.
 No browser or live competitor website is contacted by these default checks. Live testing
-requires explicit approval. The original discovery stage was committed as `1d8e50e`;
-the OpenAI-guided discovery update was committed as `f97af15`. Its subsequent export and
-documentation stage is awaiting review; see [decision-validation.md](decision-validation.md).
+requires explicit approval. See [decision-validation.md](decision-validation.md) for
+adaptive-selection fixtures and the live comparison procedure.
 See [integration.md](integration.md) for the service retry and shared pacing policy.
 
 References: [Crawl4AI deep crawling](https://docs.crawl4ai.com/core/deep-crawling/),

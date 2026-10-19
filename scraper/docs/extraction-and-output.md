@@ -1,4 +1,4 @@
-# Stage 3: rendering, extraction and output
+# Rendering, extraction and output
 
 ## Data flow and component API
 
@@ -195,7 +195,7 @@ network permission in its test-only subclass; production does not grant it.
 The service implements bounded transient retries and records actual `attempt_count` plus
 per-attempt diagnostics. Capacity and rate waits have a separate deadline from rendering.
 See [integration.md](integration.md) for reliability, failure classifications and consumer
-examples. Stage 3 was approved and committed as `f801e62`; Stage 4 is also approved.
+examples.
 
 Official references: [Markdown generation](https://docs.crawl4ai.com/core/markdown-generation/),
 [browser hooks](https://docs.crawl4ai.com/advanced/hooks-auth/),

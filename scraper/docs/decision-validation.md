@@ -2,7 +2,7 @@
 
 ## Offline scope
 
-The Stage 3 suite exercises the real service, frontier, prompt builder, installed OpenAI
+The adaptive-selection suite exercises the real service, frontier, prompt builder, installed OpenAI
 SDK adapter and bundle exporter. Website HTTP/rendering and OpenAI HTTP are mocked in
 `tests/integration/test_decision_workflow.py`. The additional Chromium case in
 `tests/integration/test_browser_local.py` renders a loopback website while keeping OpenAI
@@ -47,30 +47,7 @@ $env:SCRAPER_BROWSER_TESTS = "1"
 uv run --locked pytest tests/integration/test_browser_local.py -q
 ```
 
-## Stage 3 verification results
-
-Verified October 18, 2026, against Stage 2 base `f97af15` plus the Stage 3 working tree:
-
-- Default suite: **376 passed, 8 browser cases skipped** in 21.32 seconds.
-- Full suite including loopback Chromium: **384 passed** in 41.95 seconds.
-- Ruff lint and formatting: passed (75 Python files).
-- `uv lock --check --offline --cache-dir .uv-cache`: passed.
-- Offline source/wheel build: passed. An isolated Python process imported this build's
-  wheel, validated the schema `2.1` sample and nine trace records, and checked new CLI flags.
-- `git diff --check`: passed.
-- Independent read-only review: no Critical, Important or Minor findings; its targeted
-  output/CLI/manual-runner/SDK-workflow run passed 57 tests.
-
-A concrete mocked review bundle is at
-`output/decisions-review-20261018-215211-904015/example.com/`: eight Markdown files,
-`crawl_summary.json`, and nine `decisions.jsonl` records. It is ignored generated data.
-Its input usage and estimated cost are scripted fixture values, not actual API usage.
-The first sample attempt needed the documented writable SDK cache setting; the successful
-sample used `CRAWL4_AI_BASE_DIRECTORY=.uv-cache`. No runtime change was necessary.
-
-Stage 3 is ready for user review and remains uncommitted pending explicit approval.
-
-## Live pilot: approval required, not run
+## Live comparison procedure
 
 Historical permission for the original scraper's live crawl is not approval for paid
 Decisions calls. A new pilot needs approval of the website and limits before execution.
@@ -104,4 +81,4 @@ Pilot acceptance is a review decision: useful company-evidence coverage should i
 or remain comparable without losing source provenance or exceeding acceptable latency.
 Assess the user's under-$0.10 target using observed usage, with the tighter $0.03
 application allowance as the initial setting. No empirical quality, cost, or latency
-claim is made until this paid comparison is approved and run.
+claim follows from the scripted tests; a comparison needs separate approval and execution.
