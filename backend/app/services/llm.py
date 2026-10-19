@@ -5,17 +5,7 @@ comparison against SCADABLE's baseline context, or fall back to high-fidelity
 mock analysis during offline testing.
 """
 
-import logging
-from datetime import datetime, timezone
 from typing import Any, Protocol
-
-from app.llm.analyzer import Analyzer, ProgressCallback, SpendProvider
-from app.llm.client import LLMClientProtocol, OpenAIClient
-from app.llm.config import LLMSettings
-from app.llm.validation import to_swot_entries
-from app.llm.versioning import build_versions
-
-logger = logging.getLogger(__name__)
 
 
 class AnalyzerProtocol(Protocol):
@@ -60,7 +50,7 @@ class MockOpenAIAnalyzer:
         pricing_url = f"{base_url}/pricing"
         docs_url = f"{base_url}/docs"
 
-        base_result: dict[str, Any] = {
+        return {
             "competitor_name": competitor_name,
             "summary": (
                 f"{competitor_name} is an established compliance automation platform "
@@ -117,135 +107,64 @@ class MockOpenAIAnalyzer:
                 },
             ],
         }
-        return _extend_mock_result(base_result, scraped_data, baseline_context)
-
-
-def _extend_mock_result(
-    base_result: dict[str, Any],
-    scraped_data: dict[str, Any],
-    baseline_context: dict[str, Any],
-) -> dict[str, Any]:
-    """Add the real analyzer's additive keys so mock output has the same shape."""
-    entries = base_result["swot_entries"]
-    findings = [
-        {
-            "category": e["category"],
-            "content": e["content"],
-            "status": "confirmed",
-            "source_urls": [e["source_url"]] if e.get("source_url") else [],
-        }
-        for e in entries
-    ]
-    pages = [p for p in scraped_data.get("pages") or [] if isinstance(p, dict)]
-    return {
-        "competitor_name": base_result["competitor_name"],
-        "summary": base_result["summary"],
-        "swot_entries": to_swot_entries(findings),
-        "analysis_mode": "mock",
-        "profile": {
-            "company_name": base_result["competitor_name"],
-            "summary": base_result["summary"],
-            "target_customers": [],
-            "frameworks": ["SOC 2", "ISO 27001", "HIPAA"],
-            "key_features": [],
-            "integrations": [],
-            "pricing_summary": None,
-            "source_urls": [],
-        },
-        "signals": [],
-        "findings": findings,
-        "facts": [],
-        "missing_topics": [],
-        "scadable_analysis": None,
-        "sources": [{"url": p.get("url"), "title": p.get("title")} for p in pages],
-        "versions": build_versions(scraped_data, baseline_context, "mock"),
-        "usage": {
-            "model": "mock",
-            "stages": {},
-            "input_tokens": 0,
-            "output_tokens": 0,
-            "cached_input_tokens": 0,
-            "cache_write_tokens": 0,
-            "total_tokens": 0,
-            "estimated_cost_usd": 0.0,
-            "pricing_configured": False,
-            "preflight_estimate_usd": 0.0,
-            "max_run_cost_usd": None,
-            "aborted": False,
-            "abort_reason": None,
-            "project_budget": None,
-        },
-        "warnings": ["Mock analysis: findings are canned fixtures, not real research."],
-        "generated_at": datetime.now(timezone.utc).isoformat(),
-    }
-
-
-class AnalyzerUnavailableError(RuntimeError):
-    """Raised when the real analyzer is not configured and mock is disallowed."""
 
 
 class OpenAIAdapter:
-    """Orchestrator-facing adapter around the real LLM comparison engine.
+    """Adapter wrapping Yash & Jaynik's OpenAI analysis engine.
 
-    Uses ``app.llm.analyzer.Analyzer`` when ``OPENAI_API_KEY`` and
-    ``OPENAI_MODEL`` are set. Otherwise it falls back to mock analysis with a
-    loud warning and ``analysis_mode="mock"`` in the result, unless
-    ``LLM_ALLOW_MOCK=false``, in which case it raises so the run fails.
-    Real API errors always propagate (the run fails and prior findings stay)
-    as ``AnalysisError`` whose ``usage`` attribute records tokens already spent.
-
-    ``spend_provider`` returns total USD spent across previous runs; when set,
-    runs that would exceed PROJECT_BUDGET_USD are refused.
+    Delegates to the LLM analyzer when available; falls back to mock analysis.
     """
 
-    def __init__(
-        self,
-        settings: LLMSettings | None = None,
-        client: LLMClientProtocol | None = None,
-        progress_callback: ProgressCallback | None = None,
-        spend_provider: SpendProvider | None = None,
-    ) -> None:
-        self.settings = settings
-        self.client = client
-        self.progress_callback = progress_callback
-        self.spend_provider = spend_provider
+    def __init__(self) -> None:
+        self._underlying: Any = None
 
     async def analyze(
         self,
         scraped_data: dict[str, Any],
         baseline_context: dict[str, Any],
     ) -> dict[str, Any]:
-        settings = self.settings or LLMSettings()
-        client = self.client
-        owns_client = False
-
-        if client is None:
-            if not settings.is_configured():
-                reason = "OPENAI_API_KEY and/or OPENAI_MODEL are not set"
-                if not settings.llm_allow_mock:
-                    raise AnalyzerUnavailableError(
-                        f"Real LLM analysis unavailable: {reason} and LLM_ALLOW_MOCK=false."
-                    )
-                logger.warning(
-                    "!!! MOCK ANALYSIS IN USE !!! %s; returning canned SWOT for %r. "
-                    "Do not present these results as real.",
-                    reason,
-                    scraped_data.get("competitor_name"),
-                )
-                result = await MockOpenAIAnalyzer().analyze(scraped_data, baseline_context)
-                result["warnings"] = [f"Mock analysis used: {reason}."] + result.get(
-                    "warnings", []
-                )
-                return result
-            client = OpenAIClient(settings)
-            owns_client = True
-
-        analyzer = Analyzer(client, settings, self.progress_callback, self.spend_provider)
         try:
-            return await analyzer.run(scraped_data, baseline_context)
-        finally:
-            if owns_client:
-                await client.close()
+            from llm.analyzer import Analyzer
+            from llm.client import OpenAIClient
+            from llm.schemas import AnalysisInput
+            from models.crawl_result import ScrapedContent
+
+            client = OpenAIClient()
+            analyzer = Analyzer(client)
+
+            pages = [
+                ScrapedContent(
+                    url=p.get("url", ""),
+                    title=p.get("title"),
+                    text=p.get("text", ""),
+                )
+                for p in scraped_data.get("pages", [])
+            ]
+            analysis_input = AnalysisInput(
+                company_name=scraped_data.get("competitor_name", "Unknown"),
+                pages=pages,
+            )
+            facts = await analyzer.extract_information(analysis_input)
+            result = await analyzer.analyze_competitor(facts)
+
+            # Map CompanyAnalysis output into SWOT entries
+            entries = []
+            source_urls = getattr(result, "source_urls", [])
+            primary_source = source_urls[0] if source_urls else None
+
+            for s in getattr(result, "strengths", []):
+                entries.append({"category": "strength", "content": s, "source_url": primary_source})
+            for w in getattr(result, "weaknesses", []):
+                entries.append({"category": "weakness", "content": w, "source_url": primary_source})
+
+            return {
+                "competitor_name": getattr(result, "company_name", ""),
+                "summary": getattr(result, "summary", ""),
+                "swot_entries": entries,
+            }
+        except (ImportError, NotImplementedError):
+            mock = MockOpenAIAnalyzer()
+            return await mock.analyze(scraped_data, baseline_context)
 
 
 def get_default_analyzer() -> AnalyzerProtocol:

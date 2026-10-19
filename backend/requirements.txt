@@ -4,6 +4,3 @@ sqlalchemy
 psycopg[binary]
 python-dotenv
 pytest
-openai>=2
-pydantic>=2
-pydantic-settings>=2
