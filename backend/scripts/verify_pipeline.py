@@ -17,12 +17,13 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
+from app.api import serializers
 from app.db.database import Base
 from app.db.models import Competitor, ResearchRun, ResearchStatus, SWOTEntry
 from app.db.repository import create_competitor, create_research_run, get_latest_swot
-from app.services.crawler import get_default_crawler
+from app.services.crawler import MockCrawl4AICrawler
 from app.services.diff import compute_content_hash, has_content_changed
-from app.services.llm import get_default_analyzer
+from app.services.llm import MockOpenAIAnalyzer
 from app.services.orchestrator import execute_research_run
 
 
@@ -55,9 +56,9 @@ def main():
         print(f"      ✓ Competitor: {competitor.name} (ID: {competitor.id})")
         print(f"      ✓ Initial Run: ID {run1.id} (Status: {run1.status.value})")
 
-        print("\n[4/6] Executing End-to-End Research Pipeline (Run 1)...")
-        crawler = get_default_crawler()
-        analyzer = get_default_analyzer()
+        print("\n[4/6] Executing End-to-End Research Pipeline (Run 1 - Zero Token Mock Mode)...")
+        crawler = MockCrawl4AICrawler()
+        analyzer = MockOpenAIAnalyzer()
 
         finished_run = asyncio.run(
             execute_research_run(
@@ -87,10 +88,10 @@ def main():
             assert entry.source_url is not None, f"SWOT entry '{entry.content}' missing citation source_url"
             print(f"      - [{entry.category.value.upper()}] {entry.content[:55]}... (Source: {entry.source_url})")
 
-        assert {"strength", "weakness"}.issubset(categories_found), "Missing core SWOT categories"
+        assert {"strength", "weakness", "opportunity", "threat"}.issubset(categories_found), "Missing core SWOT categories"
         print(f"      ✓ {len(swot_rows)} SWOT entries persisted with verified source citations.")
 
-        print("\n[6/6] Verifying Re-Run Diffing (Token-Conservation Test)...")
+        print("\n[6/6] Verifying Re-Run Diffing (Token-Conservation Test) & API Serialization...")
         run2 = create_research_run(db, competitor.id)
         finished_run2 = asyncio.run(
             execute_research_run(
@@ -104,8 +105,24 @@ def main():
         assert finished_run2.status == ResearchStatus.COMPLETED
         assert finished_run2.analysis_result.get("skipped_llm") is True, "LLM was not skipped on identical content"
         assert finished_run2.analysis_result.get("reused_from_run_id") == run1.id, "Reused run ID not linked"
+        swot_rows_after_rerun = get_latest_swot(db, competitor.id)
+        assert len(swot_rows_after_rerun) == len(swot_rows), "Prior SWOT entries were not copied forward on skipped LLM run"
+
+        # Verify API serializer compatibility for frontend consumption
+        db.refresh(competitor)
+        profile_dto = serializers.competitor_profile(competitor, finished_run2, swot_rows_after_rerun)
+        run_dto = serializers.agent_run(finished_run2, competitor.name)
+        assert profile_dto.research_status == "success", f"Expected API status 'success', got {profile_dto.research_status}"
+        assert "established compliance automation platform" in profile_dto.summary
+        assert len(profile_dto.findings) == len(swot_rows)
+        assert run_dto.cache_hits == 1 and run_dto.cache_misses == 0
+
         print("      ✓ Second run completed with skipped_llm = True (LLM tokens conserved).")
-        print(f"      ✓ Reused findings linked to original Run ID {run1.id}.")
+        print(f"      ✓ Reused findings ({len(swot_rows_after_rerun)} rows) & summary linked to original Run ID {run1.id}.")
+        print("      ✓ Frontend API serializers (CompetitorProfile & AgentRun) verified.")
+        print("\n" + "=" * 65)
+        print("  ALL PIPELINE CHECKS PASSED (0 API TOKENS USED)")
+        print("=" * 65)
 
 
 
