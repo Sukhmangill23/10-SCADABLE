@@ -88,7 +88,7 @@ export default function OverviewPage() {
         <h1 className={styles.title}>SWOT overview</h1>
         <p className={styles.sub}>
           Findings across all tracked competitors. Last updated{" "}
-          {formatDate(data.updatedAt)}.
+          {data.updatedAt ? formatDate(data.updatedAt) : "Not yet"}
         </p>
       </header>
 
