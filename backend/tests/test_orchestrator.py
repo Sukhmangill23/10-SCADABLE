@@ -1,6 +1,9 @@
 """Tests for research workflow orchestration, change detection, and task execution."""
 
 import os
+
+os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.engine import make_url

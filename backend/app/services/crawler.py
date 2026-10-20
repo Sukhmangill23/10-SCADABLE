@@ -1,12 +1,19 @@
 """Crawler interface, adapters, and realistic mock fixtures.
 
 Enables the research orchestrator to execute against real Crawl4AI instances
-when installed, or fall back to high-fidelity mock fixtures during offline
-development and automated testing.
+via the scraper package when available, or fall back to high-fidelity mock
+fixtures during offline development and automated testing.
 """
 
+import asyncio
+import logging
+import os
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urlsplit
+
+logger = logging.getLogger(__name__)
 
 
 class CrawlerProtocol(Protocol):
@@ -35,8 +42,6 @@ class MockCrawl4AICrawler:
         competitor_name: str,
         website_url: str,
     ) -> dict[str, Any]:
-        import asyncio
-
         if self.delay_seconds > 0:
             await asyncio.sleep(self.delay_seconds)
 
@@ -88,7 +93,9 @@ class MockCrawl4AICrawler:
 class Crawl4AIAdapter:
     """Adapter wrapping Yash & Jaynik's Crawl4AI implementation.
 
-    Delegates to the Crawl4AI crawler when available in the environment.
+    Delegates to CompetitorScraper from the scraper package when available;
+    falls back to MockCrawl4AICrawler during offline testing or when browser
+    runtimes are not provisioned.
     """
 
     def __init__(self) -> None:
@@ -99,32 +106,89 @@ class Crawl4AIAdapter:
         competitor_name: str,
         website_url: str,
     ) -> dict[str, Any]:
-        # Attempt to dynamically import the Crawl4AI module if available
         try:
-            from crawling.crawl4ai import Crawl4AICrawler
-            from models.crawl_result import CompetitorURL
-            from config import Settings
+            from scraper import CompetitorInput, ScraperConfig, SelectionConfig
+            from scraper.environment import load_environment
+            from scraper.output import competitor_directory, export_competitor
+            from scraper.service import CompetitorScraper
 
-            crawler = Crawl4AICrawler(Settings())
-            comp = CompetitorURL(name=competitor_name, url=website_url)
-            result = await crawler.crawl(comp)
+            load_environment()
 
-            # Normalize CrawlResult object to standard dict
+            parts = urlsplit(website_url)
+            homepage_url = (
+                f"{parts.scheme}://{parts.netloc}"
+                if parts.scheme and parts.netloc
+                else website_url
+            )
+
+            competitor = CompetitorInput(
+                name=competitor_name,
+                homepage_url=homepage_url,
+            )
+            # Use LLM selection if OPENAI_API_KEY is available, otherwise structural
+            selection_mode = (
+                "llm" if os.environ.get("OPENAI_API_KEY", "").strip() else "structural"
+            )
+            # Cap crawl to 3 pages for D2 demo efficiency
+            config = ScraperConfig(
+                max_pages=3,
+                selection=SelectionConfig(mode=selection_mode),
+            )
+            scraper = CompetitorScraper()
+            result = await scraper.crawl(competitor, config)
+
+            pages = [
+                {
+                    "url": str(page.source_url),
+                    "final_url": str(page.final_url) if page.final_url else None,
+                    "title": page.page_title,
+                    "category": getattr(
+                        page.page_category, "value", str(page.page_category)
+                    ),
+                    "text": page.cleaned_markdown,
+                    "markdown": page.cleaned_markdown,
+                    "status": page.crawl_status,
+                }
+                for page in result.pages
+                if page.crawl_status == "success" and page.cleaned_markdown.strip()
+            ]
+
+            if not pages:
+                raise RuntimeError(
+                    f"Crawl4AI returned no usable pages (status={result.run_status}, "
+                    f"warnings={result.warnings})."
+                )
+
+            # Export immutable Markdown bundle to scraper/output/backend/
+            summary_path = None
+            try:
+                output_root = Path("scraper/output/backend")
+                output_root.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+                target_dir = output_root / f"run_{timestamp}"
+                await asyncio.to_thread(export_competitor, result, target_dir)
+                summary_path = str(
+                    target_dir
+                    / competitor_directory(str(result.homepage_url))
+                    / "crawl_summary.json"
+                )
+            except Exception as export_err:
+                logger.warning("Crawl bundle export skipped: %s", export_err)
+
             return {
+                "schema_version": "backend-scrape-v1",
                 "competitor_name": competitor_name,
-                "base_url": website_url,
+                "base_url": homepage_url,
                 "scraped_at": datetime.now(timezone.utc).isoformat(),
-                "pages": [
-                    {
-                        "url": str(page.url),
-                        "title": getattr(page, "title", None),
-                        "text": getattr(page, "text", ""),
-                    }
-                    for page in getattr(result, "pages", [])
-                ],
+                "status": result.run_status,
+                "pages": pages,
+                "summary_path": summary_path,
             }
-        except (ImportError, NotImplementedError) as exc:
-            # Fall back to mock crawler if Crawl4AI is not yet installed / implemented
+        except (ImportError, Exception) as exc:
+            logger.warning(
+                "Real Crawl4AI scraper unavailable or failed (%s); falling back to mock crawler.",
+                exc,
+            )
             mock = MockCrawl4AICrawler()
             return await mock.crawl(competitor_name, website_url)
 
@@ -132,4 +196,3 @@ class Crawl4AIAdapter:
 def get_default_crawler() -> CrawlerProtocol:
     """Return the default crawler adapter."""
     return Crawl4AIAdapter()
-

@@ -112,15 +112,22 @@ async def execute_research_run(
                 competitor.name,
             )
             # Link previous analysis result and copy forward existing SWOT findings
-            save_analysis_result(
-                db,
-                run_id,
-                {
-                    "skipped_llm": True,
-                    "reason": "Content unchanged from previous snapshot",
-                    "reused_from_run_id": previous_run.id,
-                },
+            prev_analysis = (
+                previous_run.analysis_result
+                if isinstance(previous_run.analysis_result, dict)
+                else {}
             )
+            reused_payload: dict[str, Any] = {
+                "skipped_llm": True,
+                "reason": "Content unchanged from previous snapshot",
+                "reused_from_run_id": prev_analysis.get(
+                    "reused_from_run_id", previous_run.id
+                ),
+            }
+            if prev_analysis.get("summary"):
+                reused_payload["summary"] = prev_analysis["summary"]
+
+            save_analysis_result(db, run_id, reused_payload)
 
             # Re-persist the prior findings under this run for audit history
             prior_entries = [
