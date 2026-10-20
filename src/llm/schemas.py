@@ -1,15 +1,27 @@
-"""Initial structured contracts; fields will evolve with team requirements."""
+"""Source-backed analysis inputs and structured competitor insights."""
 
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from models.crawl_result import ScrapedContent
+from scraper import CrawlExportSummary, ExportedPage
+
+
+class AnalysisPage(BaseModel):
+    """One exported page's metadata alongside its unchanged Markdown."""
+
+    source: ExportedPage
+    markdown: str
 
 
 class AnalysisInput(BaseModel):
-    company_name: str = Field(min_length=1)
-    pages: list[ScrapedContent]
+    crawl_summary: CrawlExportSummary
+    pages: list[AnalysisPage] = Field(min_length=1)
+
+    @property
+    def company_name(self) -> str:
+        return self.crawl_summary.competitor_name
+
 
 Category = Literal[
     "summary",
@@ -78,6 +90,14 @@ class CompanyAnalysis(BaseModel):
     @property
     def weaknesses(self) -> list[str]:
         return self.claims_in("weakness")
+
+
+class CompetitorResearchResult(BaseModel):
+    """Analysis and extracted facts with the scraper's original run provenance."""
+
+    crawl_summary: CrawlExportSummary
+    extracted_information: ExtractedInformation
+    analysis: CompanyAnalysis
 
 
 class ComparisonInput(BaseModel):
