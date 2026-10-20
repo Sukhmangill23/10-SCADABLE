@@ -1,5 +1,8 @@
 # Scraper and LLM research pipeline
 
+For connecting this pipeline to the FastAPI backend on `main`, see the
+[backend integration plan](superpowers/plans/2026-10-20-backend-integration.md).
+
 The scraper owns discovery, Decisions scoring, rendering, Markdown cleanup, and export.
 The separate LLM layer consumes those exports to extract cited facts and produce company
 analysis. No API server, database, scheduler, or frontend integration is included.
