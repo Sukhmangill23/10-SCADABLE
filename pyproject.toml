@@ -1,0 +1,29 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "live-swot-research"
+version = "0.1.0"
+description = "Scraper-backed LLM analysis for SCADABLE competitor intelligence"
+readme = "README.md"
+requires-python = ">=3.12,<3.13"
+dependencies = [
+    "scraper==0.1.0",
+    "openai>=3.26,<4",
+    "pydantic>=2.12,<3",
+    "pydantic-settings>=2,<3",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.4,<10", "pytest-asyncio>=1.2,<2", "httpx2>=2.13,<3"]
+
+[tool.uv.sources]
+scraper = { path = "scraper" }
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["llm", "llm.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -47,6 +47,41 @@ We chose this workflow because our project has several connected components and 
 
 We will keep naming and file structure consistent with the part of the project being worked on, and avoid making unrelated changes in the same pull request. Each pull request should be small enough for another team member to review and understand before it is merged into `main`.
 
+## Python research pipeline
+
+The working Python pipeline combines the standalone scraper and Decisions API with
+source-cited LLM analysis:
+
+```text
+Competitor URLs -> scraper -> Markdown files + metadata -> LLM -> structured insights
+```
+
+The collection package lives in `scraper/`; analysis code, prompts, settings, and
+orchestration live in the sibling `llm/` package (`llm.config`, `llm.pipeline`).
+
+Use Python 3.12. From the repository root:
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+python -m pip install ./scraper -e ".[dev]"
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+python -m pytest tests -q
+```
+
+Both layers use the same repository-root `.env`, including when launched from `scraper/`.
+Set `OPENAI_API_KEY` and `OPENAI_MODEL` there before analysis. Offline tests
+need no real credentials or browser installation. To analyze an existing scraper export:
+
+```powershell
+python examples/research_pipeline.py --export scraper/output/run-001/example.com/crawl_summary.json
+```
+
+See the [research pipeline guide](docs/research-pipeline.md) for live crawling,
+browser setup, Python interfaces, configuration, output contracts, failure handling,
+and verification. The [scraper](scraper/README.md) remains independently usable.
+There is no API server, database, scheduler, or frontend connection in this workflow.
+
 ## Licenses
 
 Our partner stated that he is comfortable with the team freely using and sharing the work created for this project, and did not request any additional confidentiality restrictions.
