@@ -7,8 +7,8 @@ The package runs without a backend, database or downstream analysis service. Ins
 `uv sync --locked`, then `uv run --locked python -m playwright install chromium`.
 Run the CLI from any directory after installation; use an explicit TOML/output path.
 For a custom browser location, set `PLAYWRIGHT_BROWSERS_PATH` during both installation
-and execution. The CLI loads `.env` from the working directory (or `--env-file`);
-the manual runner loads `scraper/.env` beside the script. Existing process environment
+and execution. The CLI and manual runner default to the shared repository-root `.env`;
+the CLI supports an explicit `--env-file`. Existing process environment
 values take precedence. Default LLM selection requires `OPENAI_API_KEY`; explicit
 `selection={"mode": "structural"}` needs no API credentials or model requests.
 
@@ -36,7 +36,7 @@ from scraper.service import CompetitorScraper
 
 
 async def collect(homepages, consume):
-    load_environment()  # Working directory's .env, or supply your application's path.
+    load_environment()  # Shared repository-root .env, or supply your application's path.
     service = CompetitorScraper()
     inputs = [CompetitorInput(homepage_url=url) for url in homepages]
     settings = ScraperConfig(selection=SelectionConfig(budget_usd=0.03))

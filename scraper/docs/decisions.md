@@ -2,9 +2,9 @@
 
 The typed API adapter, budget accounting and shared discovery frontier replace keyword
 scoring and use content-based categories. Stage 3 adds reviewable exports and controls.
-The default CLI and Python service require `OPENAI_API_KEY`. The CLI loads it from `.env`
-in the working directory or `--env-file`; the manual runner loads the file beside its
-script. Existing environment values take precedence. Explicit structural mode
+The default CLI and Python service require `OPENAI_API_KEY`. The CLI and manual runner
+load it from the shared repository-root `.env`; the CLI also accepts `--env-file`.
+Existing environment values take precedence. Explicit structural mode
 requires no key and makes no OpenAI calls. No paid requests or live competitor crawls are
 required to review this stage.
 

@@ -58,7 +58,7 @@ logger = logging.getLogger(__name__)
 
 def configure_runtime() -> None:
     """Use the project's writable SDK/browser caches while respecting explicit env settings."""
-    load_environment(PROJECT_DIRECTORY / ".env")
+    load_environment(PROJECT_DIRECTORY.parent / ".env")
     os.environ.setdefault("CRAWL4_AI_BASE_DIRECTORY", str(PROJECT_DIRECTORY / ".uv-cache"))
     browser_cache = PROJECT_DIRECTORY / ".uv-cache" / "playwright"
     if browser_cache.is_dir():

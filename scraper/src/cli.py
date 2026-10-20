@@ -27,7 +27,7 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--env-file",
         type=Path,
-        help="Credential .env file (default: .env in the working directory)",
+        help="Credential .env file (default: repository-root .env in this checkout)",
     )
     parser.add_argument(
         "--output",

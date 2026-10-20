@@ -69,7 +69,8 @@ if (-not (Test-Path .env)) { Copy-Item .env.example .env }
 python -m pytest tests -q
 ```
 
-Set `OPENAI_API_KEY` and `OPENAI_MODEL` in `.env` before analysis. Offline tests
+Both layers use the same repository-root `.env`, including when launched from `scraper/`.
+Set `OPENAI_API_KEY` and `OPENAI_MODEL` there before analysis. Offline tests
 need no real credentials or browser installation. To analyze an existing scraper export:
 
 ```powershell

@@ -119,7 +119,8 @@ uv run --locked python -m playwright install chromium
 uv run --locked scraper --help
 ```
 
-For LLM mode, create `.env` from `.env.example` if absent and set `OPENAI_API_KEY` there.
+For LLM mode, create the repository-root `.env` from the root `.env.example` if absent
+and set `OPENAI_API_KEY` there. Both collection and downstream analysis share this file.
 Do not put credentials in Python/TOML settings. Chromium must be installed in the runtime
 environment; deployment-specific system libraries may also be required.
 
@@ -165,7 +166,7 @@ from scraper.output import export_competitor
 from scraper.service import CompetitorScraper
 
 # At application startup: use the application's chosen path, or host-provided env vars.
-load_environment(Path("scraper/.env"))
+load_environment()
 
 
 async def collect_company(homepage: str, run_root: Path):
@@ -313,7 +314,7 @@ bounds and Markdown pruning threshold are implementation constants, not public s
 | Environment / dependency | Integration requirement |
 | --- | --- |
 | `OPENAI_API_KEY` | Required in LLM mode; missing credentials fail before crawling |
-| `.env` loading | CLI: working directory or `--env-file`; manual runner: beside its script; Python integration: explicit `load_environment()` call. No parent search; process values win |
+| `.env` loading | Shared repository-root file; CLI supports `--env-file`; Python consumers call `load_environment()`. Standalone installations outside a checkout use the working directory. Process values win |
 | `CRAWL4_AI_BASE_DIRECTORY` | Optional writable SDK-cache parent; set before SDK imports in restricted deployments |
 | `PLAYWRIGHT_BROWSERS_PATH` | Optional browser location; installation and runtime must agree |
 | `pyproject.toml` / `uv.lock` | Python 3.12, Crawl4AI 0.9.5, Playwright, Pydantic 2, OpenAI SDK, HTTPX, defusedxml, Protego, lxml/cssselect, python-dotenv; use the lockfile for reproducibility |

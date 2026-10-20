@@ -15,7 +15,8 @@ BestFirst/exploration or BFS, Crawl4AI rendering, and conservative Markdown extr
 Each website produces cleaned page files and a compact `crawl_summary.json` index.
 Existing output directories are never overwritten.
 
-LLM selection is the default. Set `OPENAI_API_KEY` in `.env` (copy [.env.example](.env.example)
+LLM selection is the default. Set `OPENAI_API_KEY` in the shared repository-root `.env`
+(copy [../.env.example](../.env.example) to `../.env` when working from `scraper/`
 if needed), or select `--selection-mode structural` for API-free crawling. There are no
 HTTP endpoints or downstream company-analysis prompts in this package.
 

@@ -63,7 +63,9 @@ def main(argv=None) -> int:
         "--export", dest="summary_path", type=Path, help="Analyze an existing index"
     )
     parser.add_argument(
-        "--env-file", type=Path, help="Credential file; defaults to the working .env"
+        "--env-file",
+        type=Path,
+        help="Credential file; defaults to the repository-root .env",
     )
     parser.add_argument(
         "--output",

@@ -33,7 +33,9 @@ import collision with the outer `scraper/` directory. Reinstall `./scraper` afte
 its source. Its independent, editable development setup remains in
 [scraper/README.md](../scraper/README.md).
 
-Set `OPENAI_API_KEY` and `OPENAI_MODEL` in `.env` or the process environment. The analysis
+Both layers default to the same repository-root `.env`, even when launched from `scraper/`
+or another nested directory. `scraper/.env` is no longer used. Set `OPENAI_API_KEY` and
+`OPENAI_MODEL` in the root file or the process environment. The analysis
 model must support Responses API structured outputs. Tests and example `--help` need no
 real credentials. Offline tests also need no browser binaries.
 
@@ -115,7 +117,7 @@ from scraper.environment import load_environment
 
 
 async def research():
-    load_environment()  # The working directory's .env; process values win.
+    load_environment()  # Shared repository-root .env; process values win.
     client = OpenAIClient(Settings(_env_file=None))
     try:
         return await run_pipeline(
@@ -145,7 +147,11 @@ it does not start a nested event loop or close an injected analysis client.
 | `OPENAI_MODEL` | Downstream analysis model; does not change the Decisions model |
 | `OPENAI_TIMEOUT_SECONDS` | Analysis SDK request timeout; default 30 seconds |
 
-`Settings()` can read the working directory's `.env`. Calling `load_environment(path)`
+`Settings()` and `load_environment()` use the same repository-root `.env` by default.
+The resolver identifies the checkout from its `pyproject.toml`, `scraper/pyproject.toml`,
+and `llm/` directory, checking the working directory's ancestors and the scraper module's
+ancestors. Without a checkout, installed packages default to the working directory's `.env`.
+Calling `load_environment(path)`
 explicitly and then `Settings(_env_file=None)` lets an importing application choose one
 credential source. Process environment variables take precedence. The old provider-selector
 settings have been removed; collection always uses the standalone scraper.

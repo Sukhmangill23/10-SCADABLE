@@ -31,9 +31,10 @@ def test_manual_runner_exposes_selection_controls_without_credentials():
 
 def test_manual_runner_loads_project_dotenv_from_any_working_directory(tmp_path, monkeypatch):
     runner = load_runner()
-    project = tmp_path / "project"
+    project = tmp_path / "scraper"
     project.mkdir()
-    (project / ".env").write_text("OPENAI_API_KEY=runner-fixture-key\n", encoding="utf-8")
+    (tmp_path / ".env").write_text("OPENAI_API_KEY=runner-fixture-key\n", encoding="utf-8")
+    (project / ".env").write_text("OPENAI_API_KEY=obsolete-key\n", encoding="utf-8")
     monkeypatch.setattr(runner, "PROJECT_DIRECTORY", project)
     monkeypatch.chdir(tmp_path)
     monkeypatch.delenv("PYTHON_DOTENV_DISABLED", raising=False)

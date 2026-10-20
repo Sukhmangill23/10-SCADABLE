@@ -16,7 +16,7 @@ External document domains require explicit approval/configuration; relevant exte
 links are recorded. Third-party resources needed for rendering are allowed. The scraper
 runs independently of the backend, database and downstream company analysis.
 
-Default LLM crawling reads `OPENAI_API_KEY` from your local `.env` file. It scores discovered links from their URL
+Default LLM crawling reads `OPENAI_API_KEY` from the shared repository-root `.env` file. It scores discovered links from their URL
 and nearby text, then assesses fetched excerpts for usefulness, novelty and category.
 The estimated allowance is $0.03 **per website**, with structural fallback when exhausted;
 it is not a guaranteed billing ceiling. See [decisions.md](decisions.md) for accounting.
@@ -53,14 +53,16 @@ Open [manual_test.py](../manual_test.py) and edit the values at the top:
   `manual-2026-10-18_23-26-46_UTC`. Runs started within the same second share a name;
   an existing folder is refused, so wait a second or choose a different name.
 
-Start with one website and `max_pages=3`. For LLM mode, open `scraper/.env` in your editor
+Start with one website and `max_pages=3`. For LLM mode, open the repository-root `.env` in your editor
 and enter your key after `=`:
 
 ```dotenv
 OPENAI_API_KEY=your-openai-api-key
 ```
 
-If `.env` does not exist in a fresh checkout, copy `.env.example` to `.env` first.
+If the root `.env` does not exist, copy the root `.env.example` first
+(`Copy-Item ../.env.example ../.env` when working from `scraper/`). Both layers use this file;
+`scraper/.env` is no longer read.
 The file is ignored by Git. Existing process environment values take precedence.
 You do not need to enter the key in the terminal. Run the editable file from `scraper/`:
 
@@ -73,7 +75,7 @@ needed. Keep credentials in `.env`, outside the Python/TOML settings.
 
 You can also select the project's `.venv` Python interpreter in VS Code and run the file
 using **Run Python File**, or execute `.venv/Scripts/python.exe manual_test.py` directly.
-The runner loads `.env` beside `manual_test.py` regardless of your working directory.
+The runner loads the repository-root `.env` regardless of your working directory.
 It configures the SDK cache and detects the local browser cache automatically;
 explicit environment settings take precedence. Paths are relative to the script's project
 directory, so changing your terminal's working directory does not move the output.
@@ -115,10 +117,11 @@ name = "Example competitor"
 uv run --locked scraper --config output/manual.toml --output output/run-001
 ```
 
-The CLI loads `.env` from its working directory. When launching it elsewhere, pass
-`--env-file C:/path/to/scraper/.env`. An explicitly supplied file must exist. Neither
-entry point searches parent directories for credentials. The manual runner always uses
-its own project directory, while CLI paths are relative to the current working directory.
+The CLI and manual runner use the shared repository-root `.env`. The CLI locates the
+checkout from the working directory or its installed module path. To select another file,
+pass `--env-file C:/path/to/project/.env`; an explicitly supplied file must exist.
+Outside a checkout, a standalone installed CLI defaults to its working directory's `.env`.
+Other CLI paths remain relative to the current working directory.
 
 Progress logs include each saved index path. Each competitor gets a directory containing
 `crawl_summary.json` and readable Markdown files under `pages/`. An existing competitor

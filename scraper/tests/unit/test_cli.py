@@ -55,6 +55,10 @@ def test_cli_loads_dotenv_before_starting_service(tmp_path, monkeypatch, explici
     from scraper import cli
 
     monkeypatch.chdir(tmp_path)
+    (tmp_path / "pyproject.toml").touch()
+    (tmp_path / "llm").mkdir()
+    (tmp_path / "scraper").mkdir()
+    (tmp_path / "scraper/pyproject.toml").touch()
     monkeypatch.delenv("PYTHON_DOTENV_DISABLED", raising=False)
     # Ensure dotenv mutation is restored by monkeypatch at teardown.
     monkeypatch.setenv("OPENAI_API_KEY", "")
