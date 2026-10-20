@@ -1,10 +1,9 @@
-"""Initial company extraction and analysis instructions."""
+"""Company fact extraction and analysis instructions."""
 
 import json
 
 from llm.schemas import AnalysisInput, AnalysisPage, ExtractedInformation
 
-# TODO: Define the policies for how to extract key info
 EXTRACTION_SYSTEM_PROMPT = """You are extracting key information about a company. 
 
 Take the analysis input (markdown text) about the company (see "<ANALYSIS_INPUT>"), get the 
@@ -64,7 +63,6 @@ is a deliberately limited selection of pages. Always extract claims solely based
 </RULES>
 """
 
-# TODO: Define the policies for how to analyze the supplied company facts.
 COMPANY_SYSTEM_PROMPT = """You are analyzing a company to see their stance on the market.
 
 Your input will be the information that has been extracted from a company's website, organized by name, 
@@ -130,7 +128,6 @@ make inferences about the lack of information.
 </RULES>
 """
 
-# TODO: Specify extraction fields, evidence rules, and missing-data handling.
 EXTRACTION_USER_PROMPT = """Using the data scraped from {}'s website, return the company's name, 
 a summary of them, their features (products/services offered), the customers they are targeting, 
 their pricing, integrations, differentiators, each as a cited claim with the URL it came from.
@@ -142,7 +139,6 @@ Here is all the extracted data:
 </EXTRACTED_DATA>
 """
 
-# TODO: Define the team's company analysis criteria and output guidance.
 COMPANY_USER_PROMPT = """Using the analysis of {}, return the company's name, summary, and its strengths and weaknesses as cited claims.
 
 Here is the data that was extracted about the company:

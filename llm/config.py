@@ -1,11 +1,7 @@
-"""Environment configuration; importing this module has no side effects."""
-
-from typing import Literal
+"""Downstream analysis settings, separate from the scraper's collection policy."""
 
 from pydantic import Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
-CrawlerProvider = Literal["firecrawl", "crawl4ai"]
 
 
 class Settings(BaseSettings):
@@ -15,8 +11,6 @@ class Settings(BaseSettings):
         env_file=".env", env_file_encoding="utf-8", extra="ignore"
     )
 
-    crawler_provider: CrawlerProvider = "firecrawl"
-    firecrawl_api_key: SecretStr | None = None
     openai_api_key: SecretStr | None = None
     openai_model: str = ""
     openai_timeout_seconds: float = Field(default=30.0, gt=0)

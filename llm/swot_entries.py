@@ -1,4 +1,4 @@
-"""Convert a company analysis into the flat rows the backend stores."""
+"""Convert a company analysis into flat, source-linked SWOT rows."""
 
 from llm.schemas import CompanyAnalysis
 

@@ -1,1 +1,1 @@
-"""Offline scaffold checks; no API keys or network calls required."""
+"""Offline research checks; no real credentials or network calls required."""

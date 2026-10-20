@@ -2,8 +2,10 @@
 
 The scraper accepts competitor homepage URLs, discovers and prioritizes subpages, and
 returns source-linked content for another application to analyze. It runs independently.
-**Existing interfaces are Python and CLI; there are no HTTP/FastAPI endpoints.** Backend
-jobs, database persistence, downstream LLM analysis, and scheduling are not implemented.
+**Existing interfaces are Python and CLI; there are no HTTP/FastAPI endpoints.** The
+repository's separate [research pipeline](../../docs/research-pipeline.md) implements
+downstream analysis of published Markdown bundles. Backend jobs, database persistence,
+and scheduling are outside this package.
 
 ## 1. Architecture and workflow
 
@@ -165,14 +167,13 @@ from scraper.service import CompetitorScraper
 # At application startup: use the application's chosen path, or host-provided env vars.
 load_environment(Path("scraper/.env"))
 
+
 async def collect_company(homepage: str, run_root: Path):
     settings = ScraperConfig(
         max_pages=10,
         selection=SelectionConfig(mode="llm", budget_usd=0.03),
     )
-    result = await CompetitorScraper().crawl(
-        CompetitorInput(homepage_url=homepage), settings
-    )
+    result = await CompetitorScraper().crawl(CompetitorInput(homepage_url=homepage), settings)
     summary = await asyncio.to_thread(export_competitor, result, run_root)
     return result, summary
 ```
@@ -187,6 +188,7 @@ Close a multi-company iterator if consumption stops early:
 
 ```python
 from contextlib import aclosing
+
 
 async def collect_many(competitors, settings):
     async with aclosing(CompetitorScraper().crawl_many(competitors, settings)) as results:
@@ -242,7 +244,8 @@ def prompt_sources(result):
             "crawled_at": page.crawl_timestamp.isoformat(),
             "markdown": page.cleaned_markdown,
         }
-        for page in result.pages if page.crawl_status == "success"
+        for page in result.pages
+        if page.crawl_status == "success"
     ]
 ```
 
@@ -255,18 +258,23 @@ from scraper import CrawlExportSummary
 index = Path("output/run-001/competitor.example/crawl_summary.json")
 summary = CrawlExportSummary.model_validate_json(index.read_text(encoding="utf-8"))
 sources = [
-    {**page.model_dump(mode="json"),
-     "markdown": (index.parent / page.markdown_file).read_text(encoding="utf-8")}
-    for page in summary.pages if page.status == "success"
+    {
+        **page.model_dump(mode="json"),
+        "markdown": (index.parent / page.markdown_file).read_text(encoding="utf-8"),
+    }
+    for page in summary.pages
+    if page.status == "success"
 ]
 ```
 
-Pass `competitor_name`, `homepage_url` and collection status alongside the source list.
-The analysis team should chunk/token-budget these sources, keep URL/metadata on every
-chunk, and treat page text as untrusted source material. `filtered_markdown` is optional
-and potentially lossy; cleaned Markdown is the default handoff. Decisions assessments
-guide collection and categorization; they are not generated company analysis. Failed
-pages and uncrawled reasons describe evidence gaps, not facts about the company.
+The [research pipeline](../../docs/research-pipeline.md) uses `CrawlExportSummary` and
+the referenced Markdown directly, retaining competitor identity, collection status,
+warnings and page metadata with its analysis. It supplies full Markdown without chunking
+or truncation; model context-limit errors propagate. Page text is untrusted source
+material. `filtered_markdown` is optional and potentially lossy; cleaned Markdown is the
+default handoff. Decisions assessments guide collection and categorization; they are not
+generated company analysis. Failed pages and uncrawled reasons describe evidence gaps,
+not facts about the company.
 
 ## 6. Configuration reference
 

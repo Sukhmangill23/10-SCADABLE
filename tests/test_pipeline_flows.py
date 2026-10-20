@@ -2,7 +2,7 @@
 
 import pytest
 
-import pipeline
+from llm import pipeline
 from scraper import CompetitorInput
 from tests.helpers import StubAnalyzer, StubScraper, company_result
 

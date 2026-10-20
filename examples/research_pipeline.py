@@ -19,10 +19,10 @@ from pathlib import Path
 
 from scraper.environment import load_environment
 
-from config import Settings
 from llm.analyzer import Analyzer
 from llm.client import OpenAIClient
-from pipeline import analyze_export, run_pipeline
+from llm.config import Settings
+from llm.pipeline import analyze_export, run_pipeline
 from scraper import CompetitorInput, ScraperConfig, SelectionConfig
 
 PROJECT_DIRECTORY = Path(__file__).resolve().parents[1]

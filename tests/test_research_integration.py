@@ -11,10 +11,10 @@ from scraper.models import DiscoveredLink
 from scraper.service import CompetitorScraper
 
 import llm.client as client_module
-from config import Settings
 from llm.analyzer import Analyzer
+from llm.config import Settings
+from llm.pipeline import analyze_export, run_pipeline
 from llm.schemas import ClaimCited, CompanyAnalysis, ExtractedInformation, FeatureScore
-from pipeline import analyze_export, run_pipeline
 from scraper import CompetitorInput, FetchedPage, ScraperConfig
 from tests.helpers import MARKDOWN, NOW
 

@@ -5,7 +5,7 @@ from typing import TypeVar
 from openai import AsyncOpenAI
 from pydantic import BaseModel
 
-from config import Settings
+from llm.config import Settings
 
 OutputModel = TypeVar("OutputModel", bound=BaseModel)
 
@@ -40,7 +40,7 @@ class OpenAIClient:
             text_format=output_schema,
         )
         if response.output_parsed is None:
-            # TODO: Distinguish refusals and incomplete responses for callers.
+            # Refusals and incomplete responses can have no parsed model.
             raise ValueError("OpenAI returned no parsed structured output.")
         return response.output_parsed
 

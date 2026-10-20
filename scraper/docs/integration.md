@@ -1,5 +1,8 @@
 # Reliability and integration
 
+This guide covers the independently usable scraper package. For the repository's
+working Markdown-to-LLM workflow, see the [research pipeline guide](../../docs/research-pipeline.md).
+
 The package runs without a backend, database or downstream analysis service. Install using
 `uv sync --locked`, then `uv run --locked python -m playwright install chromium`.
 Run the CLI from any directory after installation; use an explicit TOML/output path.
@@ -67,6 +70,12 @@ assessments and use `other` when unavailable. Research selection is separate fro
 company analysis; see [decisions.md](decisions.md).
 
 ## Exporting and reading results
+
+The repository's `pipeline.analyze_export()` validates this same completion index and
+reads its successful, nonempty Markdown files without recrawling or cleaning them again.
+It returns extracted facts, company analysis and the original summary. The separate
+analysis client requires `OPENAI_MODEL`; the Decisions allowance does not cover its
+requests. Setup, client ownership and replay examples are in the research pipeline guide.
 
 The service API still returns full `CompetitorCrawlResult` objects. To write the compact
 file export, call the synchronous exporter after a competitor completes:

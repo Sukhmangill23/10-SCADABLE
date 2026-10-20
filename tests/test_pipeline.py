@@ -4,7 +4,7 @@ import asyncio
 
 import pytest
 
-import pipeline
+from llm import pipeline
 from scraper import CompetitorInput, ScraperConfig
 from tests.helpers import (
     MARKDOWN,

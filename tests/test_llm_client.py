@@ -8,13 +8,28 @@ import pytest
 from openai import AsyncOpenAI
 
 import llm.client as client_module
-from config import Settings
+from llm.config import Settings
 from llm.schemas import CompanyAnalysis, ExtractedInformation, SWOTAnalysis
+
+
+@pytest.mark.parametrize("api_key", [None, "", "   "])
+def test_openai_requires_nonempty_key(api_key):
+    settings = Settings(openai_api_key=api_key, openai_model="test", _env_file=None)
+    with pytest.raises(ValueError, match="OPENAI_API_KEY"):
+        client_module.OpenAIClient(settings)
+
+
+def test_openai_requires_model():
+    settings = Settings(openai_api_key="test", openai_model="", _env_file=None)
+    with pytest.raises(ValueError, match="OPENAI_MODEL"):
+        client_module.OpenAIClient(settings)
 
 
 @pytest.mark.parametrize("schema", [ExtractedInformation, CompanyAnalysis])
 def test_output_urls_use_supported_json_schema_strings(schema):
-    items = schema.model_json_schema()["$defs"]["ClaimCited"]["properties"]["source_url"]
+    items = schema.model_json_schema()["$defs"]["ClaimCited"]["properties"][
+        "source_url"
+    ]
     assert items["type"] == "string"
     assert "format" not in items
 
@@ -22,7 +37,11 @@ def test_output_urls_use_supported_json_schema_strings(schema):
 @pytest.mark.parametrize("has_output", [True, False])
 def test_responses_structured_output(monkeypatch, has_output):
     expected = SWOTAnalysis(
-        strengths=["Example evidence"], weaknesses=[], opportunities=[], threats=[], competitor_notes=[]
+        strengths=["Example evidence"],
+        weaknesses=[],
+        opportunities=[],
+        threats=[],
+        competitor_notes=[],
     )
     requests = []
 
@@ -30,28 +49,35 @@ def test_responses_structured_output(monkeypatch, has_output):
         requests.append(request)
         output = []
         if has_output:
-            output = [{
-                "id": "msg_test",
-                "type": "message",
-                "role": "assistant",
+            output = [
+                {
+                    "id": "msg_test",
+                    "type": "message",
+                    "role": "assistant",
+                    "status": "completed",
+                    "content": [
+                        {
+                            "type": "output_text",
+                            "text": expected.model_dump_json(),
+                            "annotations": [],
+                        }
+                    ],
+                }
+            ]
+        return httpx2.Response(
+            200,
+            json={
+                "id": "resp_test",
+                "object": "response",
+                "created_at": 0,
                 "status": "completed",
-                "content": [{
-                    "type": "output_text",
-                    "text": expected.model_dump_json(),
-                    "annotations": [],
-                }],
-            }]
-        return httpx2.Response(200, json={
-            "id": "resp_test",
-            "object": "response",
-            "created_at": 0,
-            "status": "completed",
-            "model": "test-model",
-            "output": output,
-            "parallel_tool_calls": False,
-            "tool_choice": "auto",
-            "tools": [],
-        })
+                "model": "test-model",
+                "output": output,
+                "parallel_tool_calls": False,
+                "tool_choice": "auto",
+                "tools": [],
+            },
+        )
 
     def offline_sdk(**kwargs) -> AsyncOpenAI:
         return AsyncOpenAI(
@@ -62,11 +88,13 @@ def test_responses_structured_output(monkeypatch, has_output):
     monkeypatch.setattr(client_module, "AsyncOpenAI", offline_sdk)
 
     async def run() -> None:
-        client = client_module.OpenAIClient(Settings(
-            openai_api_key="offline-test-key",
-            openai_model="test-model",
-            _env_file=None,
-        ))
+        client = client_module.OpenAIClient(
+            Settings(
+                openai_api_key="offline-test-key",
+                openai_model="test-model",
+                _env_file=None,
+            )
+        )
         try:
             if has_output:
                 result = await client.generate_structured(

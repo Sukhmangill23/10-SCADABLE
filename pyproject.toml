@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "live-swot-research"
 version = "0.1.0"
-description = "Scraping and LLM scaffolding for SCADABLE competitor intelligence"
+description = "Scraper-backed LLM analysis for SCADABLE competitor intelligence"
 readme = "README.md"
 requires-python = ">=3.12,<3.13"
 dependencies = [
@@ -21,12 +21,9 @@ dev = ["pytest>=8.4,<10", "pytest-asyncio>=1.2,<2", "httpx2>=2.13,<3"]
 [tool.uv.sources]
 scraper = { path = "scraper" }
 
-[tool.setuptools]
-package-dir = {"" = "src"}
-py-modules = ["config", "pipeline"]
-
 [tool.setuptools.packages.find]
-where = ["src"]
+where = ["."]
+include = ["llm", "llm.*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

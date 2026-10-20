@@ -3,6 +3,9 @@
 Standalone Python package for discovering and collecting source-linked competitor content.
 It runs independently of the backend, database, downstream analysis and frontend.
 
+The repository's [research pipeline](../docs/research-pipeline.md) consumes this package's
+published Markdown bundles for cited LLM analysis. Collection and analysis remain separate.
+
 Start with the [architecture and integration guide](docs/SCRAPER_ARCHITECTURE.md) for the
 component flow, Decisions scoring, Python interfaces and backend/LLM handoff. Use the
 [quickstart](docs/quickstart.md) for setup, editable manual tests and inspecting outputs.

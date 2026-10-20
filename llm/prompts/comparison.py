@@ -1,8 +1,7 @@
-"""Initial comparison and SWOT instructions."""
+"""Company comparison and SWOT instructions."""
 
 from llm.schemas import ComparisonInput
 
-# TODO: Define the system prompt to compare SCADABLE data with competitor
 COMPARISON_SYSTEM_PROMPT = """ You are a SWOT analysis agent for SCADABLE. 
 You are provided with information about SCADABLE and all of its competitors, organized 
 into a ComparisonInput schema (see "<COMPARISON_INPUT>" below) which contains SCADABLE and its competitors information in 
@@ -59,7 +58,6 @@ them from their own perspectives.
 """
 
 
-# TODO: Define comparison dimensions and evidence requirements for SWOT.
 COMPARISON_USER_PROMPT = """Compare the supplied SCADABLE and competitor analyses.
 Organize supported findings into a SWOT analysis.
 
@@ -74,13 +72,14 @@ and here are all the competitors' datas:
 </COMPETITORS>
 """
 
+
 def build_comparison_user_prompt(data: ComparisonInput):
     """
     Returns the comparison user prompt specific to this company's data.
     """
     return COMPARISON_USER_PROMPT.format(
         data.scadable.model_dump_json(indent=2, exclude={"scores"}),
-        "\n".join(c.model_dump_json(indent=2, exclude={"scores"}) for c in data.competitors),
+        "\n".join(
+            c.model_dump_json(indent=2, exclude={"scores"}) for c in data.competitors
+        ),
     )
-
-

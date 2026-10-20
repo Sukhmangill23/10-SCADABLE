@@ -269,3 +269,12 @@ immediately after the CLI command.
 For importing the asynchronous service or reading validated summary/Markdown bundles,
 see [integration.md](integration.md).
 For upgrading old configuration or strict summary readers, see [migration.md](migration.md).
+
+## Analyze collected Markdown
+
+The repository's [research pipeline](../../docs/research-pipeline.md) can analyze an
+existing `crawl_summary.json` bundle or combine collection and analysis in one run.
+It preserves this package's Markdown output and source metadata. Follow that guide from
+the repository root to install the analysis layer and select `OPENAI_MODEL`.
+Structural selection disables only crawl-time model requests; downstream analysis still
+requires OpenAI credentials.
