@@ -7,9 +7,11 @@ fixtures during offline development and automated testing.
 
 import asyncio
 import logging
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urlsplit
 
 logger = logging.getLogger(__name__)
 
@@ -105,34 +107,35 @@ class Crawl4AIAdapter:
         website_url: str,
     ) -> dict[str, Any]:
         try:
-            from scraper import CompetitorInput, ScraperConfig
+            from scraper import CompetitorInput, ScraperConfig, SelectionConfig
+            from scraper.environment import load_environment
             from scraper.output import competitor_directory, export_competitor
             from scraper.service import CompetitorScraper
 
+            load_environment()
+
+            parts = urlsplit(website_url)
+            homepage_url = (
+                f"{parts.scheme}://{parts.netloc}"
+                if parts.scheme and parts.netloc
+                else website_url
+            )
+
             competitor = CompetitorInput(
                 name=competitor_name,
-                homepage_url=website_url,
+                homepage_url=homepage_url,
+            )
+            # Use LLM selection if OPENAI_API_KEY is available, otherwise structural
+            selection_mode = (
+                "llm" if os.environ.get("OPENAI_API_KEY", "").strip() else "structural"
             )
             # Cap crawl to 3 pages for D2 demo efficiency
-            config = ScraperConfig(max_pages=3)
+            config = ScraperConfig(
+                max_pages=3,
+                selection=SelectionConfig(mode=selection_mode),
+            )
             scraper = CompetitorScraper()
             result = await scraper.crawl(competitor, config)
-
-            # Export immutable Markdown bundle to scraper/output/backend/
-            summary_path = None
-            try:
-                output_root = Path("scraper/output/backend")
-                output_root.mkdir(parents=True, exist_ok=True)
-                timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S")
-                target_dir = output_root / f"run_{timestamp}"
-                await asyncio.to_thread(export_competitor, result, target_dir)
-                summary_path = str(
-                    target_dir
-                    / competitor_directory(str(result.homepage_url))
-                    / "crawl_summary.json"
-                )
-            except Exception as export_err:
-                logger.warning("Crawl bundle export skipped: %s", export_err)
 
             pages = [
                 {
@@ -147,13 +150,35 @@ class Crawl4AIAdapter:
                     "status": page.crawl_status,
                 }
                 for page in result.pages
-                if page.crawl_status == "success"
+                if page.crawl_status == "success" and page.cleaned_markdown.strip()
             ]
+
+            if not pages:
+                raise RuntimeError(
+                    f"Crawl4AI returned no usable pages (status={result.run_status}, "
+                    f"warnings={result.warnings})."
+                )
+
+            # Export immutable Markdown bundle to scraper/output/backend/
+            summary_path = None
+            try:
+                output_root = Path("scraper/output/backend")
+                output_root.mkdir(parents=True, exist_ok=True)
+                timestamp = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
+                target_dir = output_root / f"run_{timestamp}"
+                await asyncio.to_thread(export_competitor, result, target_dir)
+                summary_path = str(
+                    target_dir
+                    / competitor_directory(str(result.homepage_url))
+                    / "crawl_summary.json"
+                )
+            except Exception as export_err:
+                logger.warning("Crawl bundle export skipped: %s", export_err)
 
             return {
                 "schema_version": "backend-scrape-v1",
                 "competitor_name": competitor_name,
-                "base_url": website_url,
+                "base_url": homepage_url,
                 "scraped_at": datetime.now(timezone.utc).isoformat(),
                 "status": result.run_status,
                 "pages": pages,

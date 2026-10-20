@@ -138,10 +138,14 @@ class OpenAIAdapter:
                 AnalysisInput,
                 AnalysisPage,
                 CrawlExportSummary,
-                CrawlSummary,
                 ExportedPage,
             )
             from llm.swot_entries import to_swot_entries
+            from scraper.environment import load_environment
+            from scraper.models import CrawlSummary
+            from scraper.types import PageCategory
+
+            load_environment()
 
             # Check if summary_path exists on disk
             summary_path = scraped_data.get("summary_path")
@@ -151,34 +155,48 @@ class OpenAIAdapter:
                 )
             else:
                 # Construct AnalysisInput from in-memory scraped_data snapshot
+                valid_categories = {c.value for c in PageCategory}
                 analysis_pages = []
-                for p in scraped_data.get("pages", []):
+                for idx, p in enumerate(scraped_data.get("pages", [])):
                     url_str = p.get("url", "")
+                    body_md = p.get("text") or p.get("markdown") or ""
+                    if not url_str or not body_md.strip():
+                        continue
+                    raw_cat = p.get("category", "features")
+                    cat = raw_cat if raw_cat in valid_categories else "other"
                     exported = ExportedPage(
                         url=url_str,
-                        url_path=urlsplit(url_str).path,
-                        markdown_file=url_str,
+                        url_path=urlsplit(url_str).path or "/",
+                        markdown_file=f"pages/page_{idx}.md",
                         title=p.get("title"),
-                        category=p.get("category", "features"),
-                        selection="structural",
-                        word_count=len(p.get("text", "").split()),
+                        category=cat,
+                        word_count=len(body_md.split()),
                         crawled_at=datetime.now(timezone.utc),
                         status="success",
                     )
                     analysis_pages.append(
                         AnalysisPage(
                             source=exported,
-                            markdown=p.get("text") or p.get("markdown") or "",
+                            markdown=body_md,
                         )
                     )
                 if not analysis_pages:
                     raise ValueError("No usable scraped pages found in scraped_data.")
 
+                raw_base = scraped_data.get("base_url", "https://example.com")
+                base_parts = urlsplit(raw_base)
+                homepage_url = (
+                    f"{base_parts.scheme}://{base_parts.netloc}"
+                    if base_parts.scheme and base_parts.netloc
+                    else "https://example.com"
+                )
+
+                now = datetime.now(timezone.utc)
                 export_summary = CrawlExportSummary(
                     competitor_name=scraped_data.get("competitor_name", "Unknown"),
-                    homepage_url=scraped_data.get("base_url", "https://example.com"),
-                    started_at=datetime.now(timezone.utc),
-                    finished_at=datetime.now(timezone.utc),
+                    homepage_url=homepage_url,
+                    started_at=now,
+                    finished_at=now,
                     duration_seconds=1.0,
                     status="success",
                     completion_reason="completed",
@@ -194,7 +212,9 @@ class OpenAIAdapter:
                     pages=analysis_pages,
                 )
 
-            settings = Settings(_env_file=None)
+            settings = Settings()
+            if not settings.openai_model.strip():
+                settings = settings.model_copy(update={"openai_model": "gpt-4o-mini"})
             client = OpenAIClient(settings)
             try:
                 analyzer = Analyzer(client)
