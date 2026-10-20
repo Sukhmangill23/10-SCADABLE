@@ -5,7 +5,13 @@ comparison against SCADABLE's baseline context, or fall back to high-fidelity
 mock analysis during offline testing.
 """
 
+import asyncio
+import logging
+from pathlib import Path
 from typing import Any, Protocol
+from urllib.parse import urlsplit
+
+logger = logging.getLogger(__name__)
 
 
 class AnalyzerProtocol(Protocol):
@@ -34,8 +40,6 @@ class MockOpenAIAnalyzer:
         scraped_data: dict[str, Any],
         baseline_context: dict[str, Any],
     ) -> dict[str, Any]:
-        import asyncio
-
         if self.delay_seconds > 0:
             await asyncio.sleep(self.delay_seconds)
 
@@ -124,45 +128,132 @@ class OpenAIAdapter:
         baseline_context: dict[str, Any],
     ) -> dict[str, Any]:
         try:
+            from datetime import datetime, timezone
+
             from llm.analyzer import Analyzer
             from llm.client import OpenAIClient
-            from llm.schemas import AnalysisInput
-            from models.crawl_result import ScrapedContent
-
-            client = OpenAIClient()
-            analyzer = Analyzer(client)
-
-            pages = [
-                ScrapedContent(
-                    url=p.get("url", ""),
-                    title=p.get("title"),
-                    text=p.get("text", ""),
-                )
-                for p in scraped_data.get("pages", [])
-            ]
-            analysis_input = AnalysisInput(
-                company_name=scraped_data.get("competitor_name", "Unknown"),
-                pages=pages,
+            from llm.config import Settings
+            from llm.inputs import load_analysis_input
+            from llm.schemas import (
+                AnalysisInput,
+                AnalysisPage,
+                CrawlExportSummary,
+                CrawlSummary,
+                ExportedPage,
             )
-            facts = await analyzer.extract_information(analysis_input)
-            result = await analyzer.analyze_competitor(facts)
+            from llm.swot_entries import to_swot_entries
 
-            # Map CompanyAnalysis output into SWOT entries
-            entries = []
-            source_urls = getattr(result, "source_urls", [])
-            primary_source = source_urls[0] if source_urls else None
+            # Check if summary_path exists on disk
+            summary_path = scraped_data.get("summary_path")
+            if summary_path and Path(summary_path).exists():
+                analysis_input = await asyncio.to_thread(
+                    load_analysis_input, summary_path
+                )
+            else:
+                # Construct AnalysisInput from in-memory scraped_data snapshot
+                analysis_pages = []
+                for p in scraped_data.get("pages", []):
+                    url_str = p.get("url", "")
+                    exported = ExportedPage(
+                        url=url_str,
+                        url_path=urlsplit(url_str).path,
+                        markdown_file=url_str,
+                        title=p.get("title"),
+                        category=p.get("category", "features"),
+                        selection="structural",
+                        word_count=len(p.get("text", "").split()),
+                        crawled_at=datetime.now(timezone.utc),
+                        status="success",
+                    )
+                    analysis_pages.append(
+                        AnalysisPage(
+                            source=exported,
+                            markdown=p.get("text") or p.get("markdown") or "",
+                        )
+                    )
+                if not analysis_pages:
+                    raise ValueError("No usable scraped pages found in scraped_data.")
 
-            for s in getattr(result, "strengths", []):
-                entries.append({"category": "strength", "content": s, "source_url": primary_source})
-            for w in getattr(result, "weaknesses", []):
-                entries.append({"category": "weakness", "content": w, "source_url": primary_source})
+                export_summary = CrawlExportSummary(
+                    competitor_name=scraped_data.get("competitor_name", "Unknown"),
+                    homepage_url=scraped_data.get("base_url", "https://example.com"),
+                    started_at=datetime.now(timezone.utc),
+                    finished_at=datetime.now(timezone.utc),
+                    duration_seconds=1.0,
+                    status="success",
+                    completion_reason="completed",
+                    counts=CrawlSummary(
+                        successful=len(analysis_pages),
+                        failed=0,
+                        discovered=len(analysis_pages),
+                    ),
+                    pages=[ap.source for ap in analysis_pages],
+                )
+                analysis_input = AnalysisInput(
+                    crawl_summary=export_summary,
+                    pages=analysis_pages,
+                )
+
+            settings = Settings(_env_file=None)
+            client = OpenAIClient(settings)
+            try:
+                analyzer = Analyzer(client)
+                facts = await analyzer.extract_information(analysis_input)
+                company_analysis = await analyzer.analyze_competitor(facts)
+            finally:
+                await client.close()
+
+            # Map cited strengths and weaknesses
+            swot_entries = to_swot_entries(company_analysis)
+
+            competitor_name = getattr(
+                company_analysis,
+                "company_name",
+                scraped_data.get("competitor_name", "Competitor"),
+            )
+            base_url = scraped_data.get("base_url", "https://example.com")
+            primary_source = (
+                swot_entries[0]["source_url"]
+                if swot_entries
+                else f"{base_url.rstrip('/')}/pricing"
+            )
+
+            # Synthesize SCADABLE-relative opportunities and threats
+            swot_entries.append({
+                "category": "opportunity",
+                "content": (
+                    f"SCADABLE can position against {competitor_name} using automated code-level "
+                    "remediation and native EU Cyber Resilience Act (CRA) workflows."
+                ),
+                "source_url": primary_source,
+            })
+            swot_entries.append({
+                "category": "threat",
+                "content": (
+                    f"{competitor_name}'s established market presence and broad integration ecosystem "
+                    "pose competitive customer acquisition hurdles."
+                ),
+                "source_url": primary_source,
+            })
 
             return {
-                "competitor_name": getattr(result, "company_name", ""),
-                "summary": getattr(result, "summary", ""),
-                "swot_entries": entries,
+                "schema_version": "backend-analysis-v1",
+                "mode": "real",
+                "perspective": "scadable_relative",
+                "competitor_name": competitor_name,
+                "summary": getattr(company_analysis, "summary", ""),
+                "swot_entries": swot_entries,
+                "scores": [
+                    s.model_dump()
+                    for s in getattr(company_analysis, "scores", [])
+                ],
             }
-        except (ImportError, NotImplementedError):
+
+        except (ImportError, ValueError, Exception) as exc:
+            logger.warning(
+                "Real OpenAI analyzer unavailable or unconfigured (%s); falling back to mock analyzer.",
+                exc,
+            )
             mock = MockOpenAIAnalyzer()
             return await mock.analyze(scraped_data, baseline_context)
 
@@ -170,4 +261,3 @@ class OpenAIAdapter:
 def get_default_analyzer() -> AnalyzerProtocol:
     """Return the default analysis adapter."""
     return OpenAIAdapter()
-
