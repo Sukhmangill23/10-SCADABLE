@@ -1,0 +1,180 @@
+"""Convert ORM rows into API response models."""
+
+from collections.abc import Iterable
+from typing import Any
+from urllib.parse import urlsplit
+
+from app.api.schemas import (
+    ActivityItem,
+    AgentRun,
+    ApiResearchStatus,
+    CompetitorProfile,
+    CompetitorSummary,
+    Finding,
+    RunStep,
+)
+from app.db.models import Competitor, ResearchRun, ResearchStatus, SWOTEntry
+
+_STATUS_MAP: dict[ResearchStatus, ApiResearchStatus] = {
+    ResearchStatus.PENDING: "pending",
+    ResearchStatus.RUNNING: "running",
+    ResearchStatus.COMPLETED: "success",
+    ResearchStatus.FAILED: "failed",
+}
+
+NOT_RESEARCHED_SUMMARY = "Profile not researched yet."
+
+
+def api_status(status: ResearchStatus) -> ApiResearchStatus:
+    return _STATUS_MAP[status]
+
+
+def source_label(url: str | None) -> str:
+    """Short human label for a source URL, e.g. ``vanta.com/pricing``."""
+    if not url:
+        return "No source"
+    parts = urlsplit(url)
+    host = (parts.hostname or "").removeprefix("www.")
+    path = parts.path.rstrip("/")
+    return f"{host}{path}" or url
+
+
+def finding_from_entry(entry: SWOTEntry, competitor: Competitor | None) -> Finding:
+    return Finding(
+        id=str(entry.id),
+        competitor_id=str(competitor.id) if competitor else "",
+        competitor_name=competitor.name if competitor else "SCADABLE",
+        category=entry.category.value,
+        text=entry.content,
+        source_url=entry.source_url or "",
+        source_label=source_label(entry.source_url),
+        detected_at=entry.created_at,
+    )
+
+
+def _latest_completed(runs: Iterable[ResearchRun]) -> ResearchRun | None:
+    completed = [r for r in runs if r.status == ResearchStatus.COMPLETED]
+    if not completed:
+        return None
+    return max(completed, key=lambda r: (r.completed_at or r.created_at, r.id))
+
+
+def _analysis(run: ResearchRun | None) -> dict[str, Any]:
+    return run.analysis_result if run and isinstance(run.analysis_result, dict) else {}
+
+
+def competitor_summary(
+    competitor: Competitor, latest_run: ResearchRun | None
+) -> CompetitorSummary:
+    completed = _latest_completed(competitor.research_runs)
+    change = None
+    if _analysis(completed).get("skipped_llm"):
+        change = "No changes detected since last research"
+    elif completed is not None:
+        change = "Research completed"
+    if latest_run is not None and latest_run.status == ResearchStatus.FAILED:
+        change = "Latest research run failed"
+
+    return CompetitorSummary(
+        id=str(competitor.id),
+        name=competitor.name,
+        website=competitor.website_url,
+        research_status=api_status(latest_run.status) if latest_run else "pending",
+        last_researched_at=completed.completed_at if completed else None,
+        recent_change_summary=change,
+    )
+
+
+def competitor_profile(
+    competitor: Competitor,
+    latest_run: ResearchRun | None,
+    swot_entries: list[SWOTEntry],
+) -> CompetitorProfile:
+    summary = competitor_summary(competitor, latest_run)
+    completed = _latest_completed(competitor.research_runs)
+    analysis = _analysis(completed)
+
+    text = analysis.get("summary")
+    if not text and analysis.get("reused_from_run_id"):
+        reused = next(
+            (r for r in competitor.research_runs if r.id == analysis["reused_from_run_id"]),
+            None,
+        )
+        text = _analysis(reused).get("summary")
+
+    activity = [
+        ActivityItem(
+            id=str(run.id),
+            text=_activity_text(run),
+            detected_at=run.completed_at or run.started_at or run.created_at,
+        )
+        for run in sorted(competitor.research_runs, key=lambda r: r.id, reverse=True)[:10]
+    ]
+
+    return CompetitorProfile(
+        **summary.model_dump(),
+        summary=text or NOT_RESEARCHED_SUMMARY,
+        findings=[finding_from_entry(e, competitor) for e in swot_entries],
+        recent_activity=activity,
+    )
+
+
+def _activity_text(run: ResearchRun) -> str:
+    if run.status == ResearchStatus.COMPLETED:
+        if _analysis(run).get("skipped_llm"):
+            return "Research run completed; no website changes detected"
+        return "Research run completed and findings updated"
+    if run.status == ResearchStatus.FAILED:
+        return f"Research run failed: {run.error_message or 'unknown error'}"
+    if run.status == ResearchStatus.RUNNING:
+        return "Research run in progress"
+    return "Research run queued"
+
+
+def _run_steps(run: ResearchRun) -> list[RunStep]:
+    """Derive pipeline steps from what the run has persisted so far."""
+    failed = run.status == ResearchStatus.FAILED
+    analysis = _analysis(run)
+    skipped = bool(analysis.get("skipped_llm"))
+    done = run.status == ResearchStatus.COMPLETED
+
+    def step(name: str, finished: bool, reached: bool, ok_text: str = "Success") -> RunStep:
+        if finished:
+            return RunStep(name=name, result=ok_text, status="success")
+        if failed and reached:
+            return RunStep(name=name, result="Failed", status="failed")
+        if run.status == ResearchStatus.RUNNING and reached:
+            return RunStep(name=name, result="In progress", status="running")
+        return RunStep(name=name, result="Not started", status="pending")
+
+    crawled = run.scraped_data is not None
+    analyzed = bool(analysis)
+    return [
+        step("Crawl competitor website", crawled, True),
+        step(
+            "Analyze with LLM",
+            analyzed,
+            crawled,
+            "Skipped (content unchanged)" if skipped else "Success",
+        ),
+        step("Save SWOT findings", done, analyzed),
+    ]
+
+
+def agent_run(run: ResearchRun, competitor_name: str) -> AgentRun:
+    steps = _run_steps(run)
+    skipped = bool(_analysis(run).get("skipped_llm"))
+    analyzed = bool(_analysis(run))
+    return AgentRun(
+        id=str(run.id),
+        competitor_id=str(run.competitor_id),
+        competitor_name=competitor_name,
+        status=api_status(run.status),
+        step_count=len(steps),
+        cache_hits=(1 if skipped else 0) if analyzed else None,
+        cache_misses=(0 if skipped else 1) if analyzed else None,
+        started_at=run.started_at or run.created_at,
+        finished_at=run.completed_at,
+        steps=steps,
+        error_message=run.error_message,
+    )
