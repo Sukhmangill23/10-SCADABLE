@@ -10,7 +10,9 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import os
 import re
+import sys
 import time
 from collections.abc import Callable
 from contextlib import AsyncExitStack, suppress
@@ -35,12 +37,32 @@ from .reliability import (
     failed_page,
     parse_retry_after,
 )
+from .runtime import configure_runtime
 from .types import WebUrl, utc_now
 
 if TYPE_CHECKING:
     from crawl4ai import CrawlResult
 
 logger = logging.getLogger(__name__)
+
+
+async def _complete_before_cancelling(operation):
+    """Finish bounded SDK work before cancellation can abandon owned subprocesses."""
+    task = asyncio.create_task(operation)
+    try:
+        return await asyncio.shield(task)
+    except asyncio.CancelledError:
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                continue
+            except Exception:
+                break
+        # Retrieve any error, while preserving the caller's cancellation.
+        with suppress(Exception, asyncio.CancelledError):
+            task.result()
+        raise
 
 
 def _browser_failure_kind(error: Exception) -> str:
@@ -213,6 +235,7 @@ class Crawl4AIFetcher:
         self._shared_hosts = host_limiter
 
     async def __aenter__(self):
+        configure_runtime()
         from crawl4ai import AsyncWebCrawler
         from crawl4ai.async_logger import AsyncLogger
         from rich.console import Console
@@ -226,10 +249,21 @@ class Crawl4AIFetcher:
             )
             self._crawler.crawler_strategy.set_hook("on_page_context_created", self._on_page)
             self._crawler.crawler_strategy.set_hook("before_retrieve_html", self._interact)
-            async with asyncio.timeout(self.settings.page_timeout_seconds):
-                await self._crawler.start()
-        except BaseException:
+
+            async def start():
+                async with asyncio.timeout(self.settings.page_timeout_seconds):
+                    await self._crawler.start()
+
+            await _complete_before_cancelling(start())
+        except BaseException as error:
             await self.__aexit__(None, None, None)
+            if isinstance(error, Exception) and "Executable doesn't exist" in str(error):
+                raise RuntimeError(
+                    "Chromium is not installed in the selected Playwright cache. "
+                    f"Run {sys.executable} -m playwright install chromium "
+                    "with the same browser-cache setting used by this process. "
+                    f"PLAYWRIGHT_BROWSERS_PATH={os.getenv('PLAYWRIGHT_BROWSERS_PATH', '<default>')}"
+                ) from error
             raise
         return self
 
@@ -237,8 +271,12 @@ class Crawl4AIFetcher:
         try:
             if self._crawler:
                 try:
-                    async with asyncio.timeout(10):
-                        await self._crawler.close()
+
+                    async def close():
+                        async with asyncio.timeout(10):
+                            await self._crawler.close()
+
+                    await _complete_before_cancelling(close())
                 except Exception as error:
                     logger.warning("Browser cleanup failed: %s", error)
         finally:

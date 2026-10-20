@@ -39,8 +39,13 @@ or another nested directory. `scraper/.env` is no longer used. Set `OPENAI_API_K
 model must support Responses API structured outputs. Tests and example `--help` need no
 real credentials. Offline tests also need no browser binaries.
 
-For live crawling, install Chromium. These optional PowerShell cache settings reuse the
-scraper's ignored local cache directories and should be set in each new terminal:
+For live crawling, install Chromium using the interpreter that runs the pipeline.
+The browser boundary now applies the same cache setup as `manual_test.py`: in this
+checkout it defaults the SDK cache to `scraper/.uv-cache` and reuses
+`scraper/.uv-cache/playwright` when that directory exists. This applies to the CLI,
+example, and direct Python consumers. Explicit environment settings take precedence.
+
+For a fresh browser installation into the checkout cache, run from the repository root:
 
 ```powershell
 $env:CRAWL4_AI_BASE_DIRECTORY = Join-Path (Get-Location) "scraper/.uv-cache"
@@ -49,6 +54,18 @@ python -m playwright install chromium
 ```
 
 See the [scraper quickstart](../scraper/docs/quickstart.md) for browser and site-specific setup.
+
+An older browser in the global Windows cache cannot satisfy a newer Playwright revision.
+If startup reports a missing executable, use the reported interpreter to install Chromium
+with the same `PLAYWRIGHT_BROWSERS_PATH` used at runtime. A separate virtual environment
+does not automatically reuse another environment's browser location.
+
+For a deployed backend, install Chromium during image/deployment setup. Set
+`PLAYWRIGHT_BROWSERS_PATH` consistently during installation and execution, and use a
+writable `CRAWL4_AI_BASE_DIRECTORY`. Linux images also need Playwright's system dependencies
+(install with `python -m playwright install --with-deps chromium`). Browser downloads are
+never performed automatically during a research request. Standalone installs outside this
+checkout retain SDK defaults unless the host sets these variables.
 
 ## Run the example
 
@@ -71,6 +88,7 @@ the scraper's model requests. Downstream analysis still uses OpenAI.
 
 The example prints a JSON array of research results. Page Markdown and `crawl_summary.json`
 keep the scraper's existing output structure; analysis does not rewrite those files.
+Progress logs go to stderr; stdout remains the JSON result.
 
 ## Python interfaces
 
@@ -175,11 +193,17 @@ completion markers, provenance, and no-overwrite behavior.
 - No usable pages, invalid indexes, missing files, or invalid UTF-8 fail before an analysis
   request. Existing competitor output folders and conflicting competitor folder names are rejected
   before crawling.
+- An unusable export error includes its competitor, URL, status, saved index, crawl warnings,
+  and page failures. A missing browser includes the executing interpreter, cache setting,
+  and install command, instead of being replaced by a generic empty-content error.
 - Extraction citations must match original source URLs. Company-analysis citations must
   occur in the extracted facts. Redirect destinations remain metadata, not replacement citations.
 - A batch fails fast when a company has no usable content or export/analysis raises.
   The crawl iterator is closed when supported, including on cancellation. Published exports
   remain available for `analyze_export()` retries; cancellation does not roll back files.
+- Browser startup and close complete their bounded SDK work before caller cancellation
+  propagates. Startup uses `page_timeout_seconds`; close has a 10-second deadline.
+  Hosts should await cancellation so owned browser drivers finish before loop shutdown.
 - Full Markdown is supplied without chunking or truncation. Model context-limit errors
   propagate. The Decisions allowance applies only to selection, not downstream analysis costs.
 
@@ -199,3 +223,14 @@ and SDK parsing with browser/HTTP boundaries mocked. It verifies exact Markdown,
 citations, client cleanup, and replay without recrawling. Other tests cover invalid bundles,
 configuration, comparison ordering, cancellation, schemas, and score bounds.
 Opt-in Chromium tests and standalone checks remain in the scraper's own documentation.
+
+To test the real browser pipeline against loopback pages, without paid model requests:
+
+```powershell
+$env:SCRAPER_BROWSER_TESTS = "1"
+python -m pytest tests/test_research_browser.py -q
+```
+
+These subprocess tests cover three competitors, exact exported Markdown passed to the
+analysis boundary, missing browser binaries, startup cancellation, and absence of pending
+tasks or closed-loop transport errors on process exit.

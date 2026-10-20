@@ -14,6 +14,7 @@ Results are printed as JSON. Crawl bundles retain the scraper's normal format.
 import argparse
 import asyncio
 import json
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 
@@ -94,4 +95,5 @@ def main(argv=None) -> int:
 
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     raise SystemExit(main())

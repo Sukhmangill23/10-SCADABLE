@@ -29,5 +29,14 @@ def load_analysis_input(summary_path: str | Path) -> AnalysisInput:
         if markdown.strip():
             pages.append(AnalysisPage(source=page, markdown=markdown))
     if not pages:
-        raise ValueError(f"No usable Markdown pages in export: {index}")
+        details = list(summary.warnings)
+        details.extend(page.error for page in summary.pages if page.error)
+        explanation = (
+            "; ".join(dict.fromkeys(details)) or "No successful nonempty Markdown pages"
+        )
+        raise ValueError(
+            f"No usable Markdown pages for {summary.competitor_name} "
+            f"({summary.homepage_url}, status={summary.status}). "
+            f"Export: {index}. Crawl details: {explanation}"
+        )
     return AnalysisInput(crawl_summary=summary, pages=pages)

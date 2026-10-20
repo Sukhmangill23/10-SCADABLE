@@ -77,7 +77,8 @@ You can also select the project's `.venv` Python interpreter in VS Code and run 
 using **Run Python File**, or execute `.venv/Scripts/python.exe manual_test.py` directly.
 The runner loads the repository-root `.env` regardless of your working directory.
 It configures the SDK cache and detects the local browser cache automatically;
-explicit environment settings take precedence. Paths are relative to the script's project
+the CLI and pipeline browser boundary now use this same cache setup.
+Explicit environment settings take precedence. Paths are relative to the script's project
 directory, so changing your terminal's working directory does not move the output.
 
 The log shows the exact output directory, each saved `crawl_summary.json`, selection mode

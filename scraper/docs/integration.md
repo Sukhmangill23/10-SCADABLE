@@ -7,13 +7,17 @@ The package runs without a backend, database or downstream analysis service. Ins
 `uv sync --locked`, then `uv run --locked python -m playwright install chromium`.
 Run the CLI from any directory after installation; use an explicit TOML/output path.
 For a custom browser location, set `PLAYWRIGHT_BROWSERS_PATH` during both installation
-and execution. The CLI and manual runner default to the shared repository-root `.env`;
+and execution. The browser boundary automatically reuses `scraper/.uv-cache/playwright`
+when present in this checkout, using the same setup as the manual runner. Explicit
+host configuration wins; installed packages outside a checkout retain SDK defaults.
+The CLI and manual runner default to the shared repository-root `.env`;
 the CLI supports an explicit `--env-file`. Existing process environment
 values take precedence. Default LLM selection requires `OPENAI_API_KEY`; explicit
 `selection={"mode": "structural"}` needs no API credentials or model requests.
 
 Crawl4AI initializes an import-time SDK cache under the user home even when application
-page caching is disabled. In a restricted deployment, set `CRAWL4_AI_BASE_DIRECTORY`
+page caching is disabled. Checkout browser startup defaults this to `scraper/.uv-cache`.
+In a restricted deployment, set `CRAWL4_AI_BASE_DIRECTORY`
 to a writable directory before Python starts (the SDK creates `.crawl4ai` beneath it).
 For example, from `scraper/` in PowerShell:
 
@@ -23,6 +27,11 @@ $env:CRAWL4_AI_BASE_DIRECTORY = Join-Path (Get-Location) ".uv-cache"
 
 This is an SDK runtime cache, not application persistence. Keep it out of Git.
 `CRAWL4AI_NO_CLOUD_NOTICE=1` optionally suppresses the SDK's stderr promotional notice.
+Install Chromium during deployment setup with the same interpreter and browser-cache
+setting used by the worker. Linux images need system dependencies too, for example
+`python -m playwright install --with-deps chromium`. Requests never install browsers.
+Await cancellation: browser startup and cleanup finish within their configured deadlines
+before the cancellation propagates, preventing abandoned driver transports.
 
 ## Python consumers
 

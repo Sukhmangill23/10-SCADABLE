@@ -398,6 +398,75 @@ async def test_browser_startup_has_a_deadline_and_closes_on_timeout():
     assert runtime.closed
 
 
+async def test_cancel_during_browser_bootstrap_finishes_startup_before_close():
+    from scraper.browser import Crawl4AIFetcher
+
+    runtime = FakeCrawler()
+    starting, release = asyncio.Event(), asyncio.Event()
+    initialized = False
+    closed_after_start = False
+
+    async def start():
+        nonlocal initialized
+        starting.set()
+        await release.wait()
+        initialized = True
+
+    async def close():
+        nonlocal closed_after_start
+        closed_after_start = initialized
+        runtime.closed = True
+
+    runtime.start, runtime.close = start, close
+
+    async def run():
+        async with Crawl4AIFetcher(
+            "https://example.com", ScraperConfig(), Guard(), crawler_factory=lambda **kw: runtime
+        ):
+            pass
+
+    task = asyncio.create_task(run())
+    await starting.wait()
+    task.cancel()
+    await asyncio.sleep(0)
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert runtime.closed
+    assert closed_after_start
+
+
+async def test_repeated_cancellation_cannot_interrupt_owned_browser_cleanup():
+    from scraper.browser import Crawl4AIFetcher
+
+    runtime = FakeCrawler()
+    closing, release = asyncio.Event(), asyncio.Event()
+
+    async def close():
+        closing.set()
+        await release.wait()
+        runtime.closed = True
+
+    runtime.close = close
+
+    async def run():
+        async with Crawl4AIFetcher(
+            "https://example.com", ScraperConfig(), Guard(), crawler_factory=lambda **kw: runtime
+        ):
+            pass
+
+    task = asyncio.create_task(run())
+    await closing.wait()
+    task.cancel()
+    await asyncio.sleep(0)
+    task.cancel()
+    await asyncio.sleep(0)
+    release.set()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert runtime.closed
+
+
 async def test_cleanup_error_does_not_replace_collected_page(caplog):
     from scraper.browser import Crawl4AIFetcher
 

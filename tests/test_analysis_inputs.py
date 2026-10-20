@@ -82,8 +82,10 @@ def test_loader_rejects_exports_without_usable_markdown(tmp_path, kind):
     if kind == "whitespace":
         (index.parent / "pages/index.md").write_text(" \n\t", encoding="utf-8")
 
-    with pytest.raises(ValueError, match="No usable Markdown"):
+    with pytest.raises(ValueError, match="No usable Markdown") as caught:
         load_analysis_input(index)
+    if kind == "failed":
+        assert "Fetch failed" in str(caught.value)
 
 
 @pytest.mark.parametrize("corruption", ["version", "path", "counts"])
@@ -153,3 +155,24 @@ def test_loader_rejects_a_reference_resolving_outside_bundle(tmp_path):
 
     with pytest.raises(ValueError, match="escapes the export bundle"):
         load_analysis_input(index)
+
+
+def test_unusable_export_error_keeps_competitor_and_startup_diagnostics(tmp_path):
+    index = write_export(
+        tmp_path,
+        make_result(
+            run_status="failed",
+            completion_reason="failed",
+            pages=[],
+            warnings=[
+                "Chromium missing; install chromium using the application interpreter"
+            ],
+        ),
+    )
+    with pytest.raises(ValueError) as caught:
+        load_analysis_input(index)
+    message = str(caught.value)
+    assert "https://example.com/" in message
+    assert "failed" in message
+    assert "Chromium missing" in message
+    assert str(index) in message

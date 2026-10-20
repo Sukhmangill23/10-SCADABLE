@@ -2,7 +2,6 @@
 
 import asyncio
 import logging
-import os
 from contextlib import aclosing
 from datetime import UTC, datetime
 from pathlib import Path
@@ -10,6 +9,7 @@ from pathlib import Path
 from scraper import CompetitorInput, ScraperConfig, SelectionConfig
 from scraper.environment import load_environment
 from scraper.output import competitor_directory, export_competitor
+from scraper.runtime import configure_runtime as configure_browser_runtime
 from scraper.service import CompetitorScraper
 
 PROJECT_DIRECTORY = Path(__file__).resolve().parent
@@ -59,10 +59,7 @@ logger = logging.getLogger(__name__)
 def configure_runtime() -> None:
     """Use the project's writable SDK/browser caches while respecting explicit env settings."""
     load_environment(PROJECT_DIRECTORY.parent / ".env")
-    os.environ.setdefault("CRAWL4_AI_BASE_DIRECTORY", str(PROJECT_DIRECTORY / ".uv-cache"))
-    browser_cache = PROJECT_DIRECTORY / ".uv-cache" / "playwright"
-    if browser_cache.is_dir():
-        os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", str(browser_cache))
+    configure_browser_runtime(PROJECT_DIRECTORY)
 
 
 async def main() -> int:
