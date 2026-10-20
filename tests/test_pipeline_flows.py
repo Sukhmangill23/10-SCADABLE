@@ -49,14 +49,7 @@ class StubAnalyzer(Analyzer):
         # Cleaning runs before extraction, so the page text must already be stripped.
         assert data.pages[0].text == f"{data.company_name} page"
         return ExtractedInformation(
-            company_name=data.company_name,
-            summary="facts",
-            features=[],
-            target_customers=[],
-            pricing=[],
-            integrations=[],
-            differentiators=[],
-            claims_cited=[],
+            company_name=data.company_name, summary="facts", claims_cited=[]
         )
 
     async def analyze_competitor(self, data: ExtractedInformation) -> CompanyAnalysis:
@@ -85,9 +78,7 @@ class StubAnalyzer(Analyzer):
 
 
 def _analysis(name: str, kind: str) -> CompanyAnalysis:
-    return CompanyAnalysis(
-        company_name=name, summary=kind, strengths=[], weaknesses=[], claims_cited=[]
-    )
+    return CompanyAnalysis(company_name=name, summary=kind, claims_cited=[], scores=[])
 
 
 def test_run_scadable_uses_the_scadable_analysis():

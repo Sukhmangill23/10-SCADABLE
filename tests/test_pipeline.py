@@ -19,19 +19,16 @@ def test_pipeline_connects_crawl_clean_extract_and_analyze(monkeypatch):
     facts = ExtractedInformation(
         company_name=competitor.name,
         summary="Example facts",
-        features=[],
-        target_customers=[],
-        pricing=[],
-        integrations=[],
-        differentiators=[],
-        claims_cited=[ClaimCited(claim="Example claim", source_url=str(competitor.url))]
+        claims_cited=[
+            ClaimCited(category="features", claim="Example claim", source_url=str(competitor.url))
+        ],
     )
     analysis = CompanyAnalysis(
         company_name=competitor.name,
         summary="Example analysis",
-        strengths=[],
-        weaknesses=[],
-        claims_cited=[ClaimCited(claim="Example claim", source_url=str(competitor.url))],
+        claims_cited=[
+            ClaimCited(category="strength", claim="Example claim", source_url=str(competitor.url))
+        ],    scores=[],
     )
 
     class StubCrawler(BaseCrawler):

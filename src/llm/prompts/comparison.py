@@ -18,12 +18,10 @@ input:
     <COMPANY_ANALYSIS>
     - company_name (string): the name of the company.
     - summary (string): a quick summary about what the company is.
-    - strengths (list[string]): a list of strings, containing the company's strengths (might not be in comparison to the other competitors).
-    - weaknesses (list[string]): a list of strings, containing the company's weaknesses (might not be in comparison to the other competitors).
-    - claims_cited (list[ClaimCited]): the claim cited with the actual URL (see <CLAIM_CITED> for the actual format).
+    - claims_cited (list[ClaimCited]): the company's strengths and weaknesses (see <CLAIM_CITED> for the actual format). They might not be in comparison to the other companies.
         <CLAIM_CITED>
-            - category (string): the category where the claim belongs.
-            - claim (string): the claim that was extracted or determined from the information received.
+            - category (string): "strength" or "weakness".
+            - claim (string): the strength or weakness.
             - source_url (string): the URL to the page that actually supports this claim.
         </CLAIM_CITED>
     </COMPANY_ANALYSIS>
@@ -81,8 +79,8 @@ def build_comparison_user_prompt(data: ComparisonInput):
     Returns the comparison user prompt specific to this company's data.
     """
     return COMPARISON_USER_PROMPT.format(
-        data.scadable.model_dump_json(indent=2),
-        "\n".join(c.model_dump_json(indent=2) for c in data.competitors),
+        data.scadable.model_dump_json(indent=2, exclude={"scores"}),
+        "\n".join(c.model_dump_json(indent=2, exclude={"scores"}) for c in data.competitors),
     )
 
 
