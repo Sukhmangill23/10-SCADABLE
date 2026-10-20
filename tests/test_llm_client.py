@@ -3,7 +3,7 @@
 import asyncio
 import json
 
-import httpx
+import httpx2
 import pytest
 from openai import AsyncOpenAI
 
@@ -26,7 +26,7 @@ def test_responses_structured_output(monkeypatch, has_output):
     )
     requests = []
 
-    def respond(request: httpx.Request) -> httpx.Response:
+    def respond(request: httpx2.Request) -> httpx2.Response:
         requests.append(request)
         output = []
         if has_output:
@@ -41,7 +41,7 @@ def test_responses_structured_output(monkeypatch, has_output):
                     "annotations": [],
                 }],
             }]
-        return httpx.Response(200, json={
+        return httpx2.Response(200, json={
             "id": "resp_test",
             "object": "response",
             "created_at": 0,
@@ -56,7 +56,7 @@ def test_responses_structured_output(monkeypatch, has_output):
     def offline_sdk(**kwargs) -> AsyncOpenAI:
         return AsyncOpenAI(
             **kwargs,
-            http_client=httpx.AsyncClient(transport=httpx.MockTransport(respond)),
+            http_client=httpx2.AsyncClient(transport=httpx2.MockTransport(respond)),
         )
 
     monkeypatch.setattr(client_module, "AsyncOpenAI", offline_sdk)

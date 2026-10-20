@@ -199,6 +199,28 @@ async def test_bfs_skips_candidate_scoring_but_assesses_content():
     assert decisions.scored == [] and len(decisions.assessed) == 2
 
 
+@pytest.mark.parametrize("mode", ["llm", "structural"])
+async def test_homepage_page_limit_defers_links_without_candidate_scoring(mode):
+    fetcher = Fetcher({"https://example.com/": page(links=("/atlas",))})
+    settings = ScraperConfig(
+        max_pages=1, selection={"mode": mode}, request_delay_seconds=(0.0, 0.0)
+    )
+    decisions = Decisions(fetcher, settings.selection)
+    result = await CompetitorScraper(
+        fetcher_factory=lambda *args: fetcher,
+        decision_provider_factory=lambda *args: decisions,
+        http_transport=httpx.MockTransport(lambda request: httpx.Response(404)),
+    ).crawl(CompetitorInput(homepage_url="https://example.com"), settings)
+
+    assert result.run_status == "success"
+    assert result.completion_reason == "page_limit"
+    assert result.summary.successful == 1
+    assert result.pages[0].cleaned_markdown == "# Company\nEvidence: /"
+    atlas = next(item for item in result.discovered_urls if str(item.url).endswith("/atlas"))
+    assert atlas.disposition == "deferred" and atlas.reason == "page_limit"
+    assert decisions.scored == []
+
+
 async def test_authentication_failure_retains_fetched_pages_and_closes_resources():
     fetcher = Fetcher({"https://example.com/": page(links=("/atlas",))})
     decisions = Decisions(fetcher, fatal=True)

@@ -56,23 +56,31 @@ research application. There is no API server, database, scheduler, or frontend i
 
 ### Setup
 
-Use Python 3.11 or newer from the repository root:
+Use Python 3.12 from the repository root. Install both local packages into the same
+environment:
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
-python -m pip install -e ".[dev]"
+python -m pip install ./scraper -e ".[dev]"
 Copy-Item .env.example .env
 python -m pytest
+python -m pytest -c scraper/pyproject.toml scraper/tests
 ```
 
 On macOS/Linux, activate with `source .venv/bin/activate` and copy the environment
 file with `cp .env.example .env`.
 
-Core dependencies are Pydantic for typed contracts, pydantic-settings for
-environment configuration, and the OpenAI Python SDK. Development dependencies
-are pytest and httpx for offline HTTP transport tests. Crawler SDKs are deferred
-until adapters are implemented; no browser installation is needed for this scaffold.
+Core dependencies are the local scraper package, Pydantic for typed contracts,
+pydantic-settings for environment configuration, and OpenAI SDK 3.x, shared with the
+scraper's Decisions adapter. Development dependencies are pytest, pytest-asyncio for
+the scraper's async tests, and httpx2 for offline SDK transport tests. The scraper
+continues to use httpx for its own HTTP requests.
+
+The combined environment installs the scraper as a regular local package; reinstall
+`./scraper` after changing its source. Its standalone editable development workflow is
+documented in [scraper/README.md](scraper/README.md). No browser installation is needed
+for offline tests; real crawling requires Chromium as described in that guide.
 
 ### Structure and contracts
 

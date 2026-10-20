@@ -7,15 +7,19 @@ name = "live-swot-research"
 version = "0.1.0"
 description = "Scraping and LLM scaffolding for SCADABLE competitor intelligence"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    "openai>=2,<3",
-    "pydantic>=2,<3",
+    "scraper==0.1.0",
+    "openai>=3.26,<4",
+    "pydantic>=2.12,<3",
     "pydantic-settings>=2,<3",
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8,<10", "httpx>=0.28,<1"]
+dev = ["pytest>=8.4,<10", "pytest-asyncio>=1.2,<2", "httpx2>=2.13,<3"]
+
+[tool.uv.sources]
+scraper = { path = "scraper" }
 
 [tool.setuptools]
 package-dir = {"" = "src"}

@@ -562,7 +562,6 @@ async def test_browser_rate_wait_deadline_is_capacity_failure():
     runtime, route = routed_runtime()
     limiter = HostLimiter(1)
     settings = ScraperConfig(capacity_wait_timeout_seconds=0.02, request_delay_seconds=(0.0, 0.0))
-    limiter.defer("https://example.com", 0.1, settings)
     async with Crawl4AIFetcher(
         "https://example.com",
         settings,
@@ -570,6 +569,8 @@ async def test_browser_rate_wait_deadline_is_capacity_failure():
         crawler_factory=lambda **kw: runtime,
         host_limiter=limiter,
     ) as fetcher:
+        # Start after SDK setup; only the capacity deadline should end this wait.
+        limiter.defer("https://example.com", 10.0, settings)
         page = await fetcher.fetch("https://example.com/pricing", settings)
     assert page.metadata["crawl_diagnostics"]["failure_kind"] == "capacity"
     assert route.fetch.await_count == 0
