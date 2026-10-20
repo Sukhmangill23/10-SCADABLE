@@ -14,7 +14,7 @@ from llm.schemas import CompanyAnalysis, ExtractedInformation, SWOTAnalysis
 
 @pytest.mark.parametrize("schema", [ExtractedInformation, CompanyAnalysis])
 def test_output_urls_use_supported_json_schema_strings(schema):
-    items = schema.model_json_schema()["properties"]["source_urls"]["items"]
+    items = schema.model_json_schema()["$defs"]["ClaimCited"]["properties"]["source_url"]
     assert items["type"] == "string"
     assert "format" not in items
 
@@ -22,7 +22,7 @@ def test_output_urls_use_supported_json_schema_strings(schema):
 @pytest.mark.parametrize("has_output", [True, False])
 def test_responses_structured_output(monkeypatch, has_output):
     expected = SWOTAnalysis(
-        strengths=["Example evidence"], weaknesses=[], opportunities=[], threats=[]
+        strengths=["Example evidence"], weaknesses=[], opportunities=[], threats=[], competitor_notes=[]
     )
     requests = []
 

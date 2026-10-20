@@ -5,6 +5,5 @@ from models.crawl_result import ScrapedContent
 
 def clean_content(content: ScrapedContent) -> ScrapedContent:
     """Prepare one page for analysis while preserving its source URL."""
-    # TODO: Normalize whitespace and remove irrelevant page content.
-    # TODO: Agree on HTML/markdown handling and preserve useful evidence.
-    raise NotImplementedError("Content cleaning is not implemented yet.")
+    # We are keeping the markdown text for easier processing for the LLM
+    return content.model_copy(update={"text": content.text.strip()})

@@ -7,7 +7,7 @@ import pytest
 import pipeline
 from crawling.base import BaseCrawler
 from llm.analyzer import Analyzer
-from llm.schemas import AnalysisInput, CompanyAnalysis, ExtractedInformation
+from llm.schemas import AnalysisInput, ClaimCited, CompanyAnalysis, ExtractedInformation
 from models.crawl_result import CompetitorURL, CrawlResult, ScrapedContent
 
 
@@ -21,14 +21,17 @@ def test_pipeline_connects_crawl_clean_extract_and_analyze(monkeypatch):
         summary="Example facts",
         features=[],
         target_customers=[],
-        source_urls=[str(competitor.url)],
+        pricing=[],
+        integrations=[],
+        differentiators=[],
+        claims_cited=[ClaimCited(claim="Example claim", source_url=str(competitor.url))]
     )
     analysis = CompanyAnalysis(
         company_name=competitor.name,
         summary="Example analysis",
         strengths=[],
         weaknesses=[],
-        source_urls=[str(competitor.url)],
+        claims_cited=[ClaimCited(claim="Example claim", source_url=str(competitor.url))],
     )
 
     class StubCrawler(BaseCrawler):
@@ -59,13 +62,15 @@ def test_pipeline_connects_crawl_clean_extract_and_analyze(monkeypatch):
 
     monkeypatch.setattr(pipeline, "clean_content", stub_clean)
     result = asyncio.run(
-        pipeline.run_pipeline(competitor, crawler=StubCrawler(), analyzer=StubAnalyzer())
+        pipeline.run_competitor(competitor, crawler=StubCrawler(), analyzer=StubAnalyzer())
     )
     assert result == analysis
     assert steps == ["crawl", "clean", "extract", "analyze"]
 
 
-def test_cleaning_remains_unimplemented():
-    content = ScrapedContent(url="https://example.com", text="raw")
-    with pytest.raises(NotImplementedError):
-        pipeline.clean_content(content)
+def test_clean_content_strips_whitespace_and_keeps_url():
+    content = ScrapedContent(url="https://example.com", title="T", text="  hello\n\n")
+    cleaned = pipeline.clean_content(content)
+    assert cleaned.text == "hello"
+    assert cleaned.url == content.url
+    assert cleaned.title == "T"
