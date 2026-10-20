@@ -1,0 +1,146 @@
+.page {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+.title {
+  margin: 0 0 4px;
+  font-size: 22px;
+  font-weight: 650;
+}
+
+.sub {
+  margin: 0 0 20px;
+  color: var(--sub);
+  font-size: 14px;
+}
+
+.state {
+  padding: 32px 24px;
+  color: var(--sub);
+  font-family: var(--font-sans);
+}
+
+.retry {
+  margin-top: 8px;
+  padding: 6px 14px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+}
+.retry:hover {
+  background: var(--accent-soft);
+}
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+@media (max-width: 800px) {
+  .grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.quadrant {
+  --q: var(--accent);
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-top: 3px solid var(--q);
+  border-radius: var(--radius);
+  padding: 16px;
+}
+.strengths     { --q: var(--s); }
+.weaknesses    { --q: var(--w); }
+.opportunities { --q: var(--o); }
+.threats       { --q: var(--t); }
+
+.qHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.qHead h2 {
+  margin: 0;
+  font-size: 16px;
+  color: var(--q);
+}
+
+.count {
+  min-width: 24px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+}
+
+.hint {
+  margin: 4px 0 12px;
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.empty {
+  color: var(--muted);
+  font-size: 13px;
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.item {
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+.item:first-child {
+  padding-top: 0;
+  border-top: none;
+}
+
+.text {
+  margin: 0 0 4px;
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.meta {
+  margin: 0;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.link {
+  color: var(--accent);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+.link:hover {
+  color: var(--accent-hover);
+}
+
+.badge {
+  margin-left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  font-weight: 600;
+  vertical-align: middle;
+}
+.new     { background: var(--mint-soft);   color: var(--o); }
+.changed { background: var(--orange-soft); color: var(--orange); }
