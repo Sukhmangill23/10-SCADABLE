@@ -1,4 +1,4 @@
-"""Real FastAPI -> background research -> PostgreSQL test; no network or OpenAI calls."""
+"""FastAPI + PostgreSQL integration tests. Live research is opt-in and billable."""
 import os
 from uuid import uuid4
 
@@ -77,4 +77,75 @@ def test_api_research_results_persist_to_postgres(monkeypatch):
                 assert latest.analysis_result["skipped_llm"] is True
                 assert repository.get_research_run(db, run_id).status == models.ResearchStatus.COMPLETED
         finally:
+            assert client.delete(f"/competitors/{competitor_id}").status_code == 204
+
+
+
+def test_api_real_scraper_and_openai_persist_to_postgres(monkeypatch):
+    """Optional live test: FastAPI -> actual Crawl4AI -> OpenAI -> PostgreSQL.
+
+    Enable only with RUN_LIVE_PIPELINE_TEST=1. This makes billable OpenAI
+    requests and crawls an external website. Normal pytest runs do not do so.
+    """
+    if os.getenv("RUN_LIVE_PIPELINE_TEST") != "1":
+        pytest.skip("Set RUN_LIVE_PIPELINE_TEST=1 to allow external calls and API charges")
+
+    if not os.getenv("OPENAI_API_KEY", "").strip():
+        pytest.fail("OPENAI_API_KEY is required for the live integration test")
+
+    if url.host not in {"localhost", "127.0.0.1"}:
+        pytest.fail("Live test requires a localhost PostgreSQL test database")
+
+    from app.services.crawler import MockCrawl4AICrawler
+    from app.services.llm import MockOpenAIAnalyzer
+
+    async def reject_mock(*args, **kwargs):
+        raise AssertionError("Real research failed: adapter attempted mock fallback")
+
+    # Both production adapters otherwise swallow exceptions and return mock
+    # findings. Make that path fail so a false-positive 'success' is impossible.
+    monkeypatch.setattr(MockCrawl4AICrawler, "crawl", reject_mock)
+    monkeypatch.setattr(MockOpenAIAnalyzer, "analyze", reject_mock)
+
+    Base.metadata.create_all(engine)
+    website = os.getenv("LIVE_TEST_URL", "https://www.vanta.com").strip()
+    name = f"Live Integration {uuid4().hex[:10]}"
+
+    with TestClient(create_app()) as client:
+        created = client.post(
+            "/competitors", json={"name": name, "dataSources": [website]}
+        )
+        assert created.status_code == 201, created.text
+        competitor_id = int(created.json()["competitor"]["id"])
+        run_id = int(created.json()["queuedRunId"])
+        try:
+            run_response = client.get(f"/runs/{run_id}")
+            assert run_response.status_code == 200, run_response.text
+
+            with SessionLocal() as db:
+                saved = repository.get_research_run(db, run_id)
+                assert saved.status == models.ResearchStatus.COMPLETED, (
+                    f"Research run failed: {saved.error_message}"
+                )
+                assert saved.scraped_data is not None
+                assert saved.scraped_data.get("schema_version") == "backend-scrape-v1", (
+                    "Real crawler was not used"
+                )
+                assert saved.scraped_data.get("pages"), "No crawled pages stored"
+                assert saved.analysis_result is not None
+                assert saved.analysis_result.get("mode") == "real", (
+                    "Real OpenAI analysis was not used"
+                )
+                assert saved.analysis_result.get("skipped_llm") is not True
+                findings = repository.get_latest_swot(db, competitor_id)
+                assert findings, "No SWOT entries saved to PostgreSQL"
+                assert all(f.source_url for f in findings), "Missing source URLs"
+
+            profile = client.get(f"/competitors/{competitor_id}")
+            assert profile.status_code == 200, profile.text
+            assert profile.json()["researchStatus"] == "success"
+            assert profile.json()["findings"], "Results not available through FastAPI"
+        finally:
+            # Only delete the competitor created by this test; cascading delete
+            # removes its research runs and SWOT rows from the test database.
             assert client.delete(f"/competitors/{competitor_id}").status_code == 204
