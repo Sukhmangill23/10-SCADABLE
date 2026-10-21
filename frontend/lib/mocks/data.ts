@@ -471,6 +471,10 @@ function weekRun(partial: {
     ...partial,
     finishedAt: partial.startedAt,
     pullRequestUrl: null,
+    errorMessage:
+      partial.status === "failed"
+        ? "Research cycle aborted before the competitor profile could be updated."
+        : null,
     steps: [
       {
         name: "Research cycle",
@@ -500,6 +504,7 @@ export const mockRuns: AgentRun[] = [
     startedAt: "2026-10-15T12:00:00Z",
     finishedAt: "2026-10-15T12:02:00Z",
     pullRequestUrl: null,
+    errorMessage: null,
     steps: [
       { name: "Fetch careers page", result: "Cache hit", status: "success" },
       { name: "Fetch product updates", result: "Cache miss", status: "success" },
@@ -529,6 +534,7 @@ export const mockRuns: AgentRun[] = [
     startedAt: "2026-10-15T11:00:00Z",
     finishedAt: "2026-10-15T11:02:00Z",
     pullRequestUrl: null,
+    errorMessage: null,
     steps: [
       {
         name: "Load tracked research categories",
@@ -571,6 +577,8 @@ export const mockRuns: AgentRun[] = [
     startedAt: "2026-10-15T09:00:00Z",
     finishedAt: "2026-10-15T09:01:00Z",
     pullRequestUrl: null,
+    errorMessage:
+      "Generate competitor summary failed: model timed out while synthesizing BrightPath findings from careers and product sources.",
     steps: [
       {
         name: "Load tracked research categories",
@@ -598,6 +606,7 @@ export const mockRuns: AgentRun[] = [
     startedAt: "2026-10-14T16:00:00Z",
     finishedAt: "2026-10-14T16:02:00Z",
     pullRequestUrl: null,
+    errorMessage: null,
     steps: [
       { name: "Fetch product page", result: "Cache hit", status: "success" },
       { name: "Fetch careers page", result: "Cache hit", status: "success" },
@@ -626,6 +635,7 @@ export const mockRuns: AgentRun[] = [
     startedAt: "2026-10-14T10:00:00Z",
     finishedAt: "2026-10-14T10:02:00Z",
     pullRequestUrl: null,
+    errorMessage: null,
     steps: [
       { name: "Fetch product page", result: "Cache miss", status: "success" },
       { name: "Fetch careers page", result: "Cache hit", status: "success" },

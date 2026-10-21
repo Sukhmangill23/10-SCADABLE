@@ -179,6 +179,11 @@
   border-bottom: 1px solid var(--line);
 }
 
+.runDetail {
+  display: grid;
+  gap: 14px;
+}
+
 .runSteps {
   display: grid;
   gap: 7px;
@@ -188,6 +193,7 @@
   display: flex;
   justify-content: space-between;
   gap: 12px;
+  font-family: var(--font-sans);
   font-size: 11px;
   padding: 7px 0;
   border-bottom: 1px solid var(--line);
@@ -200,6 +206,31 @@
 .stepResult {
   color: var(--sub);
   white-space: nowrap;
+}
+
+.failureReason {
+  border: 1px solid #efc4c6;
+  border-radius: var(--radius);
+  background: #fff0f0;
+  padding: 12px 14px;
+  font-family: var(--font-sans);
+}
+
+.failureReasonLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9d3f43;
+  margin-bottom: 6px;
+}
+
+.failureReason p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
 }
 
 .emptyRow td {
