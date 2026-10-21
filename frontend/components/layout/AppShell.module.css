@@ -28,9 +28,12 @@
   color: #141218;
 }
 
-.brandMark svg {
+.brandMark svg,
+.brandMark img {
   width: 26px;
   height: 26px;
+  object-fit: contain;
+  display: block;
 }
 
 .titleRow {

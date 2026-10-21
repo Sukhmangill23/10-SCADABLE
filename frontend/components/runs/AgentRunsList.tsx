@@ -74,13 +74,26 @@ function RunRow({
       {expanded ? (
         <tr className={styles.detailRow}>
           <td colSpan={7}>
-            <div className={styles.runSteps}>
-              {run.steps.map((step, index) => (
-                <div key={`${run.id}-step-${index}`} className={styles.runStep}>
-                  <span>{step.name}</span>
-                  <span className={styles.stepResult}>{step.result}</span>
+            <div className={styles.runDetail}>
+              <div className={styles.runSteps}>
+                {run.steps.map((step, index) => (
+                  <div
+                    key={`${run.id}-step-${index}`}
+                    className={styles.runStep}
+                  >
+                    <span>{step.name}</span>
+                    <span className={styles.stepResult}>{step.result}</span>
+                  </div>
+                ))}
+              </div>
+              {run.status === "failed" && run.errorMessage ? (
+                <div className={styles.failureReason}>
+                  <span className={styles.failureReasonLabel}>
+                    Reason for failure
+                  </span>
+                  <p>{run.errorMessage}</p>
                 </div>
-              ))}
+              ) : null}
             </div>
           </td>
         </tr>

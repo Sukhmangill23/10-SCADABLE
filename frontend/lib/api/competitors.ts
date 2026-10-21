@@ -108,6 +108,7 @@ function enqueueSuccessfulRun(summary: CompetitorSummary): AgentRun {
     startedAt,
     finishedAt: startedAt,
     pullRequestUrl: null,
+    errorMessage: null,
     steps: [
       { name: "Load data sources", result: "Success", status: "success" },
       { name: "Fetch public pages", result: "Cache miss", status: "success" },

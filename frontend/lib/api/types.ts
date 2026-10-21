@@ -100,6 +100,8 @@ export type AgentRun = {
   finishedAt: string | null;
   steps: RunStep[];
   pullRequestUrl: string | null;
+  /** Present when status is failed; null/omitted otherwise. */
+  errorMessage: string | null;
 };
 
 export type CreateCompetitorInput = {
