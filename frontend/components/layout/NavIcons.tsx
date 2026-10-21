@@ -1,14 +1,16 @@
-/** Sidebar / brand icons copied from deliverables/D1/mockups/final-prototype.html */
+/** Sidebar / brand icons — nav glyphs from the D1 prototype; brand mark is the SCADABLE logo. */
 
 export function BrandMarkIcon() {
   return (
-    <svg viewBox="0 0 32 32" fill="none" aria-hidden="true">
-      <path
-        d="M16 3 6.5 8.5v6L16 20l5-2.9v3.8L16 24l-9.5-5.5v5L16 29l9.5-5.5v-12L16 6l-5 2.9V5.1L16 3Z"
-        fill="currentColor"
-      />
-      <path d="m11 12 5-3 5 3-5 3-5-3Z" fill="white" />
-    </svg>
+    // eslint-disable-next-line @next/next/no-img-element -- static public brand asset
+    <img
+      src="/scadable-logo.png"
+      alt=""
+      width={26}
+      height={26}
+      aria-hidden="true"
+      draggable={false}
+    />
   );
 }
 
