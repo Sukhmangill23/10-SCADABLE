@@ -1,0 +1,25 @@
+:root {
+  --ink: #171329;
+  --sub: #6f6974;
+  --muted: #77717b;
+  --line: #e7e2df;
+  --line-strong: #d9d3d0;
+  --canvas: #fbf8f4;
+  --panel: #fffefd;
+  --rail: #fffdfb;
+  --accent: #160b3f;
+  --accent-hover: #241457;
+  --accent-soft: #eeeaf8;
+  --mint-soft: #edf8f1;
+  --orange: #a9541d;
+  --orange-soft: #fff8f2;
+  --s: #4d64b9;
+  --w: #da7902;
+  --o: #31855f;
+  --t: #b8292b;
+  --shadow: 0 8px 28px rgba(30, 20, 40, 0.11);
+  --topbar-h: 52px;
+  --sidebar-w: 48px;
+  --radius: 6px;
+  --font-sans: var(--font-geist-sans), "Helvetica Neue", Arial, sans-serif;
+}

@@ -1,0 +1,253 @@
+.page {
+  width: 100%;
+  font-family: var(--font-sans);
+  color: var(--ink);
+}
+
+.pageHead {
+  margin-bottom: 16px;
+}
+
+.pageHead h1 {
+  margin: 0 0 8px;
+  font-family: var(--font-sans);
+  font-size: 22px;
+  line-height: 1.15;
+  letter-spacing: -0.025em;
+  font-weight: 650;
+}
+
+.pageHead p {
+  margin: 0;
+  color: var(--sub);
+  font-family: var(--font-sans);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.summaryGrid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.summaryCard {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 15px 16px;
+  font-family: var(--font-sans);
+}
+
+.summaryLabel {
+  display: block;
+  color: var(--sub);
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 7px;
+}
+
+.summaryValue {
+  font-family: var(--font-sans);
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+
+.tableWrap {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.table th {
+  text-align: left;
+  height: 32px;
+  padding: 0 12px;
+  color: #716b75;
+  font-family: var(--font-sans);
+  font-weight: 650;
+  border-bottom: 1px solid var(--line);
+  font-size: 11px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.table td {
+  height: 37px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.clickable {
+  transition: background-color 0.12s ease-out;
+  cursor: pointer;
+}
+
+.clickable:hover {
+  background: #f3f1ef;
+}
+
+.clickable:focus-visible {
+  outline: 2px solid #5a4b86;
+  outline-offset: -2px;
+}
+
+.rowExpanded {
+  background: #f7f5f3;
+}
+
+.companyCell {
+  font-weight: 580;
+  color: #282333;
+}
+
+.status {
+  display: inline-flex;
+  align-items: center;
+  height: 21px;
+  padding: 0 8px;
+  border-radius: 10px;
+  font-family: var(--font-sans);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.statusSuccess {
+  background: var(--mint-soft);
+  color: #376d55;
+}
+
+.statusFailed {
+  background: #fff0f0;
+  color: #9d3f43;
+}
+
+.statusPending {
+  background: #fff8e8;
+  color: #8a6a2f;
+}
+
+.statusRunning {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.cacheStat {
+  font-size: 11px;
+  color: var(--sub);
+}
+
+.cacheStat b {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.lastRun {
+  color: var(--sub);
+  font-size: 11px;
+}
+
+.rowArrow {
+  color: var(--muted);
+  text-align: right;
+  transition: transform 0.12s ease-out;
+}
+
+.rowArrowOpen {
+  transform: rotate(90deg);
+}
+
+.detailRow td {
+  padding: 14px 16px;
+  white-space: normal;
+  height: auto;
+  background: #fff;
+  border-bottom: 1px solid var(--line);
+}
+
+.runDetail {
+  display: grid;
+  gap: 14px;
+}
+
+.runSteps {
+  display: grid;
+  gap: 7px;
+}
+
+.runStep {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  padding: 7px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.runStep:last-child {
+  border-bottom: 0;
+}
+
+.stepResult {
+  color: var(--sub);
+  white-space: nowrap;
+}
+
+.failureReason {
+  border: 1px solid #efc4c6;
+  border-radius: var(--radius);
+  background: #fff0f0;
+  padding: 12px 14px;
+  font-family: var(--font-sans);
+}
+
+.failureReasonLabel {
+  display: block;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: #9d3f43;
+  margin-bottom: 6px;
+}
+
+.failureReason p {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink);
+}
+
+.emptyRow td {
+  text-align: center;
+  color: var(--sub);
+  padding: 32px 12px;
+  height: auto;
+}
+
+.statusMessage {
+  color: var(--sub);
+  font-size: 13px;
+  padding: 24px 0;
+}
+
+@media (max-width: 900px) {
+  .summaryGrid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}

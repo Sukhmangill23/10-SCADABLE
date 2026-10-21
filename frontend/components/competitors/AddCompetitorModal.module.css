@@ -1,0 +1,154 @@
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(23, 19, 41, 0.32);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+
+.modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 24px;
+  width: 400px;
+  max-width: 100%;
+  box-shadow: var(--shadow);
+  font-family: var(--font-sans);
+}
+
+.modal h2 {
+  margin: 0 0 6px;
+  font-family: var(--font-sans);
+  font-size: 17px;
+  letter-spacing: -0.015em;
+  font-weight: 650;
+}
+
+.modal > p {
+  margin: 0 0 21px;
+  color: var(--sub);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.field {
+  margin-bottom: 14px;
+}
+
+.fieldLabel {
+  display: block;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 650;
+  margin-bottom: 6px;
+}
+
+.field input {
+  width: 100%;
+  height: 36px;
+  padding: 0 10px;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius);
+  background: #fff;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  color: var(--ink);
+}
+
+.field input::placeholder {
+  color: #77717b;
+}
+
+.sourceRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.sourceRow input {
+  flex: 1;
+  min-width: 0;
+}
+
+.removeSource {
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
+  border: 1px solid var(--line-strong);
+  border-radius: 4px;
+  background: #fff;
+  color: var(--sub);
+  font-size: 16px;
+  line-height: 1;
+  display: grid;
+  place-items: center;
+}
+
+.removeSource:hover:not(:disabled) {
+  background: #f8f5f2;
+  color: var(--ink);
+}
+
+.removeSource:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+.addSource {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 2px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: #55466f;
+  font-family: var(--font-sans);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.addSource:hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.addSource svg {
+  width: 12px;
+  height: 12px;
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.error {
+  margin: 0 0 12px;
+  font-size: 11px;
+  color: #a64f45;
+}
+
+.toast {
+  position: fixed;
+  bottom: 22px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--ink);
+  color: #fff;
+  padding: 10px 15px;
+  border-radius: var(--radius);
+  font-family: var(--font-sans);
+  font-size: 11px;
+  z-index: 60;
+  box-shadow: 0 5px 18px rgba(23, 19, 41, 0.18);
+  pointer-events: none;
+}
