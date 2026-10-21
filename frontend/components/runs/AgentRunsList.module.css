@@ -1,6 +1,7 @@
 .page {
   width: 100%;
   font-family: var(--font-sans);
+  color: var(--ink);
 }
 
 .pageHead {
@@ -9,15 +10,17 @@
 
 .pageHead h1 {
   margin: 0 0 8px;
+  font-family: var(--font-sans);
   font-size: 22px;
   line-height: 1.15;
   letter-spacing: -0.025em;
-  font-weight: 690;
+  font-weight: 650;
 }
 
 .pageHead p {
   margin: 0;
   color: var(--sub);
+  font-family: var(--font-sans);
   font-size: 12px;
   line-height: 1.5;
 }
@@ -30,14 +33,17 @@
 }
 
 .summaryCard {
-  background: rgba(255, 254, 253, 0.9);
+  background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: var(--radius);
   padding: 15px 16px;
+  font-family: var(--font-sans);
 }
 
 .summaryLabel {
   display: block;
   color: var(--sub);
+  font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 650;
   text-transform: uppercase;
@@ -46,20 +52,23 @@
 }
 
 .summaryValue {
+  font-family: var(--font-sans);
   font-size: 18px;
   font-weight: 700;
   letter-spacing: -0.02em;
 }
 
 .tableWrap {
-  background: rgba(255, 254, 253, 0.88);
+  background: var(--panel);
   border: 1px solid var(--line);
+  border-radius: var(--radius);
   overflow: hidden;
 }
 
 .table {
   width: 100%;
   border-collapse: collapse;
+  font-family: var(--font-sans);
   font-size: 12px;
 }
 
@@ -68,6 +77,7 @@
   height: 32px;
   padding: 0 12px;
   color: #716b75;
+  font-family: var(--font-sans);
   font-weight: 650;
   border-bottom: 1px solid var(--line);
   font-size: 11px;
@@ -111,6 +121,7 @@
   height: 21px;
   padding: 0 8px;
   border-radius: 10px;
+  font-family: var(--font-sans);
   font-size: 10px;
   font-weight: 650;
 }
