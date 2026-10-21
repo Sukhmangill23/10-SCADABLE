@@ -1,0 +1,16 @@
+.git
+**/.env
+**/.env.*
+**/.venv
+**/node_modules
+**/.next
+**/__pycache__
+**/.pytest_cache
+**/.DS_Store
+frontend/
+deliverables/
+docs/
+examples/
+tests/
+scraper/output/
+*.zip
