@@ -103,7 +103,7 @@ class StubAnalyzer(Analyzer):
         self.calls.append(("extract", data.company_name))
         self.inputs.append(data)
         return ExtractedInformation(
-            company_name=data.company_name, summary="facts", claims_cited=[]
+            company_name=data.company_name, summary="facts", summary_source_urls=[], claims_cited=[]
         )
 
     async def analyze_competitor(self, data):
@@ -113,6 +113,7 @@ class StubAnalyzer(Analyzer):
         return CompanyAnalysis(
             company_name=data.company_name,
             summary="competitor",
+            summary_source_urls=[],
             claims_cited=[],
             scores=[],
         )
@@ -122,6 +123,7 @@ class StubAnalyzer(Analyzer):
         return CompanyAnalysis(
             company_name=data.company_name,
             summary="scadable",
+            summary_source_urls=[],
             claims_cited=[],
             scores=[],
         )

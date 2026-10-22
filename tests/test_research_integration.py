@@ -14,7 +14,7 @@ import llm.client as client_module
 from llm.analyzer import Analyzer
 from llm.config import Settings
 from llm.pipeline import analyze_export, run_pipeline
-from llm.schemas import ClaimCited, CompanyAnalysis, ExtractedInformation, FeatureScore
+from llm.schemas import ClaimCited, CompanyAnalysis, ExtractedInformation, FeatureScore, PartialCompanyAnalysis
 from scraper import CompetitorInput, FetchedPage, ScraperConfig
 from tests.helpers import MARKDOWN, NOW
 
@@ -33,6 +33,7 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
     facts = ExtractedInformation(
         company_name="Example",
         summary="Evidence collection",
+        summary_source_urls=["https://example.com/"],
         claims_cited=[
             ClaimCited(
                 category="features",
@@ -46,9 +47,11 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
             ),
         ],
     )
+    
     analysis = CompanyAnalysis(
         company_name="Example",
         summary="Evidence collection",
+        summary_source_urls=["https://example.com/"],
         claims_cited=[
             ClaimCited(
                 category="strength",
@@ -58,6 +61,11 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
         ],
         scores=[FeatureScore(feature="Evidence collection", score=8)],
     )
+
+    partial_analysis = PartialCompanyAnalysis(
+        claims_cited=analysis.claims_cited,
+        scores=analysis.scores,
+        )
 
     class FixtureFetcher:
         closed = False
@@ -129,8 +137,8 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
             assert "https://example.com/plans/" in payload["input"]
             response = facts
         else:
-            assert payload["text"]["format"]["name"] == "CompanyAnalysis"
-            response = analysis
+            assert payload["text"]["format"]["name"] == "PartialCompanyAnalysis"
+            response = partial_analysis
         return httpx2.Response(
             200,
             json={

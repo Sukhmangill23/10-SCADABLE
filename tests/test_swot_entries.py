@@ -6,7 +6,7 @@ from llm.swot_entries import to_swot_entries
 
 def analysis(*claims):
     return CompanyAnalysis(
-        company_name="Acme", summary="s", claims_cited=list(claims), scores=[]
+        company_name="Acme", summary="s", summary_source_urls=[], claims_cited=list(claims), scores=[]
     )
 
 
@@ -32,7 +32,7 @@ def test_strengths_and_weaknesses_become_rows_with_their_own_source():
 def test_other_categories_are_not_swot_findings():
     rows = to_swot_entries(
         analysis(
-            claim("summary", "Acme sells widgets", "https://acme.com/"),
+            claim("features", "Acme sells widgets and SOC1", "https://acme.com/features"),
             claim("pricing", "Pro, $9/mo", "https://acme.com/pricing"),
             claim("strength", "Fast", "https://acme.com/"),
         )

@@ -3,7 +3,7 @@
 import pytest
 from pydantic import ValidationError
 
-from llm.prompts.competitor import COMPANY_SYSTEM_PROMPT
+from llm.prompts.competitor import COMPANY_ANALYSIS_SYSTEM_PROMPT
 from llm.schemas import CompanyAnalysis, FeatureScore
 
 
@@ -27,6 +27,7 @@ def test_company_analysis_carries_feature_scores():
     analysis = CompanyAnalysis(
         company_name="Acme",
         summary="s",
+        summary_source_urls=[],
         claims_cited=[],
         scores=[FeatureScore(feature="Auto remediation", score=8)],
     )
@@ -34,6 +35,6 @@ def test_company_analysis_carries_feature_scores():
 
 
 def test_company_prompt_explains_the_scoring():
-    assert "SCORING_CRITERIA" in COMPANY_SYSTEM_PROMPT
-    assert "FEATURE_SCORE" in COMPANY_SYSTEM_PROMPT
-    assert "<<" not in COMPANY_SYSTEM_PROMPT
+    assert "SCORING_CRITERIA" in COMPANY_ANALYSIS_SYSTEM_PROMPT
+    assert "FEATURE_SCORE" in COMPANY_ANALYSIS_SYSTEM_PROMPT
+    assert "<<" not in COMPANY_ANALYSIS_SYSTEM_PROMPT
