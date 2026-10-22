@@ -6,18 +6,16 @@ import { getSwotOverview } from "@/lib/api/swot";
 import type { SwotOverview } from "@/lib/api/types";
 import styles from "./overview.module.css";
 
-// Derived from the existing type so we don't depend on its exported name.
 type Finding = SwotOverview["strengths"][number];
 
 const QUADRANTS: {
   key: "strengths" | "weaknesses" | "opportunities" | "threats";
   title: string;
-  hint: string;
 }[] = [
-  { key: "strengths", title: "Strengths", hint: "Where competitors are strong" },
-  { key: "weaknesses", title: "Weaknesses", hint: "Where competitors fall short" },
-  { key: "opportunities", title: "Opportunities", hint: "Gaps SCADABLE can use" },
-  { key: "threats", title: "Threats", hint: "Moves that could hurt SCADABLE" },
+  { key: "strengths", title: "Strengths" },
+  { key: "weaknesses", title: "Weaknesses" },
+  { key: "opportunities", title: "Opportunities" },
+  { key: "threats", title: "Threats" },
 ];
 
 function formatDate(iso: string) {
@@ -31,29 +29,36 @@ function formatDate(iso: string) {
 function FindingItem({ f }: { f: Finding }) {
   return (
     <li className={styles.item}>
-      <p className={styles.text}>
-        {f.text}
-        {f.isNew && <span className={`${styles.badge} ${styles.new}`}>New</span>}
-        {f.isChanged && (
-          <span className={`${styles.badge} ${styles.changed}`}>Changed</span>
-        )}
-      </p>
-      <p className={styles.meta}>
-        <Link href={`/competitors/${f.competitorId}`} className={styles.link}>
+      <div className={styles.itemMain}>
+        <span className={styles.bulletText}>{f.text}</span>
+        <Link href={`/competitors/${f.competitorId}`} className={styles.tag}>
           {f.competitorName}
         </Link>
-        {" · "}
-        <a
-          href={f.sourceUrl}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={styles.link}
-        >
-          {f.sourceLabel}
-        </a>
-        {" · "}
-        {formatDate(f.detectedAt)}
-      </p>
+      </div>
+      {(f.isNew || f.isChanged) && (
+        <div className={styles.badges}>
+          {f.isNew ? (
+            <span className={`${styles.badge} ${styles.new}`}>New</span>
+          ) : null}
+          {f.isChanged ? (
+            <span className={`${styles.badge} ${styles.changed}`}>Changed</span>
+          ) : null}
+        </div>
+      )}
+      <details className={styles.sources}>
+        <summary>Sources</summary>
+        <div className={styles.sourceBody}>
+          <a
+            href={f.sourceUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className={styles.link}
+          >
+            {f.sourceLabel}
+          </a>
+          <span className={styles.sourceMeta}>{formatDate(f.detectedAt)}</span>
+        </div>
+      </details>
     </li>
   );
 }
@@ -87,13 +92,13 @@ export default function OverviewPage() {
       <header>
         <h1 className={styles.title}>SWOT overview</h1>
         <p className={styles.sub}>
-          Findings across all tracked competitors. Last updated{" "}
+          Findings across all tracked competitors · last updated{" "}
           {data.updatedAt ? formatDate(data.updatedAt) : "Not yet"}
         </p>
       </header>
 
       <div className={styles.grid}>
-        {QUADRANTS.map(({ key, title, hint }) => {
+        {QUADRANTS.map(({ key, title }) => {
           const items = data[key];
           return (
             <section
@@ -105,11 +110,8 @@ export default function OverviewPage() {
                 <h2 id={`${key}-heading`}>{title}</h2>
                 <span className={styles.count}>{items.length}</span>
               </div>
-              <p className={styles.hint}>{hint}</p>
               {items.length === 0 ? (
-                <p className={styles.empty}>
-                  Nothing here yet. Research a competitor to add findings.
-                </p>
+                <p className={styles.empty}>No findings yet.</p>
               ) : (
                 <ul className={styles.list}>
                   {items.map((f) => (
