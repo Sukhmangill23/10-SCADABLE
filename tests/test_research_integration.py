@@ -14,7 +14,7 @@ import llm.client as client_module
 from llm.analyzer import Analyzer
 from llm.config import Settings
 from llm.pipeline import analyze_export, run_pipeline
-from llm.schemas import ClaimCited, CompanyAnalysis, ExtractedInformation, FeatureScore, PartialCompanyAnalysis
+from llm.schemas import ClaimCited, CompanyAnalysis, ExtractedInformation, PartialExtractedInformation, FeatureScore, PartialCompanyAnalysis
 from scraper import CompetitorInput, FetchedPage, ScraperConfig
 from tests.helpers import MARKDOWN, NOW
 
@@ -31,6 +31,24 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
     api_requests = []
     pricing = "# Pricing\n\nPro: $49/month.  \n"
     facts = ExtractedInformation(
+        company_name="Example",
+        summary="Evidence collection",
+        summary_source_urls=["https://example.com/"],
+        claims_cited=[
+            ClaimCited(
+                category="features",
+                claim="Evidence collection",
+                source_url="https://example.com/",
+            ),
+            ClaimCited(
+                category="pricing",
+                claim="Pro: $49/month",
+                source_url="https://example.com/pricing",
+            ),
+        ],
+    )
+
+    partial_facts = PartialExtractedInformation(
         company_name="Example",
         summary="Evidence collection",
         summary_source_urls=["https://example.com/"],
@@ -132,10 +150,10 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
         # Analysis must read the completed, exact Markdown export, not a second crawl.
         assert index.is_file()
         assert (index.parent / "pages/index.md").read_text(encoding="utf-8") == MARKDOWN
-        if payload["text"]["format"]["name"] == "ExtractedInformation":
+        if payload["text"]["format"]["name"] == "PartialExtractedInformation":
             assert MARKDOWN in payload["input"] and pricing in payload["input"]
             assert "https://example.com/plans/" in payload["input"]
-            response = facts
+            response = partial_facts
         else:
             assert payload["text"]["format"]["name"] == "PartialCompanyAnalysis"
             response = partial_analysis

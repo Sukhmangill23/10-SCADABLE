@@ -25,7 +25,6 @@ and cite the URLs from where the claims were made, all organized into an organiz
 </ANALYSIS_INPUT>
 
 <EXTRACTED_DATA>
-- company_name (string): the name of the company that you extracted the information of.
 - summary (string): a summary of what the company is and what they do.
 - summary_source_urls (list[string]): contains the URLS of all the pages used to generate the summary.
 - claims_cited (list[ClaimCited]): every fact you extracted, one entry per fact, each with its category and the page that supports it (see <CLAIM_CITED> for the actual format).
@@ -65,6 +64,7 @@ is a deliberately limited selection of pages. Always extract claims solely based
 - Report only what the pages affirmatively state. If a page says something is planned, upcoming or "coming soon", record it as such (for example "ISO 27001 (coming soon)") and never list it as already available. Never conclude that something does not exist merely because it does not appear in the pages.
 - The categories within the output's claims_cited should be exactly one of: features, target_customers, pricing, integrations, differentiators.
 - The claims in the output's claims_cited should never be repeated, not just by the words used but also by their meaning. 
+- Disregard the issues where the page URLs do not reflect the company_name, this can be due to the website provider for the company, or deliberately-chosen placeholder text.
 </RULES>
 """
 
@@ -128,16 +128,17 @@ You must follow these rules:
 - Never invent any new URLs. Use the URLs provided to you. Never use the URLs to search on the the web yourself.
 - Always extract and infer claims based on what is given. The data provided is coming from a deliberately limited size of input so never 
 make inferences about the lack of information. 
-- Base strengths and weaknesses only on what the input affirmatively states. Something the input says is unavailable, limited, planned or "coming soon" (for example a framework marked "coming soon") can be reported as a weakness, but it must never be described as already released. Never treat something that is merely missing from the input as a weakness.
+- Report something as a weakness only if the input presents it as unavailable, limited, planned or "coming soon" (for example a framework marked "coming soon"), and never describe it as already released. Do not report a deliberate design choice that the input describes as a benefit or safeguard, such as read-only access, least privilege, or not storing data, as a weakness. Never treat something that is merely missing from the input as a weakness. Base all strengths and weaknesses only on what the input affirmatively states.
 - The categories within the output's claims_cited should be exactly one of: strength, weakness.
 - Score only features the input states. If the company is SCADABLE itself, return an empty scores list.
 - If the summary, features, and/or claims contradict each other, flag it, stating the data and link to the page that contradict.
+- Disregard the issues where the page URLs do not reflect the company_name, this can be due to the website provider for the company, or deliberately-chosen placeholder text.
 </RULES>
 """
 
-DATA_EXTRACTION_USER_PROMPT = """Using the data scraped from {}'s website, return the company's name, 
-a summary about them, their features (products/services offered), the customers they are targeting, 
-their pricing, integrations, differentiators, providing citations for everything except the company name.
+DATA_EXTRACTION_USER_PROMPT = """Using the data scraped from {}'s website, return a summary about the 
+company, their features (products/services offered), the customers they are targeting, their pricing, 
+integrations, differentiators, providing citations for everything.
 
 Here is all the extracted data: 
 <EXTRACTED_DATA>

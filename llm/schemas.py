@@ -59,7 +59,7 @@ class FeatureScore(BaseModel):
 
 class PartialExtractedInformation(BaseModel):
     """A partial, token-effective shape for a company. Saves tokens and prevents the LLM from providing the wrong 
-    company name when scraping, because right now the issue is the LLM """
+    company name when scraping, because the model sometimes echoes a placeholder name or invents its own."""
     summary: str
     summary_source_urls: list[str]
     # Every fact is one cited claim; read them back by category with claims_in().

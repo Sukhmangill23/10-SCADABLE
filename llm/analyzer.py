@@ -1,6 +1,5 @@
 """Structured analysis entry points with source-citation validation."""
 
-from typing import Optional
 from llm.client import OpenAIClient
 from llm.prompts.comparison import (
     COMPARISON_SYSTEM_PROMPT,
@@ -18,12 +17,13 @@ from llm.schemas import (
     PartialCompanyAnalysis,
     CompanyAnalysis,
     ComparisonInput,
+    PartialExtractedInformation,
     ExtractedInformation,
     SWOTAnalysis,
 )
 
 
-def _validate_citations(*, summary_source_urls: list[str] = [], claims: list[ClaimCited], source_urls: set[str]) -> None:
+def _validate_citations(*, summary_source_urls: list[str] | None = [], claims: list[ClaimCited], source_urls: set[str]) -> None:
     for url in summary_source_urls:
         if url not in source_urls:
             raise ValueError(
@@ -40,16 +40,16 @@ class Analyzer:
     def __init__(self, client: OpenAIClient) -> None:
         self.client = client
 
-    # TODO: Make this return a "PartialExtractedInformation", fix the prompt for it too!
     async def extract_information(self, data: AnalysisInput) -> ExtractedInformation:
-        result = await self.client.generate_structured(
+        partial_result = await self.client.generate_structured(
             instructions=DATA_EXTRACTION_SYSTEM_PROMPT,
             input_text=build_extraction_user_prompt(data),
-            output_schema=ExtractedInformation,
+            output_schema=PartialExtractedInformation,
         )
         _validate_citations(
-            summary_source_urls=result.summary_source_urls, claims=result.claims_cited, source_urls={str(page.source.url) for page in data.pages}
+            summary_source_urls=partial_result.summary_source_urls, claims=partial_result.claims_cited, source_urls={str(page.source.url) for page in data.pages}
         )
+        result = ExtractedInformation(company_name=data.company_name, **partial_result.model_dump())
         return result
 
     async def analyze_competitor(self, data: ExtractedInformation) -> CompanyAnalysis:

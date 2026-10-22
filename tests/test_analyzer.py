@@ -4,7 +4,7 @@ import pytest
 
 from llm.analyzer import Analyzer
 from llm.inputs import load_analysis_input
-from llm.schemas import ClaimCited, CompanyAnalysis, ExtractedInformation, PartialCompanyAnalysis
+from llm.schemas import ClaimCited, CompanyAnalysis, ExtractedInformation, PartialCompanyAnalysis, PartialExtractedInformation
 from tests.helpers import MARKDOWN, make_page, make_result, write_export
 
 pytestmark = pytest.mark.asyncio
@@ -53,6 +53,16 @@ def partial(source_url="https://example.com/"):
         scores=[],
     )
 
+def partial_facts(source_url="https://example.com/"):
+    """What the model returns for extraction: no company_name."""
+    return PartialExtractedInformation(
+        summary="Evidence collection",
+        summary_source_urls=[source_url],
+        claims_cited=[
+            ClaimCited(category="features", claim="Collects evidence", source_url=source_url)
+        ],
+    )
+
 @pytest.mark.parametrize("method", ["analyze_competitor", "analyze_scadable"])
 async def test_company_analysis_rejects_citations_not_present_in_facts(method):
     analyzer = Analyzer(ResponseClient(analysis("https://invented.example/")))
@@ -78,7 +88,7 @@ async def test_extraction_rejects_urls_other_than_original_source(tmp_path, cita
     index = write_export(
         tmp_path, make_result(pages=[make_page(final_url="https://example.com/new/")])
     )
-    analyzer = Analyzer(ResponseClient(facts(citation)))
+    analyzer = Analyzer(ResponseClient(partial_facts(citation)))
 
     with pytest.raises(ValueError, match="not present in the supplied sources"):
         await analyzer.extract_information(load_analysis_input(index))
@@ -88,8 +98,11 @@ async def test_extraction_supplies_markdown_and_source_metadata(tmp_path):
     index = write_export(
         tmp_path, make_result(pages=[make_page(final_url="https://example.com/new/")])
     )
-    client = ResponseClient(facts())
+    client = ResponseClient(partial_facts())
     result = await Analyzer(client).extract_information(load_analysis_input(index))
+
+    assert result.company_name == load_analysis_input(index).company_name   # from the export
+    assert client.requests[0]["output_schema"] is PartialExtractedInformation
 
     assert result.claims_cited[0].source_url == "https://example.com/"
     prompt = client.requests[0]["input_text"]
@@ -100,7 +113,7 @@ async def test_extraction_supplies_markdown_and_source_metadata(tmp_path):
 
 async def test_extraction_rejects_summary_urls_not_in_the_input_pages(tmp_path):
     index = write_export(tmp_path, make_result(pages=[make_page()]))
-    bad = facts().model_copy(update={"summary_source_urls": ["https://invented.example/"]})
+    bad = partial_facts().model_copy(update={"summary_source_urls": ["https://invented.example/"]})
     analyzer = Analyzer(ResponseClient(bad))
 
     with pytest.raises(ValueError, match="summary is not present"):
