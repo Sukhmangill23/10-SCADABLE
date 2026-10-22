@@ -21,6 +21,34 @@ function statusClass(status: ResearchStatus): string {
   return styles.statusPending;
 }
 
+function formatRunDuration(startedAt: string, finishedAt: string | null): string {
+  if (!finishedAt) return "Still running";
+  const ms = new Date(finishedAt).getTime() - new Date(startedAt).getTime();
+  if (Number.isNaN(ms) || ms < 0) return "—";
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const rem = seconds % 60;
+  return rem ? `${minutes}m ${rem}s` : `${minutes}m`;
+}
+
+function runDetailSummary(run: AgentRun): string {
+  const failedStep = run.steps.find((step) => step.status === "failed");
+  const okSteps = run.steps.filter((step) => step.status === "success").length;
+  const duration = formatRunDuration(run.startedAt, run.finishedAt);
+
+  if (run.status === "failed" && failedStep) {
+    return `Failed at “${failedStep.name}” · ${okSteps}/${run.steps.length} steps ok · ${duration}`;
+  }
+  if (run.status === "failed") {
+    return `Run failed · ${okSteps}/${run.steps.length} steps ok · ${duration}`;
+  }
+  if (run.status === "running" || run.status === "pending") {
+    return `In progress · ${okSteps}/${run.steps.length} steps done`;
+  }
+  return `Completed ${okSteps}/${run.steps.length} steps · ${duration}`;
+}
+
 function RunRow({
   run,
   expanded,
@@ -31,6 +59,7 @@ function RunRow({
   onToggle: () => void;
 }) {
   const cache = formatCacheStat(run.cacheHits, run.cacheMisses);
+  const failedStepName = run.steps.find((step) => step.status === "failed")?.name;
 
   return (
     <>
@@ -75,23 +104,31 @@ function RunRow({
         <tr className={styles.detailRow}>
           <td colSpan={7}>
             <div className={styles.runDetail}>
+              <p className={styles.runSummary}>{runDetailSummary(run)}</p>
               <div className={styles.runSteps}>
                 {run.steps.map((step, index) => (
                   <div
                     key={`${run.id}-step-${index}`}
-                    className={styles.runStep}
+                    className={`${styles.runStep} ${
+                      step.status === "failed" ? styles.runStepFailed : ""
+                    }`}
                   >
                     <span>{step.name}</span>
                     <span className={styles.stepResult}>{step.result}</span>
                   </div>
                 ))}
               </div>
-              {run.status === "failed" && run.errorMessage ? (
+              {run.status === "failed" && (run.errorMessage || failedStepName) ? (
                 <div className={styles.failureReason}>
                   <span className={styles.failureReasonLabel}>
                     Reason for failure
                   </span>
-                  <p>{run.errorMessage}</p>
+                  <p>
+                    {failedStepName
+                      ? `Stopped on “${failedStepName}”. `
+                      : null}
+                    {run.errorMessage ?? "No additional error detail from the agent."}
+                  </p>
                 </div>
               ) : null}
             </div>

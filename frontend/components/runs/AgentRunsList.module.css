@@ -184,6 +184,15 @@
   gap: 14px;
 }
 
+.runSummary {
+  margin: 0;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 650;
+  color: var(--ink);
+  line-height: 1.45;
+}
+
 .runSteps {
   display: grid;
   gap: 7px;
@@ -201,6 +210,15 @@
 
 .runStep:last-child {
   border-bottom: 0;
+}
+
+.runStepFailed {
+  color: #9d3f43;
+}
+
+.runStepFailed .stepResult {
+  color: #9d3f43;
+  font-weight: 650;
 }
 
 .stepResult {
