@@ -106,7 +106,7 @@ export type AgentRun = {
 
 export type CreateCompetitorInput = {
   name: string;
-  /** One or more research sources (site, careers, blog, …). First is used as primary website. */
+  /** Website URL(s). UI sends a single link; backend stores the first as website. */
   dataSources: string[];
 };
 
