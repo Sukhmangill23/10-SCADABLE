@@ -11,6 +11,7 @@ import {
   type Trend,
 } from "@/lib/api";
 import { displayWebsite, formatRelativePast } from "@/lib/format";
+import { competitorsPollInterval } from "@/lib/polling";
 import { AddCompetitorModal } from "./AddCompetitorModal";
 import styles from "./CompetitorList.module.css";
 
@@ -75,6 +76,7 @@ export function CompetitorList() {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["competitors"],
     queryFn: () => competitorsApi.listCompetitors(),
+    refetchInterval: (query) => competitorsPollInterval(query.state.data),
   });
 
   const competitors = data ?? [];

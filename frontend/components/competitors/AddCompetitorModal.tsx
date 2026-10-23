@@ -15,7 +15,7 @@ export function AddCompetitorModal({ open, onClose }: Props) {
   const titleId = useId();
   const queryClient = useQueryClient();
   const [name, setName] = useState("");
-  const [sources, setSources] = useState<string[]>([""]);
+  const [website, setWebsite] = useState("");
   const [formError, setFormError] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
@@ -29,6 +29,7 @@ export function AddCompetitorModal({ open, onClose }: Props) {
         return [result.competitor, ...existing];
       });
       void queryClient.invalidateQueries({ queryKey: ["competitors"] });
+      void queryClient.invalidateQueries({ queryKey: ["runs"] });
       setToast(`${result.competitor.name} added — queued for research`);
       resetAndClose();
     },
@@ -54,39 +55,28 @@ export function AddCompetitorModal({ open, onClose }: Props) {
 
   function resetAndClose() {
     setName("");
-    setSources([""]);
+    setWebsite("");
     setFormError(null);
     mutation.reset();
     onClose();
   }
 
-  function updateSource(index: number, value: string) {
-    setSources((prev) => prev.map((s, i) => (i === index ? value : s)));
-  }
-
-  function addSource() {
-    setSources((prev) => [...prev, ""]);
-  }
-
-  function removeSource(index: number) {
-    setSources((prev) => (prev.length <= 1 ? prev : prev.filter((_, i) => i !== index)));
-  }
-
   function handleSubmit() {
     setFormError(null);
     const trimmedName = name.trim();
-    const dataSources = sources.map((s) => s.trim()).filter(Boolean);
+    const trimmedWebsite = website.trim();
 
     if (!trimmedName) {
       setFormError("Company name is required.");
       return;
     }
-    if (!dataSources.length) {
-      setFormError("Add at least one data source.");
+    if (!trimmedWebsite) {
+      setFormError("Website link is required.");
       return;
     }
 
-    mutation.mutate({ name: trimmedName, dataSources });
+    // API still expects dataSources[]; backend stores the first as website.
+    mutation.mutate({ name: trimmedName, dataSources: [trimmedWebsite] });
   }
 
   return (
@@ -106,7 +96,7 @@ export function AddCompetitorModal({ open, onClose }: Props) {
             aria-labelledby={titleId}
           >
             <h2 id={titleId}>Add a competitor</h2>
-            <p>We&apos;ll queue this company for automated research across sources.</p>
+            <p>We&apos;ll queue this company for automated research from its website.</p>
 
             <div className={styles.field}>
               <label className={styles.fieldLabel} htmlFor="add-competitor-name">
@@ -124,45 +114,17 @@ export function AddCompetitorModal({ open, onClose }: Props) {
             </div>
 
             <div className={styles.field}>
-              <span className={styles.fieldLabel} id="add-sources-label">
-                Data sources
-              </span>
-              {sources.map((source, index) => (
-                <div key={index} className={styles.sourceRow}>
-                  <input
-                    type="text"
-                    placeholder={
-                      index === 0
-                        ? "e.g. acme.example"
-                        : "e.g. acme.example/careers"
-                    }
-                    value={source}
-                    onChange={(e) => updateSource(index, e.target.value)}
-                    disabled={mutation.isPending}
-                    aria-labelledby="add-sources-label"
-                  />
-                  <button
-                    type="button"
-                    className={styles.removeSource}
-                    aria-label={`Remove data source ${index + 1}`}
-                    disabled={sources.length <= 1 || mutation.isPending}
-                    onClick={() => removeSource(index)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                className={styles.addSource}
-                onClick={addSource}
+              <label className={styles.fieldLabel} htmlFor="add-competitor-website">
+                Website
+              </label>
+              <input
+                id="add-competitor-website"
+                type="text"
+                placeholder="e.g. acme.example"
+                value={website}
+                onChange={(e) => setWebsite(e.target.value)}
                 disabled={mutation.isPending}
-              >
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden="true">
-                  <path d="M12 5v14M5 12h14" strokeLinecap="round" />
-                </svg>
-                Add data source
-              </button>
+              />
             </div>
 
             {formError ? <p className={styles.error}>{formError}</p> : null}
