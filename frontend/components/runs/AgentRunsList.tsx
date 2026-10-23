@@ -5,6 +5,7 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { runsApi, type AgentRun, type ResearchStatus } from "@/lib/api";
 import { formatRelativePast } from "@/lib/format";
+import { runsPollInterval } from "@/lib/polling";
 import {
   computeWeeklyRunStats,
   formatCacheStat,
@@ -147,6 +148,7 @@ export function AgentRunsList() {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["runs"],
     queryFn: () => runsApi.listRuns(),
+    refetchInterval: (query) => runsPollInterval(query.state.data),
   });
 
   const runs = data ?? [];

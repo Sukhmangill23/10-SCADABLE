@@ -18,6 +18,7 @@ import {
   formatRelativeFuture,
   formatRelativePast,
 } from "@/lib/format";
+import { profilePollInterval, runsPollInterval } from "@/lib/polling";
 import { latestSuccessfulRunForCompetitor } from "@/lib/runs/stats";
 import { ProfileVisuals } from "./ProfileVisuals";
 import { ResearchStatusBanner } from "./ResearchStatusBanner";
@@ -77,11 +78,13 @@ export function CompetitorProfileView({ id }: { id: string }) {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["competitor", id],
     queryFn: () => competitorsApi.getCompetitor(id),
+    refetchInterval: (query) => profilePollInterval(query.state.data),
   });
 
   const { data: runs } = useQuery({
     queryKey: ["runs"],
     queryFn: () => runsApi.listRuns(),
+    refetchInterval: (query) => runsPollInterval(query.state.data),
   });
 
   const sources = useMemo(
@@ -153,6 +156,16 @@ export function CompetitorProfileView({ id }: { id: string }) {
       void queryClient.invalidateQueries({ queryKey: ["competitors"] });
     },
   });
+
+  // Keep list/runs caches in sync when polling finishes research on this profile.
+  useEffect(() => {
+    if (!data) return;
+    if (data.researchStatus !== "success" && data.researchStatus !== "failed") {
+      return;
+    }
+    void queryClient.invalidateQueries({ queryKey: ["competitors"] });
+    void queryClient.invalidateQueries({ queryKey: ["runs"] });
+  }, [data?.researchStatus, data?.lastResearchedAt, queryClient, data]);
 
   useEffect(() => {
     if (!confirmOpen) return;
