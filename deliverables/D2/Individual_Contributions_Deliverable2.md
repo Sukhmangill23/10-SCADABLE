@@ -10,7 +10,11 @@
 - Developed backend integration tests for database operations and the research pipeline.
 - Tested and debugged backend integration issues.
 
+<<<<<<< HEAD
 ### Jaynik Sheth
+=======
+### Jaynik Shah
+>>>>>>> 389f6fb4cf581228d005cc7110bfdc015fa77c44
 
 **Role:** Scraper development and research pipeline integration.
 
