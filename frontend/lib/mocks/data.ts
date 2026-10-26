@@ -463,7 +463,7 @@ export const mockCompany: CompanyProfile = {
     connected: false,
     repository: null,
     trackedFile: null,
-    statusLabel: "Not connected",
+    statusLabel: "GitHub sync coming in D3",
     lastSyncedAt: null,
     recentChange: null,
   },

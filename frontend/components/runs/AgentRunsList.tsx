@@ -9,7 +9,6 @@ import { runsPollInterval } from "@/lib/polling";
 import {
   computeWeeklyRunStats,
   formatCacheStat,
-  formatRunCost,
   formatRunStatus,
   latestRunPerCompetitor,
 } from "@/lib/runs/stats";
@@ -82,7 +81,7 @@ function RunRow({
             {formatRunStatus(run.status)}
           </span>
         </td>
-        <td>{formatRunCost(run.costUsd)}</td>
+        <td>—</td>
         <td>{run.stepCount}</td>
         <td>
           {cache ? (
@@ -196,9 +195,7 @@ export function AgentRunsList() {
         </div>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Estimated cost</span>
-          <span className={styles.summaryValue}>
-            ${weeklyStats.estimatedCostUsd.toFixed(2)}
-          </span>
+          <span className={styles.summaryValue}>—</span>
         </div>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Cache hit rate</span>
@@ -207,6 +204,7 @@ export function AgentRunsList() {
           </span>
         </div>
       </div>
+      <p className={styles.finePrint}>Cost tracking coming in D3.</p>
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>

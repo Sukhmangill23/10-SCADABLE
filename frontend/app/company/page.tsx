@@ -93,7 +93,11 @@ export default function CompanyPage() {
             <h2 id="github-heading" className={styles.cardTitle}>
               GitHub
             </h2>
-            <Pill>{github.statusLabel}</Pill>
+            <Pill>
+              {github.connected
+                ? github.statusLabel
+                : "GitHub sync coming in D3"}
+            </Pill>
           </div>
 
           {github.connected ? (
@@ -120,8 +124,8 @@ export default function CompanyPage() {
           ) : (
             <div className={styles.disconnected}>
               <p className={styles.empty}>
-                Connect a repository so SCADABLE’s own changes can be compared
-                against competitor activity.
+                Repository sync so SCADABLE’s own changes can be compared
+                against competitor activity is coming in D3.
               </p>
               <Button disabled>Connect GitHub</Button>
             </div>
