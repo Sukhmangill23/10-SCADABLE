@@ -1,14 +1,9 @@
-# Your Team Number and Name
+# Team 10 – Niche
 
- > _Note:_ This document is meant to be written during (or shortly after) your review meeting, which should happen fairly close to the due date.      
- >      
- > _Suggestion:_ Have your review meeting a day or two before the due date. This way you will have some time to go over (and edit) this document, and all team members should have a chance to make their contribution.
+## Iteration 02 – Review & Retrospect
 
-
-## Iteration XX - Review & Retrospect
-
- * When: FILL IN THE DATE WHEN YOU ACTUALLY HAD YOUR REVIEW MEETING
- * Where: PHYSICAL LOCATION AND/OR ONLINE
+ * When: Thursday, October 22, 2026, 4:00–4:30 PM
+ * Where: Online via Google Meet
 
 ## Process - Reflection
 
@@ -21,14 +16,13 @@ List **process-related** (i.e. team organization and how you work) decisions and
  * 2 - 4 important decisions, processes, actions, or anything else that worked well for you, ordered from most to least important.
  * Give a supporting argument about what makes you think that way.
  * Feel free to refer/link to process artifact(s).
+### Q2. What did not work well
 
-#### Q2. What did not work well
+- **Late integration between components:** Although our team made progress developing the frontend, backend, scraper, and LLM independently, we integrated these components too close to the deadline. This left us with limited time to identify and resolve issues between different parts of the application. For example, we encountered problems with frontend-backend communication that required additional debugging. In future iterations, we plan to integrate components earlier and more frequently to identify compatibility issues before the final stages of development.
 
-List **process-related** (i.e. team organization and how you work) decisions and actions that did not work well.
+- **Deployment planning and unexpected delays:** Our backend deployment was significantly disrupted by an unexpected Railway outage, which prevented us from deploying and testing the application as planned. Since we were relying on Railway for our deployed backend and had scheduled integration testing close to the deadline, the outage delayed our progress and affected our ability to demonstrate a fully working application to our partner. Moving forward, we plan to deploy earlier in the iteration to allow more time for troubleshooting unexpected infrastructure issues.
 
- * 2 - 4 important decisions, processes, actions, or anything else that did not work well for you, ordered from most to least important.
- * Give a supporting argument about what makes you think that way.
- * Feel free to refer/link to process artifact(s).
+- **Insufficient end-to-end testing:** While individual components were being developed and tested, we did not test the complete scraper-to-LLM-to-database-to-frontend workflow early enough. As a result, we discovered issues such as invalid LLM citation URLs and frontend API configuration problems during the later stages of integration. These required additional debugging and slowed down our progress toward a reliable application. In future iterations, we plan to test complete user workflows more regularly rather than relying primarily on individual component tests.
 
 
 #### Q3(a). Planned changes
