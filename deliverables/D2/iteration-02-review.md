@@ -46,8 +46,19 @@ Briefly explain how you integrated the previously developed individuals componen
 ## Product - Review
 
 #### Q4. How was your product demo?
- * How did you prepare your demo?
- * What did you manage to demo to your partner?
- * Did your partner accept the features? And were there change requests?
- * What were your learnings through this process? This can be either from a process and/or product perspective.
- * *This section will be marked very leniently so keep it brief and just make sure the points are addressed*
+
+**Preparation:** We planned to demo the deployed app, but Railway was down on the day, so we ran the frontend locally as a fallback.
+
+**What we demoed:** The frontend dashboard: the competitor list, adding a competitor, competitor profiles, the SWOT analysis view, and the agent runs page.
+
+**Partner feedback:** Our partner liked the product and accepted the features. He requested the following changes and additions:
+- Show the SWOT in a traditional 2×2 grid and remove the extra subheadings under each category.
+- Show more relevant information directly on the page, using dropdowns for details, instead of relying on external links.
+- Show more detail about each agent run.
+- Let users define custom tracking criteria (e.g. funding, projects, company developments) and how to score them, configurable through GitHub config files or a frontend settings tab.
+- Scrape competitor job postings to infer what projects they are working on.
+- Schedule weekly automated agent runs to keep the analysis up to date.
+
+**Learnings:**
+- Process: Deploy and test the full system well before the demo, and always have a local fallback ready. Railway going down meant we could only show the frontend.
+- Product: The partner values configurability (choosing what gets tracked and how it is scored) and having information visible at a glance over raw links. This will shape our next iteration.
