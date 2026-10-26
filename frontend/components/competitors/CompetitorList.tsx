@@ -107,8 +107,7 @@ export function CompetitorList() {
         <div>
           <h1>Competitors</h1>
           <p>
-            Everyone you compete with, and how their activity is changing ·
-            sample data
+            Everyone you compete with, and how their activity is changing
           </p>
         </div>
         <div className={styles.headActions}>

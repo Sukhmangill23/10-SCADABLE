@@ -181,7 +181,7 @@ export function AgentRunsList() {
     <div className={styles.page}>
       <header className={styles.pageHead}>
         <h1>Agent Runs</h1>
-        <p>Internal monitoring for automated competitor research · sample data</p>
+        <p>Internal monitoring for automated competitor research</p>
       </header>
 
       <div className={styles.summaryGrid}>

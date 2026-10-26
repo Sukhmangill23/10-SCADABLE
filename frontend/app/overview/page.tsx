@@ -27,13 +27,20 @@ function formatDate(iso: string) {
 }
 
 function FindingItem({ f }: { f: Finding }) {
+  const tag =
+    f.competitorId != null && f.competitorId !== "" ? (
+      <Link href={`/competitors/${f.competitorId}`} className={styles.tag}>
+        {f.competitorName}
+      </Link>
+    ) : (
+      <span className={styles.tag}>{f.competitorName || "SCADABLE"}</span>
+    );
+
   return (
     <li className={styles.item}>
       <div className={styles.itemMain}>
         <span className={styles.bulletText}>{f.text}</span>
-        <Link href={`/competitors/${f.competitorId}`} className={styles.tag}>
-          {f.competitorName}
-        </Link>
+        {tag}
       </div>
       {(f.isNew || f.isChanged) && (
         <div className={styles.badges}>
