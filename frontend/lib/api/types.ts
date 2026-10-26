@@ -8,7 +8,8 @@ export type SignalSource = "website" | "jobs" | "reviews" | "press";
 
 export type Finding = {
   id: string;
-  competitorId: string;
+  /** Null for overall SCADABLE SWOT findings that are not tied to one competitor. */
+  competitorId: string | null;
   competitorName: string;
   category: SwotCategory;
   text: string;

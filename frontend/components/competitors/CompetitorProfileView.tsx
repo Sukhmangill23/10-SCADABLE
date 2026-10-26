@@ -247,10 +247,7 @@ export function CompetitorProfileView({ id }: { id: string }) {
           <ProfileVisuals chartSeries={data.chartSeries} />
 
           <section className={styles.card}>
-            <h2>
-              Recent activity
-              <span className={styles.cardSubtitle}>(sample data)</span>
-            </h2>
+            <h2>Recent activity</h2>
             {data.recentActivity.length === 0 ? (
               <p className={styles.empty}>No recent activity yet.</p>
             ) : (
