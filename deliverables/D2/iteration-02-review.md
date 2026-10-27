@@ -14,7 +14,7 @@
 
  2. **Agreeing on interfaces first and building using mocks, so subteams didn't block each other**: For example, the frontend used mock data, and the backend used mock crawler and analyzer fallbacks. This allowed us to build in parallel so that we weren't constantly waiting on each. Everything was connected with real data at the end. This meant we always had something to do and no time was wasted. It also gave us a stable demo when the live deployment was risky or down. For example, even though Railway (our cloud provider) was down for a few days, we could still show much of our work.
 
- 3. **Feature branches with PRs, including multiple commits with messages**: This allows main branch's history to be clean and readable, so bugs are caught before they reach main. For example, Sukhman found a bug in my import in PR [#23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23), and this was fixed before being pushed to main. This allows our main branch to always be functional.
+ 3. **Feature branches with PRs, including multiple commits with messages**: This allows main branch's history to be clean and readable, so bugs are caught before they reach main. For example, Sukhman found a bug in an import in PR [#23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23), and this was fixed before being pushed to main. This allows our main branch to always be functional.
 
  4. **GitHub project table that links to issues and pull requests**: It let us see who owned each task and what was still open. Splitting it by deliverable kept us focused on what was due. Linked PRs show who built each component, which also helps TAs see who did what. [Table](https://github.com/orgs/csc301-2026-f/projects/20)
 
