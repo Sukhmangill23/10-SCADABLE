@@ -1,7 +1,8 @@
 """Research workflow orchestrator and asynchronous task runner.
 
 Coordinates the end-to-end research lifecycle for Deliverable 2:
-Add Competitor -> Trigger Crawler -> Diff Snapshot -> Invoke LLM -> Persist to DB.
+Add Competitor -> Trigger Crawler -> Diff Snapshot -> Invoke LLM -> Persist to DB
+-> Compare SCADABLE against all competitors -> Persist overall SWOT.
 """
 
 import asyncio
@@ -16,12 +17,22 @@ from sqlalchemy.orm import Session, sessionmaker
 
 from app.core.baseline import get_scadable_baseline
 from app.db.database import SessionLocal
-from app.db.models import Competitor, ResearchRun, ResearchStatus, SWOTEntry
+from app.db.models import (
+    Competitor,
+    ResearchRun,
+    ResearchStatus,
+    SWOTCategory,
+    SWOTEntry,
+)
 from app.db.repository import (
     NotFoundError,
     create_research_run,
     get_competitor,
+    get_latest_swot,
+    get_overall_swot,
     get_research_run,
+    list_competitors,
+    replace_overall_swot,
     save_analysis_result,
     save_scraped_data,
     save_swot_entries,
@@ -53,6 +64,66 @@ def _get_previous_completed_run(
     return db.scalars(stmt).first()
 
 
+async def refresh_overall_swot(
+    db: Session,
+    analyzer: AnalyzerProtocol,
+    timeout_seconds: float = 90.0,
+    only_if_missing: bool = False,
+) -> None:
+    """Compare SCADABLE against every researched competitor and save the overall SWOT.
+
+    Uses each competitor's latest stored strengths and weaknesses, so it makes
+    one LLM call and never re-crawls. If no competitor has findings left (e.g. the
+    last one was deleted), the overall SWOT is cleared. A failure is logged and
+    keeps the previous overall SWOT; it never fails the competitor run that
+    triggered it.
+    """
+    try:
+        if only_if_missing and get_overall_swot(db):
+            return
+
+        profiles = []
+        for competitor in list_competitors(db, limit=500):
+            entries = get_latest_swot(db, competitor.id)
+            # Opportunities and threats are SCADABLE-relative templates, not competitor facts
+            claims = [
+                {
+                    "category": entry.category.value,
+                    "content": entry.content,
+                    "source_url": entry.source_url,
+                }
+                for entry in entries
+                if entry.category in (SWOTCategory.STRENGTH, SWOTCategory.WEAKNESS)
+            ]
+            if not claims:
+                continue
+            analysis = entries[0].research_run.analysis_result
+            profiles.append({
+                "company_name": competitor.name,
+                "website_url": competitor.website_url,
+                "summary": analysis.get("summary", "") if isinstance(analysis, dict) else "",
+                "claims": claims,
+            })
+
+        if not profiles:
+            # Nothing left to compare, so don't keep findings about deleted competitors
+            replace_overall_swot(db, [])
+            return
+
+        logger.info("Comparing SCADABLE against %d competitors", len(profiles))
+        comparison = await asyncio.wait_for(
+            analyzer.compare(get_scadable_baseline(), profiles),
+            timeout=timeout_seconds,
+        )
+        overall_entries = comparison.get("swot_entries", [])
+        if overall_entries:
+            replace_overall_swot(db, overall_entries)
+
+    except Exception:
+        db.rollback()
+        logger.exception("Overall SWOT comparison failed; keeping the previous overall SWOT.")
+
+
 async def execute_research_run(
     db: Session,
     run_id: int,
@@ -71,6 +142,8 @@ async def execute_research_run(
         6. If changed, invoke LLM analysis comparing against SCADABLE baseline.
         7. Persist raw analysis JSON and structured SWOT entries with source URLs.
         8. Transition state to COMPLETED.
+        9. Compare SCADABLE against all competitors and replace the overall SWOT
+           (skipped on unchanged runs unless no overall SWOT exists yet).
 
     On Failure:
         Catches timeouts and exceptions, transitions run to FAILED with error
@@ -141,7 +214,12 @@ async def execute_research_run(
             if prior_entries:
                 save_swot_entries(db, run_id, prior_entries)
 
-            return update_research_run_status(db, run_id, ResearchStatus.COMPLETED)
+            completed_run = update_research_run_status(db, run_id, ResearchStatus.COMPLETED)
+            # Nothing changed, so only compare if no overall SWOT exists yet
+            await refresh_overall_swot(
+                db, active_analyzer, timeout_seconds, only_if_missing=True
+            )
+            return completed_run
 
         # Step 5: Feed competitor Markdown + SCADABLE baseline profile to LLM
         baseline_profile = get_scadable_baseline()
@@ -162,6 +240,9 @@ async def execute_research_run(
         # Step 8: Mark task status as COMPLETED
         updated_run = update_research_run_status(db, run_id, ResearchStatus.COMPLETED)
         logger.info("Successfully completed research run %s for %s", run_id, competitor.name)
+
+        # Step 9: Refresh SCADABLE's overall SWOT now that this competitor changed
+        await refresh_overall_swot(db, active_analyzer, timeout_seconds)
         return updated_run
 
     except asyncio.TimeoutError:
@@ -214,4 +295,27 @@ def trigger_research_task(
 
     background_tasks.add_task(_async_worker, run.id)
     return run
+
+
+def trigger_overall_swot_refresh(
+    background_tasks: BackgroundTasks,
+    session_factory: sessionmaker[Session] = SessionLocal,
+    analyzer: AnalyzerProtocol | None = None,
+    timeout_seconds: float = 90.0,
+) -> None:
+    """Refresh the overall SWOT in the background, e.g. after a competitor is deleted.
+
+    Runs in its own session because the request's session closes once the
+    response is sent.
+    """
+
+    async def _async_worker() -> None:
+        with session_factory() as worker_db:
+            await refresh_overall_swot(
+                worker_db,
+                analyzer or get_default_analyzer(),
+                timeout_seconds,
+            )
+
+    background_tasks.add_task(_async_worker)
 

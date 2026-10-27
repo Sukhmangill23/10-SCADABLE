@@ -8,7 +8,8 @@ export type SignalSource = "website" | "jobs" | "reviews" | "press";
 
 export type Finding = {
   id: string;
-  competitorId: string;
+  /** Null for overall SCADABLE SWOT findings that are not tied to one competitor. */
+  competitorId: string | null;
   competitorName: string;
   category: SwotCategory;
   text: string;
@@ -27,7 +28,7 @@ export type ChartPoint = {
 export type ScoreSeries = {
   label: string;
   competitor: number;
-  scadable: number;
+  scadable: number | null;
 };
 
 export type ActivityItem = {
@@ -106,7 +107,7 @@ export type AgentRun = {
 
 export type CreateCompetitorInput = {
   name: string;
-  /** One or more research sources (site, careers, blog, …). First is used as primary website. */
+  /** Website URL(s). UI sends a single link; backend stores the first as website. */
   dataSources: string[];
 };
 

@@ -1,0 +1,18 @@
+## Meeting Notes (Thursday Oct 22, 2026)
+- Present: Jaynik, Yash, Ibraheem, Essam, Houssam
+
+### 1. Company Feature Tracking & Analysis
+- **Custom tracking criteria:** Define specific company features and metrics to focus tracking on (e.g., funding, projects, company developments) and how to score them.
+- **Configurable agent focus:** Allow tracking priorities to be configured through GitHub config files or a frontend settings tab to guide what the crawler collects and the LLM analyzes.
+- **Job posting analysis:** Scrape company job descriptions to identify potential projects, initiatives, and deliverables they are working on.
+- **Automated runs:** Schedule weekly agent runs to keep company information and analysis up to date.
+
+### 2. Frontend Improvements
+- **SWOT analysis:** Display SWOT in a traditional 2×2 grid/table layout.
+- **Information display:** Show more relevant information directly instead of relying heavily on external links. Use dropdowns for additional details.
+- **SWOT headings:** Remove unnecessary subheadings under each SWOT category.
+- **Agent runs page:** Provide more detailed information about each agent run.
+
+### 3. Ali Availability for Next Week
+- **Tuesday:** Available all day.
+- **Wednesday:** Available before 4 PM.

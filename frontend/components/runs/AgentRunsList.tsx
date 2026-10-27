@@ -5,10 +5,10 @@ import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { runsApi, type AgentRun, type ResearchStatus } from "@/lib/api";
 import { formatRelativePast } from "@/lib/format";
+import { runsPollInterval } from "@/lib/polling";
 import {
   computeWeeklyRunStats,
   formatCacheStat,
-  formatRunCost,
   formatRunStatus,
   latestRunPerCompetitor,
 } from "@/lib/runs/stats";
@@ -21,6 +21,34 @@ function statusClass(status: ResearchStatus): string {
   return styles.statusPending;
 }
 
+function formatRunDuration(startedAt: string, finishedAt: string | null): string {
+  if (!finishedAt) return "Still running";
+  const ms = new Date(finishedAt).getTime() - new Date(startedAt).getTime();
+  if (Number.isNaN(ms) || ms < 0) return "—";
+  const seconds = Math.max(1, Math.round(ms / 1000));
+  if (seconds < 60) return `${seconds}s`;
+  const minutes = Math.floor(seconds / 60);
+  const rem = seconds % 60;
+  return rem ? `${minutes}m ${rem}s` : `${minutes}m`;
+}
+
+function runDetailSummary(run: AgentRun): string {
+  const failedStep = run.steps.find((step) => step.status === "failed");
+  const okSteps = run.steps.filter((step) => step.status === "success").length;
+  const duration = formatRunDuration(run.startedAt, run.finishedAt);
+
+  if (run.status === "failed" && failedStep) {
+    return `Failed at “${failedStep.name}” · ${okSteps}/${run.steps.length} steps ok · ${duration}`;
+  }
+  if (run.status === "failed") {
+    return `Run failed · ${okSteps}/${run.steps.length} steps ok · ${duration}`;
+  }
+  if (run.status === "running" || run.status === "pending") {
+    return `In progress · ${okSteps}/${run.steps.length} steps done`;
+  }
+  return `Completed ${okSteps}/${run.steps.length} steps · ${duration}`;
+}
+
 function RunRow({
   run,
   expanded,
@@ -31,6 +59,7 @@ function RunRow({
   onToggle: () => void;
 }) {
   const cache = formatCacheStat(run.cacheHits, run.cacheMisses);
+  const failedStepName = run.steps.find((step) => step.status === "failed")?.name;
 
   return (
     <>
@@ -52,7 +81,7 @@ function RunRow({
             {formatRunStatus(run.status)}
           </span>
         </td>
-        <td>{formatRunCost(run.costUsd)}</td>
+        <td>—</td>
         <td>{run.stepCount}</td>
         <td>
           {cache ? (
@@ -75,23 +104,31 @@ function RunRow({
         <tr className={styles.detailRow}>
           <td colSpan={7}>
             <div className={styles.runDetail}>
+              <p className={styles.runSummary}>{runDetailSummary(run)}</p>
               <div className={styles.runSteps}>
                 {run.steps.map((step, index) => (
                   <div
                     key={`${run.id}-step-${index}`}
-                    className={styles.runStep}
+                    className={`${styles.runStep} ${
+                      step.status === "failed" ? styles.runStepFailed : ""
+                    }`}
                   >
                     <span>{step.name}</span>
                     <span className={styles.stepResult}>{step.result}</span>
                   </div>
                 ))}
               </div>
-              {run.status === "failed" && run.errorMessage ? (
+              {run.status === "failed" && (run.errorMessage || failedStepName) ? (
                 <div className={styles.failureReason}>
                   <span className={styles.failureReasonLabel}>
                     Reason for failure
                   </span>
-                  <p>{run.errorMessage}</p>
+                  <p>
+                    {failedStepName
+                      ? `Stopped on “${failedStepName}”. `
+                      : null}
+                    {run.errorMessage ?? "No additional error detail from the agent."}
+                  </p>
                 </div>
               ) : null}
             </div>
@@ -110,6 +147,7 @@ export function AgentRunsList() {
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["runs"],
     queryFn: () => runsApi.listRuns(),
+    refetchInterval: (query) => runsPollInterval(query.state.data),
   });
 
   const runs = data ?? [];
@@ -143,7 +181,7 @@ export function AgentRunsList() {
     <div className={styles.page}>
       <header className={styles.pageHead}>
         <h1>Agent Runs</h1>
-        <p>Internal monitoring for automated competitor research · sample data</p>
+        <p>Internal monitoring for automated competitor research</p>
       </header>
 
       <div className={styles.summaryGrid}>
@@ -157,9 +195,7 @@ export function AgentRunsList() {
         </div>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Estimated cost</span>
-          <span className={styles.summaryValue}>
-            ${weeklyStats.estimatedCostUsd.toFixed(2)}
-          </span>
+          <span className={styles.summaryValue}>—</span>
         </div>
         <div className={styles.summaryCard}>
           <span className={styles.summaryLabel}>Cache hit rate</span>
@@ -168,6 +204,7 @@ export function AgentRunsList() {
           </span>
         </div>
       </div>
+      <p className={styles.finePrint}>Cost tracking coming in D3.</p>
 
       <div className={styles.tableWrap}>
         <table className={styles.table}>

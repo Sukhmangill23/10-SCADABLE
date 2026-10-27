@@ -1,6 +1,7 @@
 """Convert ORM rows into API response models."""
 
 from collections.abc import Iterable
+from datetime import timedelta
 from typing import Any
 from urllib.parse import urlsplit
 
@@ -8,10 +9,13 @@ from app.api.schemas import (
     ActivityItem,
     AgentRun,
     ApiResearchStatus,
+    ChartPoint,
+    ChartSeries,
     CompetitorProfile,
     CompetitorSummary,
     Finding,
     RunStep,
+    ScoreSeries,
 )
 from app.db.models import Competitor, ResearchRun, ResearchStatus, SWOTEntry
 
@@ -23,6 +27,7 @@ _STATUS_MAP: dict[ResearchStatus, ApiResearchStatus] = {
 }
 
 NOT_RESEARCHED_SUMMARY = "Profile not researched yet."
+ACTIVITY_WEEKS = 6
 
 
 def api_status(status: ResearchStatus) -> ApiResearchStatus:
@@ -93,14 +98,14 @@ def competitor_profile(
     summary = competitor_summary(competitor, latest_run)
     completed = _latest_completed(competitor.research_runs)
     analysis = _analysis(completed)
-
-    text = analysis.get("summary")
-    if not text and analysis.get("reused_from_run_id"):
+    # Runs that skipped the LLM only point at the run whose analysis they reused.
+    if analysis.get("reused_from_run_id"):
         reused = next(
             (r for r in competitor.research_runs if r.id == analysis["reused_from_run_id"]),
             None,
         )
-        text = _analysis(reused).get("summary")
+        analysis = {**_analysis(reused), **analysis}
+    text = analysis.get("summary")
 
     activity = [
         ActivityItem(
@@ -116,7 +121,60 @@ def competitor_profile(
         summary=text or NOT_RESEARCHED_SUMMARY,
         findings=[finding_from_entry(e, competitor) for e in swot_entries],
         recent_activity=activity,
+        chart_series=ChartSeries(
+            scores=_scores(analysis),
+            activity_over_time=_activity_over_time(competitor.research_runs),
+        ),
     )
+
+
+def _scores(analysis: dict[str, Any]) -> list[ScoreSeries]:
+    """LLM feature scores (0-10 competition with SCADABLE) as chart bars.
+
+    The analyzer doesn't score SCADABLE itself, so ``scadable`` stays empty.
+    """
+    series = []
+    for item in analysis.get("scores") or []:
+        if not isinstance(item, dict):
+            continue
+        label, score = item.get("feature"), item.get("score")
+        if not isinstance(label, str) or not label.strip():
+            continue
+        if isinstance(score, bool) or not isinstance(score, (int, float)):
+            continue
+        series.append(
+            ScoreSeries(label=label.strip(), competitor=min(max(score, 0), 10), scadable=None)
+        )
+    return series
+
+
+def _activity_over_time(runs: Iterable[ResearchRun]) -> list[ChartPoint]:
+    """Weekly count of completed runs that found website changes.
+
+    Covers the ``ACTIVITY_WEEKS`` weeks ending at the latest completed run.
+    """
+    completed = [
+        (r.completed_at or r.created_at).date()
+        for r in runs
+        if r.status == ResearchStatus.COMPLETED
+    ]
+    if not completed:
+        return []
+    changed = [
+        (r.completed_at or r.created_at).date()
+        for r in runs
+        if r.status == ResearchStatus.COMPLETED and not _analysis(r).get("skipped_llm")
+    ]
+    last = max(completed)
+    last_week = last - timedelta(days=last.weekday())
+    weeks = [last_week - timedelta(weeks=n) for n in reversed(range(ACTIVITY_WEEKS))]
+    return [
+        ChartPoint(
+            label=f"{week:%b} {week.day}",
+            value=sum(week <= day < week + timedelta(weeks=1) for day in changed),
+        )
+        for week in weeks
+    ]
 
 
 def _activity_text(run: ResearchRun) -> str:

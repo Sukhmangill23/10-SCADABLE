@@ -85,7 +85,8 @@ class ChartPoint(ApiModel):
 class ScoreSeries(ApiModel):
     label: str
     competitor: float
-    scadable: float
+    # Null when there's no SCADABLE score for this feature.
+    scadable: float | None = None
 
 
 class ActivityItem(ApiModel):

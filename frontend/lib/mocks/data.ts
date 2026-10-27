@@ -429,10 +429,24 @@ export const mockProfiles: Record<string, CompetitorProfile> = {
 
 export const mockSwot: SwotOverview = {
   updatedAt: "2026-10-08T12:00:00Z",
-  strengths: [mockProfiles.northstar.findings[0]],
-  weaknesses: [mockProfiles.harbor.findings[0]],
-  opportunities: [mockProfiles.harbor.findings[1]],
-  threats: [mockProfiles.northstar.findings[1]],
+  strengths: [
+    mockProfiles.northstar.findings[0],
+    mockProfiles.orbit.findings[1],
+    mockProfiles.brightpath.findings[0],
+  ],
+  weaknesses: [
+    mockProfiles.harbor.findings[0],
+    mockProfiles.vertex.findings[0],
+  ],
+  opportunities: [
+    mockProfiles.harbor.findings[1],
+    mockProfiles.vertex.findings[1],
+  ],
+  threats: [
+    mockProfiles.northstar.findings[1],
+    mockProfiles.orbit.findings[0],
+    mockProfiles.brightpath.findings[1],
+  ],
 };
 
 export const mockCompany: CompanyProfile = {
@@ -449,7 +463,7 @@ export const mockCompany: CompanyProfile = {
     connected: false,
     repository: null,
     trackedFile: null,
-    statusLabel: "Not connected",
+    statusLabel: "GitHub sync coming in D3",
     lastSyncedAt: null,
     recentChange: null,
   },
