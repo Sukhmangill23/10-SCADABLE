@@ -104,7 +104,7 @@ async def test_extraction_supplies_markdown_and_source_metadata(tmp_path):
     assert result.company_name == load_analysis_input(index).company_name   # from the export
     assert client.requests[0]["output_schema"] is PartialExtractedInformation
 
-    assert result.claims_cited[0].source_url == "https://example.com/"
+    assert result.claims_cited[0].claim_page_url == "https://example.com/"
     prompt = client.requests[0]["input_text"]
     assert MARKDOWN in prompt
     assert "https://example.com/" in prompt and "https://example.com/new/" in prompt

@@ -90,7 +90,7 @@ def test_company_analysis_is_built_from_partial_plus_supplied_fields():
         summary_source_urls=["https://example.com/"],
     )
     assert analysis.company_name == "Acme"
-    assert analysis.summary_source_urls == ["https://example.com/"]
+    assert analysis.summary_page_urls == ["https://example.com/"]
     assert analysis.strengths == ["Fast"]
     assert analysis.scores[0].feature == "Reports"
 
