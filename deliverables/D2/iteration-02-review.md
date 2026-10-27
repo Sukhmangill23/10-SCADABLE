@@ -10,12 +10,15 @@
 
 #### Q1. What worked well
 
-List **process-related** (i.e. team organization and how you work) decisions and actions that worked well.
+1. **Discord server and rooms for backend, scraper/llm, and frontend**: This is our mode of communication. Questions reached the right people without cluttering the other subteams' channels. For example, if there was an issue that was only relevant to the backend, it was in the backend channel so other teammates could focus on their tasks. This also avoids the issue of everyone talking over one another in a single chat room.
+
+ 2. **Agreeing on interfaces first and building using mocks, so subteams didn't block each other**: For example, the frontend used mock data, and the backend used mock crawler and analyzer fallbacks. This allowed us to build in parallel so that we weren't constantly waiting on each. Everything was connected with real data at the end. This meant we always had something to do and no time was wasted. It also gave us a stable demo when the live deployment was risky or down. For example, even though Railway (our cloud provider) was down for a few days, we could still show much of our work.
+
+ 3. **Feature branches with PRs, including multiple commits with messages**: This allows main branch's history to be clean and readable, so bugs are caught before they reach main. For example, Sukhman found a bug in my import in PR [#23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23), and this was fixed before being pushed to main. This allows our main branch to always be functional.
+
+ 4. **GitHub project table that links to issues and pull requests**: It let us see who owned each task and what was still open. Splitting it by deliverable kept us focused on what was due. Linked PRs show who built each component, which also helps TAs see who did what. [Table](https://github.com/orgs/csc301-2026-f/projects/20)
 
 
- * 2 - 4 important decisions, processes, actions, or anything else that worked well for you, ordered from most to least important.
- * Give a supporting argument about what makes you think that way.
- * Feel free to refer/link to process artifact(s).
 ### Q2. What did not work well
 
 - **Late integration between components:** Although our team made progress developing the frontend, backend, scraper, and LLM independently, we integrated these components too close to the deadline. This left us with limited time to identify and resolve issues between different parts of the application. For example, we encountered problems with frontend-backend communication that required additional debugging. In future iterations, we plan to integrate components earlier and more frequently to identify compatibility issues before the final stages of development.

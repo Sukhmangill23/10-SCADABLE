@@ -8,6 +8,7 @@ from typing import Any
 
 SCADABLE_BASELINE: dict[str, Any] = {
     "company_name": "SCADABLE",
+    "website_url": "https://scadable.com",
     "domain": "Automated Security Compliance & Regulatory Governance SaaS",
     "summary": (
         "SCADABLE is an automated compliance and regulatory governance platform "
