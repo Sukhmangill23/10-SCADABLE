@@ -23,6 +23,33 @@ class AnalyzerProtocol(Protocol):
         baseline_context: dict[str, Any],
     ) -> dict[str, Any]: ...
 
+    async def compare(
+        self,
+        baseline_context: dict[str, Any],
+        competitors: list[dict[str, Any]],
+    ) -> dict[str, Any]: ...
+
+
+SWOT_LISTS = (
+    ("strength", "strengths"),
+    ("weakness", "weaknesses"),
+    ("opportunity", "opportunities"),
+    ("threat", "threats"),
+)
+
+
+def _build_openai_client() -> Any:
+    """Create the shared OpenAI client; raises if the package or key is missing."""
+    from llm.client import OpenAIClient
+    from llm.config import Settings
+    from scraper.environment import load_environment
+
+    load_environment()
+    settings = Settings()
+    if not settings.openai_model.strip():
+        settings = settings.model_copy(update={"openai_model": "gpt-4o-mini"})
+    return OpenAIClient(settings)
+
 
 class MockOpenAIAnalyzer:
     """Mock analyzer returning realistic SWOT findings with citations.
@@ -112,6 +139,48 @@ class MockOpenAIAnalyzer:
             ],
         }
 
+    async def compare(
+        self,
+        baseline_context: dict[str, Any],
+        competitors: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        if self.delay_seconds > 0:
+            await asyncio.sleep(self.delay_seconds)
+
+        if self.should_fail:
+            raise RuntimeError(
+                "Mock analyzer simulated failure during overall SWOT comparison."
+            )
+
+        names = ", ".join(c["company_name"] for c in competitors) or "competitors"
+        strengths = [
+            {"category": "strength", "content": text, "source_url": None}
+            for text in baseline_context.get("differentiators", [])[:2]
+        ]
+        return {
+            "swot_entries": strengths + [
+                {
+                    "category": "weakness",
+                    "content": f"SCADABLE has less brand recognition than {names}.",
+                    "source_url": None,
+                },
+                {
+                    "category": "opportunity",
+                    "content": (
+                        f"Win cost-sensitive startups priced out of enterprise tiers from {names}."
+                    ),
+                    "source_url": None,
+                },
+                {
+                    "category": "threat",
+                    "content": (
+                        f"{names} can use larger partner networks to slow SCADABLE's growth."
+                    ),
+                    "source_url": None,
+                },
+            ],
+        }
+
 
 class OpenAIAdapter:
     """Adapter wrapping Yash & Jaynik's OpenAI analysis engine.
@@ -131,8 +200,6 @@ class OpenAIAdapter:
             from datetime import datetime, timezone
 
             from llm.analyzer import Analyzer
-            from llm.client import OpenAIClient
-            from llm.config import Settings
             from llm.inputs import load_analysis_input
             from llm.schemas import (
                 AnalysisInput,
@@ -141,11 +208,8 @@ class OpenAIAdapter:
                 ExportedPage,
             )
             from llm.swot_entries import to_swot_entries
-            from scraper.environment import load_environment
             from scraper.models import CrawlSummary
             from scraper.types import PageCategory
-
-            load_environment()
 
             # Check if summary_path exists on disk
             summary_path = scraped_data.get("summary_path")
@@ -212,10 +276,7 @@ class OpenAIAdapter:
                     pages=analysis_pages,
                 )
 
-            settings = Settings()
-            if not settings.openai_model.strip():
-                settings = settings.model_copy(update={"openai_model": "gpt-4o-mini"})
-            client = OpenAIClient(settings)
+            client = _build_openai_client()
             try:
                 analyzer = Analyzer(client)
                 facts = await analyzer.extract_information(analysis_input)
@@ -276,6 +337,84 @@ class OpenAIAdapter:
             )
             mock = MockOpenAIAnalyzer()
             return await mock.analyze(scraped_data, baseline_context)
+
+    async def compare(
+        self,
+        baseline_context: dict[str, Any],
+        competitors: list[dict[str, Any]],
+    ) -> dict[str, Any]:
+        """Compare SCADABLE against all researched competitors with Analyzer.compare().
+
+        Falls back to the mock only when the LLM package or API key is missing.
+        Errors from the OpenAI call itself are raised, so the orchestrator keeps
+        the previous overall SWOT instead of replacing it with mock findings.
+        """
+        try:
+            from llm.analyzer import Analyzer
+            from llm.schemas import ClaimCited, CompanyAnalysis, ComparisonInput
+
+            client = _build_openai_client()
+        except Exception as exc:
+            logger.warning(
+                "Real OpenAI comparison unavailable or unconfigured (%s); falling back to mock analyzer.",
+                exc,
+            )
+            return await MockOpenAIAnalyzer().compare(baseline_context, competitors)
+
+        # SCADABLE has no scraped pages in D2, so its claims cite its homepage.
+        scadable_url = baseline_context.get("website_url", "https://scadable.com")
+        scadable_claims = [
+            *baseline_context.get("differentiators", []),
+            *baseline_context.get("core_capabilities", []),
+        ]
+        frameworks = baseline_context.get("supported_frameworks", [])
+        if frameworks:
+            scadable_claims.append(f"Supports {', '.join(frameworks)}.")
+
+        comparison_input = ComparisonInput(
+            scadable=CompanyAnalysis(
+                company_name=baseline_context.get("company_name", "SCADABLE"),
+                summary=baseline_context.get("summary", ""),
+                claims_cited=[
+                    ClaimCited(category="strength", claim=claim, source_url=scadable_url)
+                    for claim in scadable_claims
+                ],
+                scores=[],
+            ),
+            competitors=[
+                CompanyAnalysis(
+                    company_name=c["company_name"],
+                    summary=c.get("summary", ""),
+                    claims_cited=[
+                        ClaimCited(
+                            category=claim["category"],
+                            claim=claim["content"],
+                            source_url=claim.get("source_url") or c["website_url"],
+                        )
+                        for claim in c["claims"]
+                    ],
+                    scores=[],
+                )
+                for c in competitors
+            ],
+        )
+
+        try:
+            swot = await Analyzer(client).compare(comparison_input)
+        finally:
+            await client.close()
+
+        # compare() returns plain strings with no citations, so source_url stays empty.
+        return {
+            "schema_version": "backend-comparison-v1",
+            "mode": "real",
+            "swot_entries": [
+                {"category": category, "content": text, "source_url": None}
+                for category, field in SWOT_LISTS
+                for text in getattr(swot, field)
+                if text.strip()
+            ],
+        }
 
 
 def get_default_analyzer() -> AnalyzerProtocol:

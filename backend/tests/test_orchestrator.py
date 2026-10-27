@@ -15,6 +15,7 @@ from app.db.repository import (
     create_competitor,
     create_research_run,
     get_latest_swot,
+    get_overall_swot,
     get_research_run,
 )
 from app.services.crawler import MockCrawl4AICrawler
@@ -107,6 +108,26 @@ def test_mock_analyzer():
     assert {"strength", "weakness", "opportunity", "threat"}.issubset(categories)
     for entry in entries:
         assert entry["source_url"].startswith("https://drata.com")
+
+
+def test_mock_compare():
+    analyzer = MockOpenAIAnalyzer()
+    competitors = [{"company_name": "Vanta"}, {"company_name": "Drata"}]
+    baseline = {"differentiators": ["Native EU CRA tracking"]}
+    result = asyncio.run(analyzer.compare(baseline, competitors))
+
+    entries = result["swot_entries"]
+    categories = {e["category"] for e in entries}
+    assert {"strength", "weakness", "opportunity", "threat"} == categories
+    assert any("Vanta, Drata" in e["content"] for e in entries)
+    assert all(e["source_url"] is None for e in entries)
+
+
+class CompareFailingAnalyzer(MockOpenAIAnalyzer):
+    """Analyzes normally but fails the overall comparison."""
+
+    async def compare(self, baseline_context, competitors):
+        raise RuntimeError("Simulated comparison failure.")
 
 
 # ---------------------------------------------------------------------------
@@ -203,6 +224,37 @@ if test_url:
         assert res2.status == ResearchStatus.COMPLETED
         assert res2.analysis_result.get("skipped_llm") is True
         assert res2.analysis_result.get("reused_from_run_id") == run1.id
+
+    def test_execute_research_run_saves_overall_swot(db, competitor):
+        crawler = MockCrawl4AICrawler()
+        analyzer = MockOpenAIAnalyzer()
+
+        run1 = create_research_run(db, competitor.id)
+        asyncio.run(execute_research_run(db, run1.id, crawler, analyzer))
+
+        overall = get_overall_swot(db)
+        assert {e.category for e in overall} == set(SWOTCategory)
+        assert all(e.scope == SWOTScope.OVERALL and e.competitor_id is None for e in overall)
+        assert any("Vanta" in e.content for e in overall)
+
+        # Unchanged re-run must not call compare() again
+        overall_ids = [e.id for e in overall]
+        run2 = create_research_run(db, competitor.id)
+        asyncio.run(execute_research_run(db, run2.id, crawler, analyzer))
+        assert [e.id for e in get_overall_swot(db)] == overall_ids
+
+    def test_execute_research_run_compare_failure_keeps_run_completed(db, competitor):
+        run = create_research_run(db, competitor.id)
+        finished_run = asyncio.run(execute_research_run(
+            db=db,
+            run_id=run.id,
+            crawler=MockCrawl4AICrawler(),
+            analyzer=CompareFailingAnalyzer(),
+        ))
+
+        assert finished_run.status == ResearchStatus.COMPLETED
+        assert len(get_latest_swot(db, competitor.id)) > 0
+        assert get_overall_swot(db) == []
 
     def test_execute_research_run_crawler_failure(db, competitor):
         run = create_research_run(db, competitor.id)
