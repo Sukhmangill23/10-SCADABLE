@@ -1,11 +1,37 @@
 """Source-backed analysis inputs and structured competitor insights."""
 
-from typing import Literal
+from typing import Annotated, Literal
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import AfterValidator, BaseModel, Field
 
 from scraper import CrawlExportSummary, ExportedPage
 
+Category = Literal[
+    "features",
+    "target_customers",
+    "pricing",
+    "integrations",
+    "differentiators",
+    "strength",
+    "weakness",
+    "workforce_improvement",
+    "workforce_decline"
+]
+
+Family = Literal[
+    "part-time", 
+    "full-time",
+    "co-op/internship",
+    "apprenticeship",
+    "other"
+]
+
+SWOTComponent = Literal[
+    "strength",
+    "weakness",
+    "opportunity",
+    "threat"
+]
 
 class AnalysisPage(BaseModel):
     """One exported page's metadata alongside its unchanged Markdown."""
@@ -22,74 +48,131 @@ class AnalysisInput(BaseModel):
     def company_name(self) -> str:
         return self.crawl_summary.competitor_name
 
+class JobFamily(BaseModel):
+    """
+    Represents a job family (used for JobCited class).
+    """
+    job_family: Family
+    count: int
 
-Category = Literal[
-    "features",
-    "target_customers",
-    "pricing",
-    "integrations",
-    "differentiators",
-    "strength",
-    "weakness",
-]
+class JobCited(BaseModel):
+    """
+    Represents each job posting as a general category, providing inputs on the role, category, 
+    job families this role is divided into, and the number of roles per job family.
+
+    NEVER use this for the LLM's output schema.
+    """
+    role: str 
+    category: str
+    job_families: list[JobFamily]
+
+class JobCitedByIndex(JobCited):
+    """
+    An index-based version of a cited job (Use this for the LLM output schema).
+    """
+    job_page_index: int
+
+class JobCitedByURL(JobCited):
+    """
+    A url-based version of a cited job (use this for converting the job citations from ints to strings).
+    """
+    job_page_url: str
+
 
 
 class ClaimCited(BaseModel):
-    """One fact or finding about a company, with the page that supports it."""
-
+    """One fact or finding about a company, with the page that supports it.
+    
+    NEVER use this for the LLM's output schema.
+    """
     category: Category
     claim: str
-    source_url: str
+
+class ClaimCitedByIndex(ClaimCited):
+    """
+    A claim that is cited by page index. Use this for the LLM's output schema.
+    """
+    claim_page_index: int
+
+class ClaimCitedByURL(ClaimCited):
+    """
+    A claim cited by URL. Use this after the LLM's output has been produced.
+    """
+    claim_page_url: str
+
+
+def _check_score_range(value: int) -> int:
+    if not 0 <= value <= 10:
+        raise ValueError("score must be between 0 and 10")
+    return value
+
+
+# AfterValidator (not Field limits) keeps the range out of the JSON schema sent to
+# OpenAI, whose strict mode does not accept every numeric keyword.
+Score = Annotated[int, AfterValidator(_check_score_range)]
+
+
+class FeatureScoreByIndex(BaseModel):
+    """One competitor feature scored 0-10, by company index. Use this for the LLM output schema."""
+
+    company_index: int
+    feature: str
+    score: Score
 
 
 class FeatureScore(BaseModel):
-    """How much competition one of a company's features brings to SCADABLE (0-10)."""
+    """One competitor feature scored 0-10, by company name. Use this after the LLM output has been converted."""
 
+    company_name: str
     feature: str
-    score: int
-
-    # A validator (not Field limits) keeps the range out of the JSON schema sent
-    # to OpenAI, whose strict mode does not accept every numeric keyword.
-    @field_validator("score")
-    @classmethod
-    def _score_in_range(cls, value: int) -> int:
-        if not 0 <= value <= 10:
-            raise ValueError("score must be between 0 and 10")
-        return value
+    score: Score
 
 class PartialExtractedInformation(BaseModel):
-    """A partial, token-effective shape for a company. Saves tokens and prevents the LLM from providing the wrong 
-    company name when scraping, because the model sometimes echoes a placeholder name or invents its own."""
+    """Parent schema for LLM prompting (Never explicitly use this for the output schema)."""
     summary: str
-    summary_source_urls: list[str]
-    # Every fact is one cited claim; read them back by category with claims_in().
-    claims_cited: list[ClaimCited]
 
-    
+
+class PartialExtractedInformationByIndex(PartialExtractedInformation):
+    """Used for the LLM output schema (lower chances of made-up links)."""
+    job_postings: list[JobCitedByIndex]
+    claims_cited: list[ClaimCitedByIndex]
+    summary_page_indexes: list[int]
+
     def claims_in(self, category: Category) -> list[str]:
         return [c.claim for c in self.claims_cited if c.category == category]
 
 class ExtractedInformation(PartialExtractedInformation):
-    """Facts extracted from source pages before interpretation."""
+    """Facts extracted from source pages before interpretation. Converts all "index" values into their URLs."""
     company_name: str
+
+class ExtractedInformationByURL(ExtractedInformation):
+    """Used for LLM output conversion"""
+    summary_page_urls: list[str]
+    job_postings: list[JobCitedByURL]
+    claims_cited: list[ClaimCitedByURL]
+
+class ExtractedInformationByIndex(ExtractedInformation):
+    """Used for input conversion for LLM prompt"""
+    job_postings: list[JobCitedByIndex]
+    claims_cited: list[ClaimCitedByIndex]
 
 
 class PartialCompanyAnalysis(BaseModel):
-    """A partial, token-effective shape for a competitor or SCADABLE. Used to fetch all the new 
-    data for the company before packing it with the company name and summary."""
+    """A partial, token-efficient shape for a competitor or SCADABLE. Parent of the LLM output schema."""
 
-    claims_cited: list[ClaimCited]
-    scores: list[FeatureScore]
+class PartialCompanyAnalysisByIndex(PartialCompanyAnalysis):
+    """Used for LLM output schema."""
+    claims_cited: list[ClaimCitedByIndex]
 
 class CompanyAnalysis(PartialCompanyAnalysis):
     """Shared analysis shape for a competitor or SCADABLE."""
 
     company_name: str
     summary: str
-    summary_source_urls: list[str]
-    # Strengths and weaknesses are claims with category "strength" or "weakness".
-    claims_cited: list[ClaimCited]
-    scores: list[FeatureScore]
+    summary_page_urls: list[str]
+    claims_cited: list[ClaimCitedByURL]
+    # The company's features, as extracted. They are scored later, in compare().
+    features: list[str]
 
     def claims_in(self, category: Category) -> list[str]:
         return [c.claim for c in self.claims_cited if c.category == category]
@@ -102,12 +185,19 @@ class CompanyAnalysis(PartialCompanyAnalysis):
     def weaknesses(self) -> list[str]:
         return self.claims_in("weakness")
 
+class CompanyAnalysisByIndex(BaseModel):
+    company_index: int
+    company_name: str
+    summary: str
+    features: list[str]
+    claims_cited: list[ClaimCitedByIndex]
+
 
 class CompetitorResearchResult(BaseModel):
     """Analysis and extracted facts with the scraper's original run provenance."""
 
     crawl_summary: CrawlExportSummary
-    extracted_information: ExtractedInformation
+    extracted_information: ExtractedInformationByURL
     analysis: CompanyAnalysis
 
 
@@ -115,6 +205,9 @@ class ComparisonInput(BaseModel):
     scadable: CompanyAnalysis
     competitors: list[CompanyAnalysis]
 
+class ComparisonInputByIndex(BaseModel):
+    scadable: CompanyAnalysisByIndex
+    competitors: list[CompanyAnalysisByIndex]
 
 class CompetitorNote(BaseModel):
     """Short explanation of what one competitor means for SCADABLE."""
@@ -123,9 +216,28 @@ class CompetitorNote(BaseModel):
     why_it_matters: str
 
 
+class SWOTEntry(BaseModel):
+    component: SWOTComponent
+    what: str
+
+class SWOTIndex(BaseModel):
+    swot_component_company_index: int
+    swot_component_page_index: int
+
+class SWOTEntryByIndex(SWOTEntry):
+    swot_citations: list[SWOTIndex]
+
+class SWOTEntryByURL(SWOTEntry):
+    swot_component_page_urls: list[str]
+
+
 class SWOTAnalysis(BaseModel):
-    strengths: list[str]
-    weaknesses: list[str]
-    opportunities: list[str]
-    threats: list[str]
     competitor_notes: list[CompetitorNote]
+
+class SWOTAnalysisByIndex(SWOTAnalysis):
+    SWOT_entries: list[SWOTEntryByIndex]
+    scores: list[FeatureScoreByIndex]
+
+class SWOTAnalysisByURL(SWOTAnalysis):
+    SWOT_entries: list[SWOTEntryByURL]
+    scores: list[FeatureScore]
