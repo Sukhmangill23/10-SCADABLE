@@ -12,6 +12,7 @@ import {
 } from "@/lib/api";
 import { displayWebsite, formatRelativePast } from "@/lib/format";
 import { competitorsPollInterval } from "@/lib/polling";
+import { AddCompetitorModal } from "./AddCompetitorModal";
 import styles from "./CompetitorList.module.css";
 
 type ActivityFilter = "all" | "pending" | Trend;
@@ -70,6 +71,7 @@ export function CompetitorList() {
   const router = useRouter();
   const [filter, setFilter] = useState<ActivityFilter>("all");
   const [search, setSearch] = useState("");
+  const [addOpen, setAddOpen] = useState(false);
 
   const { data, isPending, isError, error } = useQuery({
     queryKey: ["competitors"],
@@ -109,14 +111,16 @@ export function CompetitorList() {
           </p>
         </div>
         <div className={styles.headActions}>
-          <Button disabled>
+          <Button onClick={() => setAddOpen(true)}>
             <svg viewBox="0 0 24 24" width="13" height="13" fill="none" stroke="currentColor" aria-hidden="true">
               <path d="M12 5v14M5 12h14" strokeLinecap="round" />
             </svg>
-            Add competitor — coming in D3
+            Add competitor
           </Button>
         </div>
       </header>
+
+      <AddCompetitorModal open={addOpen} onClose={() => setAddOpen(false)} />
 
       <div className={styles.listControls}>
         <div className={styles.filterTabs} role="group" aria-label="Filter competitors">
