@@ -29,6 +29,7 @@ class FakeStore:
         self.entries: dict[int, list[SimpleNamespace]] = {}  # run_id -> entries
         self.overall: list[SimpleNamespace] = []
         self.triggered: list[int] = []
+        self.overall_refreshes = 0
 
     def add_competitor(self, name: str, url: str) -> SimpleNamespace:
         cid = len(self.competitors) + 1
@@ -116,6 +117,9 @@ class FakeStore:
         self.triggered.append(competitor_id)
         return self.add_run(self.competitors[competitor_id], ResearchStatus.PENDING)
 
+    def trigger_overall_swot_refresh(self, background_tasks):
+        self.overall_refreshes += 1
+
 
 @pytest.fixture
 def store(monkeypatch):
@@ -127,6 +131,9 @@ def store(monkeypatch):
         monkeypatch.setattr(repo, name, getattr(fake, name))
     monkeypatch.setattr(runs_routes, "query_runs", fake.query_runs)
     monkeypatch.setattr(orchestrator, "trigger_research_task", fake.trigger_research_task)
+    monkeypatch.setattr(
+        orchestrator, "trigger_overall_swot_refresh", fake.trigger_overall_swot_refresh
+    )
     return fake
 
 
@@ -327,7 +334,9 @@ def test_create_duplicate_competitor_conflict(client, researched, store):
 def test_delete_competitor(client, researched, store):
     assert client.delete(f"/competitors/{researched.id}").status_code == 204
     assert researched.id not in store.competitors
+    assert store.overall_refreshes == 1
     assert client.delete(f"/competitors/{researched.id}").status_code == 404
+    assert store.overall_refreshes == 1  # no refresh when nothing was deleted
 
 
 def test_rerun_queues_new_run(client, researched, store):
