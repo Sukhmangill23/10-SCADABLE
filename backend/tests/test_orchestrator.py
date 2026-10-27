@@ -14,6 +14,7 @@ from app.db.models import ResearchStatus, SWOTCategory, SWOTScope
 from app.db.repository import (
     create_competitor,
     create_research_run,
+    delete_competitor,
     get_latest_swot,
     get_overall_swot,
     get_research_run,
@@ -21,7 +22,12 @@ from app.db.repository import (
 from app.services.crawler import MockCrawl4AICrawler
 from app.services.diff import compute_content_hash, has_content_changed
 from app.services.llm import MockOpenAIAnalyzer
-from app.services.orchestrator import execute_research_run, trigger_research_task
+from app.services.orchestrator import (
+    execute_research_run,
+    refresh_overall_swot,
+    trigger_overall_swot_refresh,
+    trigger_research_task,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -121,6 +127,15 @@ def test_mock_compare():
     assert {"strength", "weakness", "opportunity", "threat"} == categories
     assert any("Vanta, Drata" in e["content"] for e in entries)
     assert all(e["source_url"] is None for e in entries)
+
+
+def test_trigger_overall_swot_refresh():
+    from fastapi import BackgroundTasks
+
+    bg_tasks = BackgroundTasks()
+    trigger_overall_swot_refresh(bg_tasks)
+
+    assert len(bg_tasks.tasks) == 1
 
 
 class CompareFailingAnalyzer(MockOpenAIAnalyzer):
@@ -254,6 +269,17 @@ if test_url:
 
         assert finished_run.status == ResearchStatus.COMPLETED
         assert len(get_latest_swot(db, competitor.id)) > 0
+        assert get_overall_swot(db) == []
+
+    def test_refresh_overall_swot_clears_after_last_competitor_deleted(db, competitor):
+        run = create_research_run(db, competitor.id)
+        asyncio.run(execute_research_run(
+            db, run.id, MockCrawl4AICrawler(), MockOpenAIAnalyzer()
+        ))
+        assert get_overall_swot(db)
+
+        delete_competitor(db, competitor.id)
+        asyncio.run(refresh_overall_swot(db, MockOpenAIAnalyzer()))
         assert get_overall_swot(db) == []
 
     def test_execute_research_run_crawler_failure(db, competitor):

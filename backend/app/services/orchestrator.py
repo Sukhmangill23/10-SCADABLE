@@ -73,8 +73,10 @@ async def refresh_overall_swot(
     """Compare SCADABLE against every researched competitor and save the overall SWOT.
 
     Uses each competitor's latest stored strengths and weaknesses, so it makes
-    one LLM call and never re-crawls. A failure is logged and keeps the previous
-    overall SWOT; it never fails the competitor run that triggered it.
+    one LLM call and never re-crawls. If no competitor has findings left (e.g. the
+    last one was deleted), the overall SWOT is cleared. A failure is logged and
+    keeps the previous overall SWOT; it never fails the competitor run that
+    triggered it.
     """
     try:
         if only_if_missing and get_overall_swot(db):
@@ -104,6 +106,8 @@ async def refresh_overall_swot(
             })
 
         if not profiles:
+            # Nothing left to compare, so don't keep findings about deleted competitors
+            replace_overall_swot(db, [])
             return
 
         logger.info("Comparing SCADABLE against %d competitors", len(profiles))
@@ -291,4 +295,27 @@ def trigger_research_task(
 
     background_tasks.add_task(_async_worker, run.id)
     return run
+
+
+def trigger_overall_swot_refresh(
+    background_tasks: BackgroundTasks,
+    session_factory: sessionmaker[Session] = SessionLocal,
+    analyzer: AnalyzerProtocol | None = None,
+    timeout_seconds: float = 90.0,
+) -> None:
+    """Refresh the overall SWOT in the background, e.g. after a competitor is deleted.
+
+    Runs in its own session because the request's session closes once the
+    response is sent.
+    """
+
+    async def _async_worker() -> None:
+        with session_factory() as worker_db:
+            await refresh_overall_swot(
+                worker_db,
+                analyzer or get_default_analyzer(),
+                timeout_seconds,
+            )
+
+    background_tasks.add_task(_async_worker)
 

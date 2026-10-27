@@ -47,7 +47,8 @@ def _build_openai_client() -> Any:
     load_environment()
     settings = Settings()
     if not settings.openai_model.strip():
-        settings = settings.model_copy(update={"openai_model": "gpt-4o-mini"})
+        # Same model the scraper uses for page selection
+        settings = settings.model_copy(update={"openai_model": "gpt-6-luna"})
     return OpenAIClient(settings)
 
 
