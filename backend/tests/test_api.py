@@ -217,8 +217,11 @@ def test_get_competitor_profile(client, researched):
     assert strength["competitorName"] == "Vanta"
     opportunity = next(f for f in body["findings"] if f["category"] == "opportunity")
     assert opportunity["sourceUrl"] == "" and opportunity["sourceLabel"] == "No source"
-    assert body["chartSeries"] == {
-        "scores": [], "activityOverTime": [], "signalsBySource": [], "hiringTrend": []}
+    assert body["chartSeries"]["scores"] == []
+    assert body["chartSeries"]["activityOverTime"] == [
+        {"label": label, "value": 0}
+        for label in ("Sep 14", "Sep 21", "Sep 28", "Oct 5", "Oct 12")
+    ] + [{"label": "Oct 19", "value": 1}]
     assert body["recentActivity"][0]["text"].startswith("Research run completed")
 
 
@@ -228,6 +231,39 @@ def test_get_competitor_not_researched(client, store):
     assert body["researchStatus"] == "pending"
     assert body["summary"] == "Profile not researched yet."
     assert body["findings"] == []
+    assert body["chartSeries"] == {
+        "scores": [], "activityOverTime": [], "signalsBySource": [], "hiringTrend": []}
+
+
+def test_profile_scores_from_analysis(client, store):
+    drata = store.add_competitor("Drata", "https://drata.com")
+    store.add_run(drata, ResearchStatus.COMPLETED, analysis={"summary": "s", "scores": [
+        {"feature": "Evidence collection", "score": 8},
+        {"feature": "Out of range", "score": 14},
+        {"feature": "", "score": 5},
+        {"feature": "Bad score", "score": "high"},
+        "not a dict",
+    ]})
+    scores = client.get(f"/competitors/{drata.id}").json()["chartSeries"]["scores"]
+    assert scores == [
+        {"label": "Evidence collection", "competitor": 8, "scadable": None},
+        {"label": "Out of range", "competitor": 10, "scadable": None},
+    ]
+
+
+def test_profile_reused_run_keeps_scores_and_counts_only_changes(client, store):
+    drata = store.add_competitor("Drata", "https://drata.com")
+    first = store.add_run(drata, ResearchStatus.COMPLETED, analysis={
+        "summary": "Drata summary", "scores": [{"feature": "Audits", "score": 6}]})
+    reused = store.add_run(drata, ResearchStatus.COMPLETED, analysis={
+        "skipped_llm": True, "reused_from_run_id": first.id})
+    reused.completed_at += timedelta(weeks=1)
+    body = client.get(f"/competitors/{drata.id}").json()
+    assert body["summary"] == "Drata summary"
+    assert body["chartSeries"]["scores"] == [
+        {"label": "Audits", "competitor": 6, "scadable": None}]
+    activity = body["chartSeries"]["activityOverTime"]
+    assert activity[-2:] == [{"label": "Oct 19", "value": 1}, {"label": "Oct 26", "value": 0}]
 
 
 @pytest.mark.parametrize("path,status", [("/competitors/999", 404), ("/competitors/abc", 422),

@@ -28,7 +28,7 @@ export type ChartPoint = {
 export type ScoreSeries = {
   label: string;
   competitor: number;
-  scadable: number;
+  scadable: number | null;
 };
 
 export type ActivityItem = {
