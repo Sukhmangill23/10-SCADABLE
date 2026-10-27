@@ -55,3 +55,15 @@
 - Added an overall SWOT step that compares SCADABLE against all researched competitors with one LLM call and saves it for the overview page (`backend/d2_swot_pipline` branch) [PR #38](https://github.com/csc301-2026-f/10-SCADABLE/pull/38).
 - Wrote the orchestrator unit tests and a zero-token end-to-end verification script for the pipeline (`test_orchestrator.py`, `verify_pipeline.py`) [PR #17](https://github.com/csc301-2026-f/10-SCADABLE/pull/17), [PR #23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23).
 - Set up the GitHub Projects board, which tracks tasks, issues, and pull requests for each deliverable [Link](https://github.com/orgs/csc301-2026-f/projects/20).
+
+## Saad Qureshi
+
+**Role:** Frontend development (SWOT overview and Our Company pages), Vercel deployment, demo planning, and team coordination.
+
+**Contributions:**
+
+- Built the SWOT Overview page, which displays SCADABLE's overall SWOT against its researched competitors (`feat/swot-overview` branch; [PR #21](https://github.com/csc301-2026-f/10-SCADABLE/pull/21)).
+- Built the Our Company page, which shows SCADABLE's company profile and baseline used in the analysis (`feat/company` branch; [PR #22](https://github.com/csc301-2026-f/10-SCADABLE/pull/22)).
+- Deployed the Next.js frontend to Vercel, giving the team and partner a live, shareable URL for the demo and feedback.
+- Designed the demo flow and coordinated the preparation of the presentation slides.
+- Coordinated the team across frontend and backend work, keeping task ownership, integration timing, and deliverable requirements on track.
