@@ -13,11 +13,7 @@ import {
   type ResearchStatus,
   type Trend,
 } from "@/lib/api";
-import {
-  displayWebsite,
-  formatRelativeFuture,
-  formatRelativePast,
-} from "@/lib/format";
+import { displayWebsite, formatRelativePast } from "@/lib/format";
 import { profilePollInterval, runsPollInterval } from "@/lib/polling";
 import { latestSuccessfulRunForCompetitor } from "@/lib/runs/stats";
 import { ProfileVisuals } from "./ProfileVisuals";
@@ -278,7 +274,7 @@ export function CompetitorProfileView({ id }: { id: string }) {
             </div>
             <div className={styles.statRow}>
               <span>Open roles</span>
-              <b>{data.openRoles ?? "—"}</b>
+              <b>Coming in D3</b>
             </div>
             <div className={styles.statRow}>
               <span>Last checked</span>
@@ -286,7 +282,7 @@ export function CompetitorProfileView({ id }: { id: string }) {
             </div>
             <div className={styles.statRow}>
               <span>Next refresh</span>
-              <b>{formatRelativeFuture(data.nextRefreshAt)}</b>
+              <b>Coming in D3</b>
             </div>
           </section>
 
