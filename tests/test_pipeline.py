@@ -30,7 +30,7 @@ async def test_analyze_export_preserves_sources_and_returns_facts_and_analysis(
     assert result.extracted_information.summary == "facts"
     assert result.analysis.summary == "competitor"
     assert analyzer.inputs[0].pages[0].markdown == MARKDOWN
-    assert analyzer.calls == [("extract", "Example"), ("competitor", "Example")]
+    assert analyzer.calls == [("extract", "Example"), ("company", "Example")]
 
 
 async def test_run_pipeline_uses_shared_crawl_many_and_keeps_export_metadata(tmp_path):

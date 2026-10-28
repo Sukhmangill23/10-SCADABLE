@@ -107,7 +107,10 @@ class Analyzer:
                                       claims_cited=[ClaimCitedByURL(category=c.category, claim=c.claim, claim_page_url=page_urls[c.claim_page_index]) for c in partial.claims_cited])
         return result
 
-    async def analyze_competitor(self, data: ExtractedInformationByURL) -> CompanyAnalysis:
+    async def analyze_company(self, data: ExtractedInformationByURL) -> CompanyAnalysis:
+        """
+        Analyzes the company based on its website data extracted and stored "data".
+        """
         # Stores all distinct URLs from the input
         urls = list(dict.fromkeys(                  # distinct, in first-seen order
             [c.claim_page_url for c in data.claims_cited]

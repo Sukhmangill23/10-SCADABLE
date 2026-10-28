@@ -219,7 +219,7 @@ class OpenAIAdapter:
             try:
                 analyzer = Analyzer(client)
                 facts = await analyzer.extract_information(analysis_input)
-                company_analysis = await analyzer.analyze_competitor(facts)
+                company_analysis = await analyzer.analyze_company(facts)
             finally:
                 await client.close()
 
