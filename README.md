@@ -44,9 +44,9 @@ Users can view tracked competitors, search and filter the list, and add new comp
 
 **Example use case:** A SCADABLE team member wants to expand their competitive research by tracking Vanta alongside Drata. They use the **Add Competitor** form to enter Vanta's name and website URL, allowing Live SWOT to automatically research the company and generate competitive insights.
 
-![Tracked competitors list](docs/screenshots/87C49A02-D914-4E82-8434-F480BFEE9123.png)
+![Tracked competitors list](docs/screenshots/image2.png)
 
-![Add competitor form](docs/screenshots/252BEFEF-D5E7-418F-951B-A0FA7BEEEDDB.png)
+![Add competitor form](docs/screenshots/image3.png)
 
 ### 3. Automated Competitor Research
 
@@ -58,21 +58,19 @@ Research results are stored in a PostgreSQL database, allowing users to revisit 
 
 **Example use case:** After adding Vanta as a competitor, a SCADABLE team member monitors its automated research run and reviews the AI-generated findings to better understand Vanta's products, capabilities, and competitive strengths and weaknesses.
 
-![alt text](image6.png)
+![Vanta automated competitor research results](docs/screenshots/image4.png)
 
 ### 4. Competitor Profiles
 
 Each tracked company has a profile displaying available information such as its website, summary, research status, recent activity, and research sources.
 
-Competitor profiles also support **feature and automation scores**, showing how strongly individual competitor capabilities overlap with SCADABLE's offerings on a 0–10 scale.
+Competitor profiles include a **Feature & Automation Score** section intended to show how competitor capabilities compare with SCADABLE's offerings on a 0–10 scale. This functionality is implemented in the research pipeline, but scores are not consistently generated in the current D2 deployment. When scores are unavailable, the interface displays "Scores not researched yet."
 
 An **Activity over time** chart displays historical research activity for the competitor.
 
-**Example use case:** A sales team member opens Vanta's profile to review its product positioning, feature scores, and research findings before a sales conversation.
+**Example use case:** A sales team member opens Vanta's profile to review its product positioning, research findings, recent activity, and supporting sources. Feature scores can also be reviewed when available.
 
-**[SCREENSHOT PLACEHOLDER 5 — Competitor profile]**
-
-*Show Vanta's profile, including the feature and automation scores, recent activity, and source links.*
+![Vanta competitor profile and research activity](docs/screenshots/image5.png)
 
 ### 5. Overall SWOT Analysis
 
@@ -87,11 +85,9 @@ The analysis uses SCADABLE's current product baseline and research from tracked 
 
 For D2, SCADABLE's product information is maintained as a static baseline. Automatic synchronization from GitHub is planned for D3.
 
-**Example use case:** After researching a third competitor, a founder reviews the SWOT Overview to understand competitive developments across multiple companies.
+**Example use case:** A SCADABLE founder opens the SWOT Overview to examine the available competitive findings across tracked companies such as Vanta and Drata, helping identify potential strengths, weaknesses, opportunities, and threats.
 
-**[SCREENSHOT PLACEHOLDER 6 — SWOT Overview]**
-
-*Show the four SWOT categories after researching multiple competitors, ideally with findings involving more than one tracked company.*
+**D2 limitation:** The SWOT Overview is implemented and displays saved findings, but the overall comparison does not consistently populate all four categories. Individual competitor research can still generate findings with supporting source URLs. Improving the completeness and reliability of the overall SWOT analysis remains a priority for D3.
 
 ### 6. Agent Runs and Research History
 
@@ -107,9 +103,7 @@ Each research run displays its main stages:
 
 **Example use case:** A user opens Agent Runs to check whether website crawling, LLM analysis, and saving research findings have completed successfully.
 
-**[SCREENSHOT PLACEHOLDER 7 — Agent Runs]**
-
-*Show a completed research run with its individual workflow steps expanded.*
+![Completed research run with workflow steps](docs/screenshots/image6.png)
 
 ## How to Use Live SWOT
 
@@ -138,8 +132,8 @@ This access method is intended for development and course evaluation rather than
 5. Click **Add Competitor** and enter a new company name and website URL. Use a company that is not already being tracked.
 6. Submit the form to add the competitor and initiate research.
 7. Open **Agent Runs** to monitor research progress. Research may take some time to finish.
-8. Return to **Competitors** and open the company's profile to review its research summary, scores, activity, and available sources.
-9. Revisit **SWOT Overview** to view the updated comparison across tracked competitors.
+8. Return to **Competitors** and open the company's profile to review its research summary, recent activity, available sources, and feature scores when generated.
+9. Visit **SWOT Overview** to examine the currently available competitive findings. Some SWOT categories may remain empty in the D2 deployment.
 
 ### D2 Scope and Limitations
 
@@ -149,13 +143,15 @@ Some additional features are planned for D3:
 
 - **GitHub product integration:** Automatic synchronization of SCADABLE's product features from GitHub. D2 uses a static baseline.
 - **Scheduled research:** Recurring automatic research without manual initiation.
-- **Scores vs SCADABLE:** Direct comparisons between competitor scores and SCADABLE's own scores. D2 supports competitor feature scores.
+- **Scores vs SCADABLE:** Direct comparisons between competitor scores and SCADABLE's own scores. D2 includes the competitor scoring interface, but generated scores are not consistently available.
 - **Open-role monitoring:** Tracking hiring activity from competitor job listings.
 - **Detailed research cost analytics:** Expanded AI research cost monitoring.
 
 Some websites restrict automated crawling. When live crawling or analysis is unavailable, the system may use fallback data, so a completed research run does not necessarily indicate that all information was collected live.
 
 The main competitor research and SWOT workflow is available for testing in D2.
+
+**Known D2 limitations:** Although feature scoring and the overall SWOT comparison are integrated into the application, the deployed system does not consistently produce feature scores or a complete four-category SWOT analysis. Automated competitor research, competitor profiles, source links, persistent storage, and research-run monitoring remain available. These limitations will be addressed through further integration and testing in D3.
 
 ## Technical Overview
 
@@ -174,7 +170,7 @@ Live SWOT uses the following technologies:
 
 The research workflow follows these main steps:
 
-```text
+```
 Add competitor
       ↓
 Queue research run
@@ -294,6 +290,7 @@ Pull requests should contain related changes, avoid unnecessary modifications, a
 Tests are updated when relevant functionality changes.
 
 ## License
+
 Live SWOT was developed as part of CSC301 in collaboration with SCADABLE.
 
 SCADABLE has expressed that our team is free to use and share the work developed for this project and has not requested additional confidentiality restrictions.

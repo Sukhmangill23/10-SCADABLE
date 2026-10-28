@@ -48,10 +48,22 @@
 **Role:** Research pipeline orchestration, scraper/LLM backend integration, and verification.
 
 **Contributions:**
-- Built the background research orchestrator that runs each competitor's research, tracks run status (pending, running, completed, failed), and handles timeouts and errors while keeping earlier results (`orchestrator.py`).
-- Implemented change detection that hashes scraped pages and skips the OpenAI call when a competitor's website hasn't changed, reusing the previous SWOT findings and summary to save tokens (`diff.py`).
-- Connected the Crawl4AI scraper and OpenAI analyzer to the backend through adapters with mock fallbacks, and added SCADABLE's static baseline profile used in the analysis (`crawler.py`, `llm.py`, `baseline.py`; `d2_backend-scraper-llm` branch [PR #23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23).
-- Fixed adapter bugs that made the backend silently fall back to mock data, including a wrong `CrawlSummary` import and invalid page validation (`backend/wire-orchestrator-adapters` branch [PR #24](https://github.com/csc301-2026-f/10-SCADABLE/pull/24)).
-- Added an overall SWOT step that compares SCADABLE against all researched competitors with one LLM call and saves it for the overview page (`backend/d2_swot_pipline` branch [PR #38](https://github.com/csc301-2026-f/10-SCADABLE/pull/38)).
-- Wrote the orchestrator unit tests and a zero-token end-to-end verification script for the pipeline (`test_orchestrator.py`, `verify_pipeline.py`)[PR #17](https://github.com/csc301-2026-f/10-SCADABLE/pull/17), [PR #23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23).
+- Built the background research orchestrator that runs each competitor's research, tracks run status (pending, running, completed, failed), and handles timeouts and errors while keeping earlier results (`orchestrator.py`) [PR #17](https://github.com/csc301-2026-f/10-SCADABLE/pull/17).
+- Implemented change detection that hashes scraped pages and skips the OpenAI call when a competitor's website hasn't changed, reusing the previous SWOT findings and summary to save tokens (`diff.py`) [PR #17](https://github.com/csc301-2026-f/10-SCADABLE/pull/17).
+- Connected the Crawl4AI scraper and OpenAI analyzer to the backend through adapters with mock fallbacks, and added SCADABLE's static baseline profile used in the analysis (`crawler.py`, `llm.py`, `baseline.py`; `backend/wire-orchestrator-adapters` branch) [PR #23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23).
+- Fixed adapter bugs that made the backend silently fall back to mock data, including a wrong `CrawlSummary` import and invalid page validation (`backend/wire-orchestrator-adapters` branch). Fixed in [PR #23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23) and merged to main in [PR #24](https://github.com/csc301-2026-f/10-SCADABLE/pull/24).
+- Added an overall SWOT step that compares SCADABLE against all researched competitors with one LLM call and saves it for the overview page (`backend/d2_swot_pipline` branch) [PR #38](https://github.com/csc301-2026-f/10-SCADABLE/pull/38).
+- Wrote the orchestrator unit tests and a zero-token end-to-end verification script for the pipeline (`test_orchestrator.py`, `verify_pipeline.py`) [PR #17](https://github.com/csc301-2026-f/10-SCADABLE/pull/17), [PR #23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23).
 - Set up the GitHub Projects board, which tracks tasks, issues, and pull requests for each deliverable [Link](https://github.com/orgs/csc301-2026-f/projects/20).
+
+## Saad Qureshi
+
+**Role:** Frontend development (SWOT overview and Our Company pages), Vercel deployment, demo planning, and team coordination.
+
+**Contributions:**
+
+- Built the SWOT Overview page, which displays SCADABLE's overall SWOT against its researched competitors (`feat/swot-overview` branch; [PR #21](https://github.com/csc301-2026-f/10-SCADABLE/pull/21)).
+- Built the Our Company page, which shows SCADABLE's company profile and baseline used in the analysis (`feat/company` branch; [PR #22](https://github.com/csc301-2026-f/10-SCADABLE/pull/22)).
+- Deployed the Next.js frontend to Vercel, giving the team and partner a live, shareable URL for the demo and feedback.
+- Designed the demo flow and coordinated the preparation of the presentation slides.
+- Coordinated the team across frontend and backend work, keeping task ownership, integration timing, and deliverable requirements on track.
