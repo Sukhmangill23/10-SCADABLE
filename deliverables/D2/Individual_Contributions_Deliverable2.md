@@ -67,3 +67,18 @@
 - Deployed the Next.js frontend to Vercel, giving the team and partner a live, shareable URL for the demo and feedback.
 - Designed the demo flow and coordinated the preparation of the presentation slides.
 - Coordinated the team across frontend and backend work, keeping task ownership, integration timing, and deliverable requirements on track.
+
+## Yash Khanchandani
+**Role**: AI Agent for data extraction, company analysis, and SWOT analysis, and testing
+
+**Contributions:**
+- Built the LLM agent to extract the key data from the company websites of SCADABLE and its competitors (see `llm/analyzer.py`), analyze each company's data to spot all their strengths, weaknesses, improvements or declines in the workforce, and finally compile each company's analysis into a fully-supported SWOT analysis.
+- Optimized user and system prompt as well as output schemas (`llm/schemas.py`) for the LLM to:
+    - Prevent repetition of data between prompt and responses.
+    - Use numerical indexing for each citation rather than copying the URL text for citation, reducing chances of made-up citations.
+- Introduced prompt caching to each API call to increase the cache hits and reduce API call costs, reaching up to 26% cache hit across the data extraction and company analysis (SWOT analysis not included).
+- Added job analytics into SWOT after discussing with Ali (SCADABLE founder) which I don't think was mentioned earlier.
+- Discussed future optimizations with the team to reduce API costs (one of them being website diff tracking to provide only the changed section of an already-scraped website so less tokens are consumed on inputs).
+- Updated `research-pipeline.md` to reflect the new flow of logic for how the data extraction, company analysis, and SWOT analysis, is conducted.
+- Adjusted the base testcases to reflect the updated AI Agent prompting logic.
+
