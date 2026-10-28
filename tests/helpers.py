@@ -7,8 +7,10 @@ from llm.analyzer import Analyzer
 from llm.schemas import (
     CompanyAnalysis,
     CompetitorNote,
-    ExtractedInformation,
-    SWOTAnalysis,
+    ExtractedInformationByURL,
+    FeatureScore,
+    SWOTAnalysisByURL,
+    SWOTEntryByURL
 )
 from scraper import CompetitorCrawlResult, ScrapedPage
 from scraper.output import competitor_directory, export_competitor
@@ -102,38 +104,27 @@ class StubAnalyzer(Analyzer):
     async def extract_information(self, data):
         self.calls.append(("extract", data.company_name))
         self.inputs.append(data)
-        return ExtractedInformation(
-            company_name=data.company_name, summary="facts", claims_cited=[]
+        return ExtractedInformationByURL(
+            company_name=data.company_name, summary="facts", summary_page_urls=[], job_postings=[], claims_cited=[]
         )
 
-    async def analyze_competitor(self, data):
-        self.calls.append(("competitor", data.company_name))
+    async def analyze_company(self, data: ExtractedInformationByURL):
+        self.calls.append(("company", data.company_name))
         if data.company_name in self.fail_for:
             raise RuntimeError(f"analysis failed for {data.company_name}")
         return CompanyAnalysis(
             company_name=data.company_name,
             summary="competitor",
+            summary_page_urls=[],
             claims_cited=[],
-            scores=[],
-        )
-
-    async def analyze_scadable(self, data):
-        self.calls.append(("scadable", data.company_name))
-        return CompanyAnalysis(
-            company_name=data.company_name,
-            summary="scadable",
-            claims_cited=[],
-            scores=[],
+            features=[],
         )
 
     async def compare(self, data):
         self.calls.append(("compare", None))
         self.comparison_input = data
-        return SWOTAnalysis(
-            strengths=["s"],
-            weaknesses=[],
-            opportunities=[],
-            threats=[],
+        return SWOTAnalysisByURL(
+            SWOT_entries=[SWOTEntryByURL(component="strength", what="s", swot_component_page_urls=[""])],
             competitor_notes=[
                 CompetitorNote(
                     company_name=c.company_name,
@@ -141,4 +132,5 @@ class StubAnalyzer(Analyzer):
                 )
                 for c in data.competitors
             ],
+            scores=[]
         )

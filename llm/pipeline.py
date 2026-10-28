@@ -10,7 +10,7 @@ from scraper.service import CompetitorScraper
 
 from llm.analyzer import Analyzer
 from llm.inputs import load_analysis_input
-from llm.schemas import ComparisonInput, CompetitorResearchResult, SWOTAnalysis
+from llm.schemas import ComparisonInput, CompetitorResearchResult, SWOTAnalysisByURL
 from scraper import CompetitorInput, ScraperConfig
 from scraper.output import competitor_directory, export_competitor
 
@@ -18,17 +18,12 @@ from scraper.output import competitor_directory, export_competitor
 async def analyze_export(
     summary_path: str | Path,
     *,
-    analyzer: Analyzer,
-    is_scadable: bool = False,
+    analyzer: Analyzer
 ) -> CompetitorResearchResult:
     """Analyze an existing bundle without crawling. The caller owns the LLM client."""
     data = await asyncio.to_thread(load_analysis_input, summary_path)
     facts = await analyzer.extract_information(data)
-    analysis = (
-        await analyzer.analyze_scadable(facts)
-        if is_scadable
-        else await analyzer.analyze_competitor(facts)
-    )
+    analysis = await analyzer.analyze_company(facts)
     return CompetitorResearchResult(
         crawl_summary=data.crawl_summary,
         extracted_information=facts,
@@ -91,9 +86,7 @@ async def run_pipeline(
             insights.append(
                 await analyze_export(
                     index,
-                    analyzer=analyzer,
-                    is_scadable=scadable is not None
-                    and summary.homepage_url == scadable.homepage_url,
+                    analyzer=analyzer
                 )
             )
     return insights
@@ -144,7 +137,7 @@ async def run_comparison(
     analyzer: Analyzer,
     scraper_settings: ScraperConfig | None = None,
     scraper: ScraperService | None = None,
-) -> SWOTAnalysis:
+) -> SWOTAnalysisByURL:
     results = await run_pipeline(
         competitors,
         scadable=scadable,

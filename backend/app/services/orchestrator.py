@@ -73,7 +73,9 @@ async def refresh_overall_swot(
     """Compare SCADABLE against every researched competitor and save the overall SWOT.
 
     Uses each competitor's latest stored strengths and weaknesses, so it makes
-    one LLM call and never re-crawls. If no competitor has findings left (e.g. the
+    one LLM call and never re-crawls. The comparison also scores each competitor's
+    features; those scores are saved on the competitor's latest run, where the
+    competitor profile reads them. If no competitor has findings left (e.g. the
     last one was deleted), the overall SWOT is cleared. A failure is logged and
     keeps the previous overall SWOT; it never fails the competitor run that
     triggered it.
@@ -83,6 +85,7 @@ async def refresh_overall_swot(
             return
 
         profiles = []
+        latest_runs: dict[str, ResearchRun] = {}
         for competitor in list_competitors(db, limit=500):
             entries = get_latest_swot(db, competitor.id)
             # Opportunities and threats are SCADABLE-relative templates, not competitor facts
@@ -97,11 +100,18 @@ async def refresh_overall_swot(
             ]
             if not claims:
                 continue
-            analysis = entries[0].research_run.analysis_result
+            latest_run = entries[0].research_run
+            analysis = (
+                latest_run.analysis_result
+                if isinstance(latest_run.analysis_result, dict)
+                else {}
+            )
+            latest_runs[competitor.name] = latest_run
             profiles.append({
                 "company_name": competitor.name,
                 "website_url": competitor.website_url,
-                "summary": analysis.get("summary", "") if isinstance(analysis, dict) else "",
+                "summary": analysis.get("summary", ""),
+                "features": analysis.get("features", []),
                 "claims": claims,
             })
 
@@ -118,6 +128,18 @@ async def refresh_overall_swot(
         overall_entries = comparison.get("swot_entries", [])
         if overall_entries:
             replace_overall_swot(db, overall_entries)
+
+        if "scores" in comparison:
+            scores_by_company: dict[str, list[dict[str, Any]]] = {}
+            for score in comparison["scores"]:
+                scores_by_company.setdefault(score["company_name"], []).append(
+                    {"feature": score["feature"], "score": score["score"]}
+                )
+            for name, run in latest_runs.items():
+                analysis = run.analysis_result if isinstance(run.analysis_result, dict) else {}
+                save_analysis_result(
+                    db, run.id, {**analysis, "scores": scores_by_company.get(name, [])}
+                )
 
     except Exception:
         db.rollback()
@@ -197,8 +219,9 @@ async def execute_research_run(
                     "reused_from_run_id", previous_run.id
                 ),
             }
-            if prev_analysis.get("summary"):
-                reused_payload["summary"] = prev_analysis["summary"]
+            for key in ("summary", "features", "scores"):
+                if prev_analysis.get(key):
+                    reused_payload[key] = prev_analysis[key]
 
             save_analysis_result(db, run_id, reused_payload)
 

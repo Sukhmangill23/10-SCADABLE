@@ -14,7 +14,14 @@ import llm.client as client_module
 from llm.analyzer import Analyzer
 from llm.config import Settings
 from llm.pipeline import analyze_export, run_pipeline
-from llm.schemas import ClaimCited, CompanyAnalysis, ExtractedInformation, FeatureScore
+from llm.schemas import (
+    ClaimCitedByIndex,
+    ClaimCitedByURL,
+    CompanyAnalysis,
+    ExtractedInformationByURL,
+    PartialCompanyAnalysisByIndex,
+    PartialExtractedInformationByIndex,
+)
 from scraper import CompetitorInput, FetchedPage, ScraperConfig
 from tests.helpers import MARKDOWN, NOW
 
@@ -30,33 +37,72 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
     sdk_clients = []
     api_requests = []
     pricing = "# Pricing\n\nPro: $49/month.  \n"
-    facts = ExtractedInformation(
-        company_name="Example",
+        # Page numbers follow the export order: 0 is the homepage, 1 is /pricing.
+    # What the model returns for extraction: claims cite pages by number.
+    partial_facts = PartialExtractedInformationByIndex(
         summary="Evidence collection",
+        summary_page_indexes=[0],
+        job_postings=[],
         claims_cited=[
-            ClaimCited(
+            ClaimCitedByIndex(
                 category="features",
                 claim="Evidence collection",
-                source_url="https://example.com/",
+                claim_page_index=0,
             ),
-            ClaimCited(
+            ClaimCitedByIndex(
                 category="pricing",
                 claim="Pro: $49/month",
-                source_url="https://example.com/pricing",
+                claim_page_index=1,
             ),
         ],
     )
+
+    # What extract_information returns once the numbers are turned back into URLs.
+    facts = ExtractedInformationByURL(
+        company_name="Example",
+        summary="Evidence collection",
+        summary_page_urls=["https://example.com/"],
+        job_postings=[],
+        claims_cited=[
+            ClaimCitedByURL(
+                category="features",
+                claim="Evidence collection",
+                claim_page_url="https://example.com/",
+            ),
+            ClaimCitedByURL(
+                category="pricing",
+                claim="Pro: $49/month",
+                claim_page_url="https://example.com/pricing",
+            ),
+        ],
+    )
+
+    # What the model returns for the analysis. The analysis step numbers its own page list
+    # (the distinct URLs in `facts`, in first-seen order), so 0 is the homepage here too.
+    partial_analysis = PartialCompanyAnalysisByIndex(
+        claims_cited=[
+            ClaimCitedByIndex(
+                category="strength",
+                claim="Evidence collection",
+                claim_page_index=0,
+            )
+        ],
+    )
+
+    # The final analysis: name, summary and summary URLs come from `facts`, and the
+    # features are the claims categorized "features".
     analysis = CompanyAnalysis(
         company_name="Example",
         summary="Evidence collection",
+        summary_page_urls=["https://example.com/"],
         claims_cited=[
-            ClaimCited(
+            ClaimCitedByURL(
                 category="strength",
                 claim="Evidence collection",
-                source_url="https://example.com/",
+                claim_page_url="https://example.com/",
             )
         ],
-        scores=[FeatureScore(feature="Evidence collection", score=8)],
+        features=["Evidence collection"],
     )
 
     class FixtureFetcher:
@@ -124,13 +170,16 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
         # Analysis must read the completed, exact Markdown export, not a second crawl.
         assert index.is_file()
         assert (index.parent / "pages/index.md").read_text(encoding="utf-8") == MARKDOWN
-        if payload["text"]["format"]["name"] == "ExtractedInformation":
-            assert MARKDOWN in payload["input"] and pricing in payload["input"]
-            assert "https://example.com/plans/" in payload["input"]
-            response = facts
+        if payload["text"]["format"]["name"] == "PartialExtractedInformationByIndex":
+            # With explicit caching, the request input is [developer message, user message].
+            user_text = payload["input"][-1]["content"]
+            assert MARKDOWN in user_text and pricing in user_text
+            # Pages are cited by number, so the prompt shows page_index values and no URLs.
+            assert "page_index: 0" in user_text and "page_index: 1" in user_text
+            response = partial_facts
         else:
-            assert payload["text"]["format"]["name"] == "CompanyAnalysis"
-            response = analysis
+            assert payload["text"]["format"]["name"] == "PartialCompanyAnalysisByIndex"
+            response = partial_analysis
         return httpx2.Response(
             200,
             json={
@@ -215,9 +264,9 @@ async def test_scraper_markdown_flows_through_decisions_and_llm_and_can_be_repla
         assert (
             sum(path == "/v1/decisions" for path, _ in api_requests) == decision_count
         )
-        assert (
-            json.loads(result.model_dump_json())["analysis"]["scores"][0]["score"] == 8
-        )
+        dumped = json.loads(result.model_dump_json())["analysis"]
+        assert dumped["features"] == ["Evidence collection"]
+        assert "scores" not in dumped
     finally:
         await client.close()
     assert fetcher.closed

@@ -1,5 +1,4 @@
 """Small reusable wrapper around the OpenAI Responses API."""
-
 from typing import TypeVar
 
 from openai import AsyncOpenAI
@@ -36,9 +35,32 @@ class OpenAIClient:
         response = await self.sdk.responses.parse(
             model=self.model,
             instructions=instructions,
-            input=input_text,
+            prompt_cache_options={
+                "mode": "explicit",
+                "ttl": "30m",
+            },
+            input=[
+                {
+                    "role": "developer",
+                    "content": [
+                        {
+                            "type": "input_text",
+                            "text": instructions,
+                            "prompt_cache_breakpoint": {
+                                "mode": "explicit",
+                            },
+                        }
+                    ],
+                },
+                {
+                    "role": "user",
+                    "content": input_text,
+                },
+            ],
             text_format=output_schema,
         )
+
+        
         if response.output_parsed is None:
             # Refusals and incomplete responses can have no parsed model.
             raise ValueError("OpenAI returned no parsed structured output.")

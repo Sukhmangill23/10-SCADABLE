@@ -32,7 +32,9 @@
 
 List any **process-related** (i.e. team organization and/or how you work) changes you are planning to make (if there are any)
 
- * Ordered from most to least important, with supporting argument explaining a change.
+ * Prioritizing integration testing: helps every assignee understand what can be improved on sooner, exposes any hidden vulnerabilities.
+ * Increasing weekly team meetings: have 1-2 meetings a week (one must be within 1 day before the tutorial) to share updates, answer questions, provide design decision changes, and anything else related to the project work. This should allow clarity on the state of the project and allows teams to understand how to change their design or integrate other modules.
+ * Using Jira kanban board: gives visibility to all team members of tasks based on their assignee, details, status. Holds people accountable for their work and can increase productivity.
 
 #### Q3(b). Integration & Next steps
 Briefly explain how you integrated the previously developed individuals components as one product (i.e. How did you split the work across your team) and how was the work integrated together.

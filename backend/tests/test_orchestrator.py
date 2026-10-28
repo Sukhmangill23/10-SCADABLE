@@ -118,7 +118,10 @@ def test_mock_analyzer():
 
 def test_mock_compare():
     analyzer = MockOpenAIAnalyzer()
-    competitors = [{"company_name": "Vanta"}, {"company_name": "Drata"}]
+    competitors = [
+        {"company_name": "Vanta", "features": ["Evidence collection"]},
+        {"company_name": "Drata"},
+    ]
     baseline = {"differentiators": ["Native EU CRA tracking"]}
     result = asyncio.run(analyzer.compare(baseline, competitors))
 
@@ -127,6 +130,9 @@ def test_mock_compare():
     assert {"strength", "weakness", "opportunity", "threat"} == categories
     assert any("Vanta, Drata" in e["content"] for e in entries)
     assert all(e["source_url"] is None for e in entries)
+    assert result["scores"] == [
+        {"company_name": "Vanta", "feature": "Evidence collection", "score": 7}
+    ]
 
 
 def test_trigger_overall_swot_refresh():
@@ -251,12 +257,16 @@ if test_url:
         assert {e.category for e in overall} == set(SWOTCategory)
         assert all(e.scope == SWOTScope.OVERALL and e.competitor_id is None for e in overall)
         assert any("Vanta" in e.content for e in overall)
+        # compare() scores are saved on the competitor's run for its profile chart
+        scores = get_research_run(db, run1.id).analysis_result["scores"]
+        assert scores and all(set(s) == {"feature", "score"} for s in scores)
 
-        # Unchanged re-run must not call compare() again
+        # Unchanged re-run must not call compare() again, but keeps the scores
         overall_ids = [e.id for e in overall]
         run2 = create_research_run(db, competitor.id)
-        asyncio.run(execute_research_run(db, run2.id, crawler, analyzer))
+        res2 = asyncio.run(execute_research_run(db, run2.id, crawler, analyzer))
         assert [e.id for e in get_overall_swot(db)] == overall_ids
+        assert res2.analysis_result["scores"] == scores
 
     def test_execute_research_run_compare_failure_keeps_run_completed(db, competitor):
         run = create_research_run(db, competitor.id)
