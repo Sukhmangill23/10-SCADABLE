@@ -12,8 +12,9 @@ CompetitorInput URLs
   -> CompetitorScraper.crawl_many() + Decisions
   -> export_competitor(): crawl_summary.json + pages/*.md
   -> load_analysis_input(): validated metadata + exact Markdown
-  -> Analyzer.extract_information() -> Analyzer.analyze_competitor()
+  -> Analyzer.extract_information() -> Analyzer.analyze_company()
   -> CompetitorResearchResult: crawl provenance + facts + analysis
+  -> (optional, across companies) Analyzer.compare(): cited SWOT entries, feature scores, notes
 ```
 
 ## Setup
@@ -115,16 +116,17 @@ llm/
 | Interface | Purpose and return value |
 | --- | --- |
 | `load_analysis_input(summary_path)` | Synchronously read a validated bundle into `AnalysisInput` |
-| `await analyze_export(summary_path, analyzer=...)` | Analyze a saved bundle; optional `is_scadable=True` selects the existing SCADABLE method |
+| `await analyze_export(summary_path, analyzer=...)` | Analyze a saved bundle and return a `CompetitorResearchResult` (SCADABLE is also treated like a "Competitor" as well, calling "analyze_company()" on SCADABLE). |
 | `await run_pipeline(competitors, output_directory=..., analyzer=...)` | Collect and analyze a sequence of `CompetitorInput`; return research results in crawl-completion order |
-| `await run_competitor(competitor, ...)` / `await run_scadable(scadable, ...)` | Return one `CompetitorResearchResult` using the appropriate company-analysis method |
-| `await run_comparison(scadable, competitors=..., ...)` | Collect all companies through one shared crawl and pass competitor analyses in input order to the existing SWOT comparison |
+| `await run_competitor(competitor, ...)` / `await run_scadable(scadable, ...)` | Return one `CompetitorResearchResult`. Both functions use the same "analyze_company()" |
+| `await run_comparison(scadable, competitors=..., ...)` | Collect and analyze every company through one shared crawl, then call `Analyzer.compare`. It returns a `SWOTAnalysisByURL`: cited SWOT entries, per-competitor feature scores and competitor notes. It 
+recrawls every company on each call to ensure the data is up to date.|
 
 The collection functions accept optional `scraper_settings: ScraperConfig` and an injected
 `scraper: ScraperService`. `run_pipeline(..., scadable=...)` includes SCADABLE in the same
 shared crawl and returns its company result alongside the competitors. Existing analysis
 results can be compared directly with `Analyzer.compare(ComparisonInput(...))` without
-another crawl.
+another crawl. `Analyzer.compare(ComparisonInput(...))` returns that same `SWOTAnalysisByURL`.
 
 The caller chooses credentials and owns the analysis client's lifetime:
 
@@ -181,12 +183,24 @@ Each `CompetitorResearchResult` contains:
 
 - `crawl_summary`: the unchanged schema `2.1` scraper index, including source/final URLs,
   page file references, titles, categories, UTC timestamps, counts, warnings, and Decisions usage.
-- `extracted_information`: the existing `ExtractedInformation` with categorized, cited facts.
-- `analysis`: the existing `CompanyAnalysis` with cited strengths/weaknesses and feature scores.
+- `extracted_information`: an `ExtractedInformationByURL` with the summary and its source page URLs, job postings (with citations), and categorized claims, each with a `claim_page_url`.
+- `analysis`: the existing `CompanyAnalysis` with cited strengths/weaknesses, cited workforce improvements/declines.
 
 Serialize with `result.model_dump(mode="json")` or `result.model_dump_json()`. The
 [scraper output guide](../scraper/docs/output-layout.md) remains the authority for filenames,
 completion markers, provenance, and no-overwrite behavior.
+
+## SWOT comparison output
+
+`Analyzer.compare()` returns a `SWOTAnalysisByURL`:
+
+- `SWOT_entries`: `component` (strength, weakness, opportunity or threat), `what`, and
+  `swot_component_page_urls` (the supporting page URLs, at least one per entry).
+- `scores`: `company_name`, `feature` and `score` (0-10) for each competitor feature.
+- `competitor_notes`: one note per competitor, in input order.
+
+Each company costs two model calls (extraction and analysis); the comparison adds one call over
+all companies.
 
 ## Failure handling and current limits
 
@@ -199,8 +213,14 @@ completion markers, provenance, and no-overwrite behavior.
 - An unusable export error includes its competitor, URL, status, saved index, crawl warnings,
   and page failures. A missing browser includes the executing interpreter, cache setting,
   and install command, instead of being replaced by a generic empty-content error.
-- Extraction citations must match original source URLs. Company-analysis citations must
-  occur in the extracted facts. Redirect destinations remain metadata, not replacement citations.
+- To reduce likelihood of false citation generations, the model cites its information by nonnegative integer 
+  (page index) assigned to each page. After the model responds, each page index is then converted back to its 
+  corresponding URL before returning the final result. A page number outside its range, a SWOT entry with no 
+  citation, a strength or weakness that doesn't cite a SCADABLE page, or a feature score for SCADABLE fails 
+  before any result is built. The prompts show page numbers, titles and categories, not URLs, and redirect destinations
+  remain metadata.
+- In each layer of the analysis, a new "index directory" is created to map all the provided pages with page indexes, starting 
+from 0, ending at n-1 for the provided n pages.
 - A batch fails fast when a company has no usable content or export/analysis raises.
   The crawl iterator is closed when supported, including on cancellation. Published exports
   remain available for `analyze_export()` retries; cancellation does not roll back files.
@@ -223,7 +243,7 @@ python examples/research_pipeline.py --help
 
 The integration test uses the real service, Decisions adapter, exporter, loader, analyzer,
 and SDK parsing with browser/HTTP boundaries mocked. It verifies exact Markdown, metadata,
-citations, client cleanup, and replay without recrawling. Other tests cover invalid bundles,
+citations, client cleanup, page-number validation, and replay without recrawling. Other tests cover invalid bundles,
 configuration, comparison ordering, cancellation, schemas, and score bounds.
 Opt-in Chromium tests and standalone checks remain in the scraper's own documentation.
 
