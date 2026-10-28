@@ -42,11 +42,11 @@ For D2 evaluation, the deployed application also provides a **Dev only → Go to
 
 Users can view tracked competitors, search and filter the list, and add new companies by entering their names and website URLs.
 
-**Example use case:** A SCADABLE team member wants to monitor another compliance platform alongside the already tracked Vanta and Drata. They add a third company, such as Secureframe, through the Competitors page.
+**Example use case:** A SCADABLE team member wants to expand their competitive research by tracking Vanta alongside Drata. They use the **Add Competitor** form to enter Vanta's name and website URL, allowing Live SWOT to automatically research the company and generate competitive insights.
 
-![Tracked competitors list](docs/screenshots/image-3.png)
+![Tracked competitors list](docs/screenshots/87C49A02-D914-4E82-8434-F480BFEE9123.png)
 
-![Add competitor form](docs/screenshots/image-5.png)
+![Add competitor form](docs/screenshots/252BEFEF-D5E7-418F-951B-A0FA7BEEEDDB.png)
 
 ### 3. Automated Competitor Research
 
@@ -56,11 +56,9 @@ The pipeline extracts relevant company information, identifies competitive stren
 
 Research results are stored in a PostgreSQL database, allowing users to revisit findings and compare companies without repeating the entire research process manually.
 
-**Example use case:** After adding Secureframe, a user checks whether its research run has completed and reviews the generated findings.
+**Example use case:** After adding Vanta as a competitor, a SCADABLE team member monitors its automated research run and reviews the AI-generated findings to better understand Vanta's products, capabilities, and competitive strengths and weaknesses.
 
-**[SCREENSHOT PLACEHOLDER 4 — Automated research results]**
-
-*Show the completed research and generated findings for a newly added competitor. The screenshot should demonstrate that the application researched the company rather than simply adding it to a list.*
+![alt text](image6.png)
 
 ### 4. Competitor Profiles
 
