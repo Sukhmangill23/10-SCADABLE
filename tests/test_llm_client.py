@@ -9,7 +9,11 @@ from openai import AsyncOpenAI
 
 import llm.client as client_module
 from llm.config import Settings
-from llm.schemas import CompanyAnalysis, ExtractedInformation, SWOTAnalysis
+from llm.schemas import (
+    PartialCompanyAnalysisByIndex,
+    PartialExtractedInformationByIndex,
+    SWOTAnalysisByIndex,
+)
 
 
 @pytest.mark.parametrize("api_key", [None, "", "   "])
@@ -25,24 +29,18 @@ def test_openai_requires_model():
         client_module.OpenAIClient(settings)
 
 
-@pytest.mark.parametrize("schema", [ExtractedInformation, CompanyAnalysis])
-def test_output_urls_use_supported_json_schema_strings(schema):
-    items = schema.model_json_schema()["$defs"]["ClaimCited"]["properties"][
-        "source_url"
-    ]
-    assert items["type"] == "string"
-    assert "format" not in items
+@pytest.mark.parametrize(
+    "schema", [PartialExtractedInformationByIndex, PartialCompanyAnalysisByIndex]
+)
+def test_output_page_citations_use_plain_integer_json_schema(schema):
+    prop = schema.model_json_schema()["$defs"]["ClaimCitedByIndex"]["properties"]["claim_page_index"]
+    assert prop["type"] == "integer"
+    assert "format" not in prop
 
 
 @pytest.mark.parametrize("has_output", [True, False])
 def test_responses_structured_output(monkeypatch, has_output):
-    expected = SWOTAnalysis(
-        strengths=["Example evidence"],
-        weaknesses=[],
-        opportunities=[],
-        threats=[],
-        competitor_notes=[],
-    )
+    expected = SWOTAnalysisByIndex(competitor_notes=[], SWOT_entries=[], scores=[])
     requests = []
 
     def respond(request: httpx2.Request) -> httpx2.Response:
@@ -100,7 +98,7 @@ def test_responses_structured_output(monkeypatch, has_output):
                 result = await client.generate_structured(
                     instructions="Test instructions",
                     input_text="Test facts",
-                    output_schema=SWOTAnalysis,
+                    output_schema=SWOTAnalysisByIndex,
                 )
                 assert result == expected
             else:
@@ -108,7 +106,7 @@ def test_responses_structured_output(monkeypatch, has_output):
                     await client.generate_structured(
                         instructions="Test instructions",
                         input_text="Test facts",
-                        output_schema=SWOTAnalysis,
+                        output_schema=SWOTAnalysisByIndex,
                     )
         finally:
             await client.close()

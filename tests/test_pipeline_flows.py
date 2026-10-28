@@ -21,8 +21,8 @@ async def test_run_scadable_uses_scadable_analysis(tmp_path):
         SCADABLE, scraper=scraper, analyzer=analyzer, output_directory=tmp_path
     )
 
-    assert result.analysis.summary == "scadable"
-    assert analyzer.calls == [("extract", "SCADABLE"), ("scadable", "SCADABLE")]
+    assert result.analysis.company_name == "SCADABLE"
+    assert analyzer.calls == [("extract", "SCADABLE"), ("company", "SCADABLE")]
 
 
 @pytest.mark.parametrize("run", [pipeline.run_scadable, pipeline.run_competitor])
@@ -53,9 +53,9 @@ async def test_comparison_uses_shared_scraper_and_restores_competitor_input_orde
         output_directory=tmp_path,
     )
 
-    assert swot.strengths == ["s"]
+    assert [e.what for e in swot.SWOT_entries] == ["s"]
     assert [note.company_name for note in swot.competitor_notes] == ["Cluely", "Blue J"]
-    assert analyzer.comparison_input.scadable.summary == "scadable"
+    assert analyzer.comparison_input.scadable.company_name == "SCADABLE"
     assert len(scraper.calls) == 1
     assert [c.display_name for c in scraper.calls[0][0]] == [
         "SCADABLE",

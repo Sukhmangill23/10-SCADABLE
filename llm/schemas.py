@@ -157,14 +157,11 @@ class ExtractedInformationByIndex(ExtractedInformation):
     claims_cited: list[ClaimCitedByIndex]
 
 
-class PartialCompanyAnalysis(BaseModel):
-    """A partial, token-efficient shape for a competitor or SCADABLE. Parent of the LLM output schema."""
-
-class PartialCompanyAnalysisByIndex(PartialCompanyAnalysis):
+class PartialCompanyAnalysisByIndex(BaseModel):
     """Used for LLM output schema."""
     claims_cited: list[ClaimCitedByIndex]
 
-class CompanyAnalysis(PartialCompanyAnalysis):
+class CompanyAnalysis(BaseModel):
     """Shared analysis shape for a competitor or SCADABLE."""
 
     company_name: str
