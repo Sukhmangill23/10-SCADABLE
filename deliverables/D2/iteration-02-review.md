@@ -39,6 +39,8 @@ Briefly explain how you integrated the previously developed individuals componen
 
  * Keep this very short (1-3 lines).
 
+We split into three subteams — frontend, backend, and LLM/scraping — and each built its part largely in parallel. Integration meant connecting the frontend to the backend APIs, and the backend to the scraper/LLM pipeline for research runs, SWOT, and findings, then debugging the full flow once those pieces were ready.
+
 
 ## Product - Review
 
