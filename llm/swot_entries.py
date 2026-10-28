@@ -15,7 +15,7 @@ def to_swot_entries(analysis: CompanyAnalysis) -> list[dict[str, str]]:
         {
             "category": claim.category,
             "content": claim.claim,
-            "source_url": claim.source_url,
+            "source_url": claim.claim_page_url,
         }
         for claim in analysis.claims_cited
         if claim.category in SWOT_CATEGORIES

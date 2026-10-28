@@ -86,11 +86,14 @@ def create_competitor(
     "/{competitor_id}", status_code=status.HTTP_204_NO_CONTENT, responses=_NOT_FOUND
 )
 def delete_competitor(
+    background_tasks: BackgroundTasks,
     competitor_id: int = CompetitorId,
     db: Session = Depends(get_db),
 ) -> None:
     if not repo.delete_competitor(db, competitor_id):
         raise repo.NotFoundError(f"Competitor {competitor_id} not found.")
+    # Rebuild the overall SWOT so it no longer mentions the deleted competitor.
+    orchestrator.trigger_overall_swot_refresh(background_tasks)
 
 
 @router.post(

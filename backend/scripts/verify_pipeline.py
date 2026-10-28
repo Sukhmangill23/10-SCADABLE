@@ -103,6 +103,9 @@ def main():
         for entry in overall_rows:
             print(f"      - [{entry.category.value.upper()}] {entry.content[:65]}")
         print(f"      ✓ {len(overall_rows)} overall SWOT entries saved for the overview page.")
+        feature_scores = finished_run.analysis_result.get("scores", [])
+        assert feature_scores, "Feature scores from compare() were not saved on the competitor's run"
+        print(f"      ✓ {len(feature_scores)} feature scores saved on the competitor's run for its profile chart.")
 
         print("\n[7/7] Verifying Re-Run Diffing (Token-Conservation Test) & API Serialization...")
         run2 = create_research_run(db, competitor.id)
@@ -129,12 +132,13 @@ def main():
         assert profile_dto.research_status == "success", f"Expected API status 'success', got {profile_dto.research_status}"
         assert "established compliance automation platform" in profile_dto.summary
         assert len(profile_dto.findings) == len(swot_rows)
+        assert len(profile_dto.chart_series.scores) == len(feature_scores), "Score chart lost its scores on the skipped run"
         assert run_dto.cache_hits == 1 and run_dto.cache_misses == 0
 
         print("      ✓ Second run completed with skipped_llm = True (LLM tokens conserved).")
         print("      ✓ Overall SWOT left unchanged (no extra comparison call).")
         print(f"      ✓ Reused findings ({len(swot_rows_after_rerun)} rows) & summary linked to original Run ID {run1.id}.")
-        print("      ✓ Frontend API serializers (CompetitorProfile & AgentRun) verified.")
+        print("      ✓ Frontend API serializers (CompetitorProfile, score chart & AgentRun) verified.")
         print("\n" + "=" * 65)
         print("  ALL PIPELINE CHECKS PASSED (0 API TOKENS USED)")
         print("=" * 65)

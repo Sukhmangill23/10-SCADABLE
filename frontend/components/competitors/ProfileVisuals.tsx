@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { CompetitorProfile } from "@/lib/api";
-import { ActivityChart, ScoresChart } from "./ProfileCharts";
+import { ActivityChart } from "./ProfileCharts";
 import styles from "./CompetitorProfile.module.css";
 
 type VisualId = "scores" | "activity";
@@ -17,7 +17,7 @@ export function ProfileVisuals({
 }: {
   chartSeries: CompetitorProfile["chartSeries"];
 }) {
-  const [active, setActive] = useState<VisualId>("scores");
+  const [active, setActive] = useState<VisualId>("activity");
 
   return (
     <section className={styles.card}>
@@ -40,7 +40,7 @@ export function ProfileVisuals({
 
       <div role="tabpanel" aria-label={VISUALS.find((v) => v.id === active)?.title}>
         {active === "scores" ? (
-          <ScoresChart data={chartSeries.scores} />
+          <p className={styles.empty}>Scores vs SCADABLE — coming in D3.</p>
         ) : (
           <ActivityChart data={chartSeries.activityOverTime} />
         )}

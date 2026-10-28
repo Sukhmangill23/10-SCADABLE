@@ -14,7 +14,7 @@
 
  2. **Agreeing on interfaces first and building using mocks, so subteams didn't block each other**: For example, the frontend used mock data, and the backend used mock crawler and analyzer fallbacks. This allowed us to build in parallel so that we weren't constantly waiting on each. Everything was connected with real data at the end. This meant we always had something to do and no time was wasted. It also gave us a stable demo when the live deployment was risky or down. For example, even though Railway (our cloud provider) was down for a few days, we could still show much of our work.
 
- 3. **Feature branches with PRs, including multiple commits with messages**: This allows main branch's history to be clean and readable, so bugs are caught before they reach main. For example, Sukhman found a bug in my import in PR [#23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23), and this was fixed before being pushed to main. This allows our main branch to always be functional.
+ 3. **Feature branches with PRs, including multiple commits with messages**: This allows main branch's history to be clean and readable, so bugs are caught before they reach main. For example, Sukhman found a bug in an import in PR [#23](https://github.com/csc301-2026-f/10-SCADABLE/pull/23), and this was fixed before being pushed to main. This allows our main branch to always be functional.
 
  4. **GitHub project table that links to issues and pull requests**: It let us see who owned each task and what was still open. Splitting it by deliverable kept us focused on what was due. Linked PRs show who built each component, which also helps TAs see who did what. [Table](https://github.com/orgs/csc301-2026-f/projects/20)
 
@@ -32,12 +32,16 @@
 
 List any **process-related** (i.e. team organization and/or how you work) changes you are planning to make (if there are any)
 
- * Ordered from most to least important, with supporting argument explaining a change.
+ * Prioritizing integration testing: helps every assignee understand what can be improved on sooner, exposes any hidden vulnerabilities.
+ * Increasing weekly team meetings: have 1-2 meetings a week (one must be within 1 day before the tutorial) to share updates, answer questions, provide design decision changes, and anything else related to the project work. This should allow clarity on the state of the project and allows teams to understand how to change their design or integrate other modules.
+ * Using Jira kanban board: gives visibility to all team members of tasks based on their assignee, details, status. Holds people accountable for their work and can increase productivity.
 
 #### Q3(b). Integration & Next steps
 Briefly explain how you integrated the previously developed individuals components as one product (i.e. How did you split the work across your team) and how was the work integrated together.
 
  * Keep this very short (1-3 lines).
+
+We split into three subteams — frontend, backend, and LLM/scraping — and each built its part largely in parallel. Integration meant connecting the frontend to the backend APIs, and the backend to the scraper/LLM pipeline for research runs, SWOT, and findings, then debugging the full flow once those pieces were ready.
 
 
 ## Product - Review

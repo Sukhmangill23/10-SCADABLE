@@ -30,12 +30,16 @@ class AnalyzerProtocol(Protocol):
     ) -> dict[str, Any]: ...
 
 
-SWOT_LISTS = (
-    ("strength", "strengths"),
-    ("weakness", "weaknesses"),
-    ("opportunity", "opportunities"),
-    ("threat", "threats"),
-)
+def _pick_source_url(urls: list[str], scadable_url: str) -> str | None:
+    """Pick the one source URL saved for an overall finding.
+
+    The database keeps one URL per finding. A scraped competitor page is
+    preferred because SCADABLE's own claims only cite its homepage.
+    """
+    for url in urls:
+        if url != scadable_url:
+            return url
+    return urls[0] if urls else None
 
 
 def _build_openai_client() -> Any:
@@ -47,7 +51,8 @@ def _build_openai_client() -> Any:
     load_environment()
     settings = Settings()
     if not settings.openai_model.strip():
-        settings = settings.model_copy(update={"openai_model": "gpt-4o-mini"})
+        # Same model the scraper uses for page selection
+        settings = settings.model_copy(update={"openai_model": "gpt-6-luna"})
     return OpenAIClient(settings)
 
 
@@ -87,6 +92,11 @@ class MockOpenAIAnalyzer:
                 f"{competitor_name} is an established compliance automation platform "
                 "supporting SOC 2, ISO 27001, and HIPAA with wide cloud integration coverage."
             ),
+            "features": [
+                "Automated evidence collection",
+                "Pre-built cloud integrations",
+                "Auditor partner network",
+            ],
             "swot_entries": [
                 {
                     "category": "strength",
@@ -178,6 +188,11 @@ class MockOpenAIAnalyzer:
                     ),
                     "source_url": None,
                 },
+            ],
+            "scores": [
+                {"company_name": c["company_name"], "feature": feature, "score": 7}
+                for c in competitors
+                for feature in c.get("features", [])
             ],
         }
 
@@ -280,7 +295,7 @@ class OpenAIAdapter:
             try:
                 analyzer = Analyzer(client)
                 facts = await analyzer.extract_information(analysis_input)
-                company_analysis = await analyzer.analyze_competitor(facts)
+                company_analysis = await analyzer.analyze_company(facts)
             finally:
                 await client.close()
 
@@ -317,17 +332,15 @@ class OpenAIAdapter:
                 "source_url": primary_source,
             })
 
+            # Features are scored later by compare(), which saves the scores on this run
             return {
                 "schema_version": "backend-analysis-v1",
                 "mode": "real",
                 "perspective": "scadable_relative",
                 "competitor_name": competitor_name,
                 "summary": getattr(company_analysis, "summary", ""),
+                "features": list(getattr(company_analysis, "features", [])),
                 "swot_entries": swot_entries,
-                "scores": [
-                    s.model_dump()
-                    for s in getattr(company_analysis, "scores", [])
-                ],
             }
 
         except (ImportError, ValueError, Exception) as exc:
@@ -351,7 +364,7 @@ class OpenAIAdapter:
         """
         try:
             from llm.analyzer import Analyzer
-            from llm.schemas import ClaimCited, CompanyAnalysis, ComparisonInput
+            from llm.schemas import ClaimCitedByURL, CompanyAnalysis, ComparisonInput
 
             client = _build_openai_client()
         except Exception as exc:
@@ -375,25 +388,28 @@ class OpenAIAdapter:
             scadable=CompanyAnalysis(
                 company_name=baseline_context.get("company_name", "SCADABLE"),
                 summary=baseline_context.get("summary", ""),
+                summary_page_urls=[scadable_url],
+                features=list(baseline_context.get("core_capabilities", [])),
                 claims_cited=[
-                    ClaimCited(category="strength", claim=claim, source_url=scadable_url)
+                    ClaimCitedByURL(category="strength", claim=claim, claim_page_url=scadable_url)
                     for claim in scadable_claims
                 ],
-                scores=[],
             ),
             competitors=[
                 CompanyAnalysis(
                     company_name=c["company_name"],
                     summary=c.get("summary", ""),
+                    # The backend doesn't store which page the summary came from
+                    summary_page_urls=[c["website_url"]],
+                    features=list(c.get("features", [])),
                     claims_cited=[
-                        ClaimCited(
+                        ClaimCitedByURL(
                             category=claim["category"],
                             claim=claim["content"],
-                            source_url=claim.get("source_url") or c["website_url"],
+                            claim_page_url=claim.get("source_url") or c["website_url"],
                         )
                         for claim in c["claims"]
                     ],
-                    scores=[],
                 )
                 for c in competitors
             ],
@@ -404,16 +420,19 @@ class OpenAIAdapter:
         finally:
             await client.close()
 
-        # compare() returns plain strings with no citations, so source_url stays empty.
         return {
-            "schema_version": "backend-comparison-v1",
+            "schema_version": "backend-comparison-v2",
             "mode": "real",
             "swot_entries": [
-                {"category": category, "content": text, "source_url": None}
-                for category, field in SWOT_LISTS
-                for text in getattr(swot, field)
-                if text.strip()
+                {
+                    "category": entry.component,
+                    "content": entry.what,
+                    "source_url": _pick_source_url(entry.swot_component_page_urls, scadable_url),
+                }
+                for entry in swot.SWOT_entries
+                if entry.what.strip()
             ],
+            "scores": [score.model_dump() for score in swot.scores],
         }
 
 
