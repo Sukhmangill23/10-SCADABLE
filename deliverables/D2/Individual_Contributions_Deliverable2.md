@@ -5,12 +5,14 @@
 **Role:** Database development, backend deployment, integration testing, and documentation.
 
 **Contributions:**
-- Implemented PostgreSQL database integration and persistent data storage.
-- Configured Docker for Railway deployment (**PR #27**) and independently managed backend deployment.
-- Developed FastAPI/PostgreSQL integration tests (**PR #28**) and an end-to-end backend research integration test (**PR #29**).
-- Assisted with frontend deployment on Vercel and integration with the Railway backend.
+
+- Implemented PostgreSQL database integration and persistent data storage for competitor information and research results.
+- Configured Docker for Railway deployment ([PR #27](https://github.com/csc301-2026-f/10-SCADABLE/pull/27)) and independently managed backend deployment and configuration on Railway.
+- Developed FastAPI/PostgreSQL integration tests to verify database operations ([PR #28](https://github.com/csc301-2026-f/10-SCADABLE/pull/28)).
+- Developed an end-to-end backend research integration test to validate the research pipeline ([PR #29](https://github.com/csc301-2026-f/10-SCADABLE/pull/29)).
+- Assisted with frontend deployment on Vercel and integration with the deployed Railway backend.
 - Tested the deployed application, identified issues with feature scoring, SWOT citations, and competitor management, and coordinated fixes with teammates.
-- Comprehensively updated the D2 README, documenting application features, setup instructions, deployment, limitations, and screenshots.
+- Comprehensively updated the D2 README, including feature documentation, setup instructions, deployment information, known limitations, and application screenshots.
 - Contributed to the D2 iteration retrospective and team documentation.
 
 ### Jaynik Sheth
