@@ -55,7 +55,7 @@ output:
 - scores (list[FEATURE_SCORE_BY_INDEX]): one entry for each feature of each competitor, scored as described in <SCORING_CRITERIA>.
     <FEATURE_SCORE_BY_INDEX>
     - company_index (integer): the company_index of the competitor the feature belongs to. Never 0, because SCADABLE is not scored.
-    - feature (string): the feature, copied exactly as it appears in that competitor's "features" list.
+    - feature (string): the feature, giving a summarized name/description of it from the company's "features" list (around 5 words).
     - score (integer): a whole number from 0 to 10.
     </FEATURE_SCORE_BY_INDEX>
 - competitor_notes (list[COMPETITOR_NOTE]): exactly one entry per competitor, in the same order as the input competitors.
@@ -66,7 +66,7 @@ output:
 </SWOT_ANALYSIS_BY_INDEX>
 
 <SCORING_CRITERIA>
-Score each feature from 0 to 10 based on any statistics from the provided inputs that tell you how heavily used or impactful the feature is currently.
+Score each feature from 0 to 10 based on any statistics from the provided inputs that indicate how much this feature can compete with, or is currently competing with SCADABLE's existing features (0 means no competition, 10 means maximum competition).
 </SCORING_CRITERIA>
 
 You must follow these rules:
@@ -98,6 +98,9 @@ them from their own perspectives.
 - If you cannot support an entry with a citation, leave the entry out.
 - Score every feature in each competitor's "features" list exactly once, no matter how relevant or irrelevant it may seem to SCADABLE. Never score SCADABLE's own features (company_index 0).
 - If the input gives no statistics about a feature, give it a low score (0 to 2).
+- Never provide the page index citations in the "what" field of the output.
+- Never provide the page index citations in the "company_name" field of the output.
+- Never provide the page index citations in the "why it matters" field of the output.
 </RULES>
 
 rules for citations (should be applied to <SWOT_INDEX>):
