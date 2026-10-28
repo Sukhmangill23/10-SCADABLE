@@ -2,13 +2,16 @@
 
 ### Sukhmandeep Gill
 
-**Role:** Database development, backend deployment, and testing.
+**Role:** Database development, backend deployment, integration testing, and documentation.
 
 **Contributions:**
-- Implemented the PostgreSQL database and data persistence layer.
-- Configured and deployed the backend on Railway using Docker.
-- Developed backend integration tests for database operations and the research pipeline.
-- Tested and debugged backend integration issues.
+- Implemented PostgreSQL database integration and persistent data storage.
+- Configured Docker for Railway deployment (**PR #27**) and independently managed backend deployment.
+- Developed FastAPI/PostgreSQL integration tests (**PR #28**) and an end-to-end backend research integration test (**PR #29**).
+- Assisted with frontend deployment on Vercel and integration with the Railway backend.
+- Tested the deployed application, identified issues with feature scoring, SWOT citations, and competitor management, and coordinated fixes with teammates.
+- Comprehensively updated the D2 README, documenting application features, setup instructions, deployment, limitations, and screenshots.
+- Contributed to the D2 iteration retrospective and team documentation.
 
 ### Jaynik Sheth
 
