@@ -49,6 +49,10 @@ export async function apiFetch<T>(
   });
 
   if (!response.ok) {
+    // Keep 5xx bodies out of Error.message so UI helpers never leak internals.
+    if (response.status >= 500) {
+      throw new ApiError("Something went wrong. Please try again.", response.status);
+    }
     const detail = await response.text().catch(() => "");
     throw new ApiError(
       detail || `Request failed: ${response.status} ${response.statusText}`,

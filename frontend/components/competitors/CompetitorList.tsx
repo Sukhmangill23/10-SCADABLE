@@ -10,6 +10,7 @@ import {
   type ResearchStatus,
   type Trend,
 } from "@/lib/api";
+import { toUserFacingError } from "@/lib/errors";
 import { displayWebsite, formatRelativePast } from "@/lib/format";
 import { competitorsPollInterval } from "@/lib/polling";
 import { AddCompetitorModal } from "./AddCompetitorModal";
@@ -94,9 +95,8 @@ export function CompetitorList() {
 
   if (isError) {
     return (
-      <p className={styles.status}>
-        Could not load competitors
-        {error instanceof Error ? `: ${error.message}` : "."}
+      <p className={styles.status} role="alert">
+        Could not load competitors. {toUserFacingError(error)}
       </p>
     );
   }
