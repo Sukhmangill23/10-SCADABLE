@@ -289,6 +289,35 @@ Pull requests should contain related changes, avoid unnecessary modifications, a
 
 Tests are updated when relevant functionality changes.
 
+## Non-functional requirements (accessibility & security)
+
+D3 non-functional goals: Lighthouse accessibility **> 80**, keyboard-usable core workflows, labeled forms with accessible errors, validated user input, and no secrets or sensitive stack traces exposed to clients.
+
+### Accessibility
+
+| Requirement | Status / evidence |
+| --- | --- |
+| Lighthouse accessibility **> 80** | Verified on core Live SWOT screens (Chrome DevTools → Lighthouse → Accessibility): **98** and **96**. Re-check with `npx lighthouse <url> --only-categories=accessibility --view`. |
+| Keyboard navigation | Competitor and agent-run lists support Enter/Space; dialogs use Escape and a **focus trap**; profile chart tabs support arrow keys. |
+| Form labels and accessible errors | Add Competitor uses visible labels, `aria-invalid` / `aria-describedby`, and `role="alert"` for field and submit errors. |
+| Contrast and semantic HTML | App shell uses landmarks (`main`, `nav`), headings, and tables; focus styles via `:focus-visible`. |
+
+![Lighthouse accessibility score 98](docs/screenshots/lighthouse-accessibility-98.png)
+
+![Lighthouse accessibility score 96](docs/screenshots/lighthouse-accessibility-96.png)
+
+### Security
+
+| Requirement | Status / evidence |
+| --- | --- |
+| Frontend input validation | Add Competitor validates required name/website, length limits, and http(s) URLs before calling the API (`frontend/lib/validation/competitor.ts`). |
+| Backend input validation | FastAPI/Pydantic validates create-competitor bodies (name length, sources, `clean_url`). Covered by `backend/tests/test_api.py` (`test_create_competitor_validation`). |
+| Secrets not in client or API responses | Browser only receives `NEXT_PUBLIC_*` values and the Clerk publishable key. `CLERK_SECRET_KEY`, database URLs, and OpenAI keys stay in server env. Response schemas do not return credentials. |
+| Backend errors without stack traces | Unexpected exceptions return `{"detail": "Internal server error."}` (`backend/app/api/errors.py`). Evidence: `test_unexpected_error_returns_clean_500` in `backend/tests/test_api.py`. |
+| Frontend does not show raw server internals | API 5xx bodies are not passed into UI copy; list/profile/runs errors use safe user-facing messages (`frontend/lib/errors.ts`, `frontend/lib/api/client.ts`). |
+
+**Backend follow-up (team):** sanitize persisted research-run `errorMessage` so failed runs do not store/return raw `str(exc)` to `GET /runs`.
+
 ## License
 
 Live SWOT was developed as part of CSC301 in collaboration with SCADABLE.

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { runsApi, type AgentRun, type ResearchStatus } from "@/lib/api";
+import { toUserFacingError, toUserFacingRunError } from "@/lib/errors";
 import { formatRelativePast } from "@/lib/format";
 import { runsPollInterval } from "@/lib/polling";
 import {
@@ -127,7 +128,7 @@ function RunRow({
                     {failedStepName
                       ? `Stopped on “${failedStepName}”. `
                       : null}
-                    {run.errorMessage ?? "No additional error detail from the agent."}
+                    {toUserFacingRunError(run.errorMessage)}
                   </p>
                 </div>
               ) : null}
@@ -170,9 +171,8 @@ export function AgentRunsList() {
 
   if (isError) {
     return (
-      <p className={styles.statusMessage}>
-        Could not load agent runs
-        {error instanceof Error ? `: ${error.message}` : "."}
+      <p className={styles.statusMessage} role="alert">
+        Could not load agent runs. {toUserFacingError(error)}
       </p>
     );
   }

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useId, useMemo, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/Button";
 import {
@@ -13,6 +13,8 @@ import {
   type ResearchStatus,
   type Trend,
 } from "@/lib/api";
+import { useFocusTrap } from "@/lib/a11y/useFocusTrap";
+import { toUserFacingError } from "@/lib/errors";
 import { displayWebsite, formatRelativePast } from "@/lib/format";
 import { profilePollInterval, runsPollInterval } from "@/lib/polling";
 import { latestSuccessfulRunForCompetitor } from "@/lib/runs/stats";
@@ -68,6 +70,8 @@ export function CompetitorProfileView({ id }: { id: string }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const confirmTitleId = useId();
+  const deleteErrorId = useId();
+  const confirmDialogRef = useRef<HTMLDivElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
 
@@ -106,9 +110,16 @@ export function CompetitorProfileView({ id }: { id: string }) {
     },
     onError: (err) => {
       setDeleteError(
-        err instanceof Error ? err.message : "Could not delete profile.",
+        toUserFacingError(err, "Could not delete profile. Please try again."),
       );
     },
+  });
+
+  useFocusTrap(confirmOpen, confirmDialogRef, () => {
+    if (!deleteMutation.isPending) {
+      setConfirmOpen(false);
+      setDeleteError(null);
+    }
   });
 
   const rerunMutation = useMutation({
@@ -163,26 +174,14 @@ export function CompetitorProfileView({ id }: { id: string }) {
     void queryClient.invalidateQueries({ queryKey: ["runs"] });
   }, [data?.researchStatus, data?.lastResearchedAt, queryClient, data]);
 
-  useEffect(() => {
-    if (!confirmOpen) return;
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === "Escape" && !deleteMutation.isPending) {
-        setConfirmOpen(false);
-      }
-    }
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [confirmOpen, deleteMutation.isPending]);
-
   if (isPending) {
     return <p className={styles.status}>Loading profile…</p>;
   }
 
   if (isError || !data) {
     return (
-      <p className={styles.status}>
-        Could not load profile
-        {error instanceof Error ? `: ${error.message}` : "."}
+      <p className={styles.status} role="alert">
+        Could not load profile. {toUserFacingError(error)}
       </p>
     );
   }
@@ -336,10 +335,12 @@ export function CompetitorProfileView({ id }: { id: string }) {
           }}
         >
           <div
+            ref={confirmDialogRef}
             className={styles.confirmModal}
             role="dialog"
             aria-modal="true"
             aria-labelledby={confirmTitleId}
+            aria-describedby={deleteError ? deleteErrorId : undefined}
           >
             <h2 id={confirmTitleId}>Delete this profile?</h2>
             <p>
@@ -349,18 +350,30 @@ export function CompetitorProfileView({ id }: { id: string }) {
             </p>
             <p>This cannot be undone.</p>
             {deleteError ? (
-              <p className={styles.confirmError}>{deleteError}</p>
+              <p
+                id={deleteErrorId}
+                className={styles.confirmError}
+                role="alert"
+              >
+                {deleteError}
+              </p>
             ) : null}
             <div className={styles.confirmActions}>
               <Button
                 variant="secondary"
-                onClick={() => setConfirmOpen(false)}
+                type="button"
+                data-autofocus
+                onClick={() => {
+                  setConfirmOpen(false);
+                  setDeleteError(null);
+                }}
                 disabled={deleteMutation.isPending}
               >
                 Cancel
               </Button>
               <Button
                 variant="danger"
+                type="button"
                 onClick={() => deleteMutation.mutate()}
                 disabled={deleteMutation.isPending}
               >
