@@ -91,7 +91,8 @@ async def refresh_overall_swot(
 
     Uses each competitor's latest stored strengths and weaknesses, so it makes
     one LLM call and never re-crawls. The comparison also scores each competitor's
-    features; those scores are saved on the competitor's latest run, where the
+    features, including competitors whose analysis found no strengths or
+    weaknesses; those scores are saved on the competitor's latest run, where the
     competitor profile reads them. If no competitor has findings left (e.g. the
     last one was deleted), the overall SWOT is cleared. A failure is logged and
     keeps the previous overall SWOT; it never fails the competitor run that
@@ -115,7 +116,7 @@ async def refresh_overall_swot(
                 for entry in entries
                 if entry.category in (SWOTCategory.STRENGTH, SWOTCategory.WEAKNESS)
             ]
-            if not claims:
+            if not entries:
                 continue
             latest_run = entries[0].research_run
             analysis = (
@@ -123,12 +124,16 @@ async def refresh_overall_swot(
                 if isinstance(latest_run.analysis_result, dict)
                 else {}
             )
+            features = analysis.get("features", [])
+            # Still compare a competitor with no strengths/weaknesses so its features get scored
+            if not claims and not features:
+                continue
             latest_runs[competitor.name] = latest_run
             profiles.append({
                 "company_name": competitor.name,
                 "website_url": competitor.website_url,
                 "summary": analysis.get("summary", ""),
-                "features": analysis.get("features", []),
+                "features": features,
                 "claims": claims,
             })
 
