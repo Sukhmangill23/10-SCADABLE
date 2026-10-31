@@ -23,6 +23,7 @@ from app.services.crawler import MockCrawl4AICrawler
 from app.services.diff import compute_content_hash, has_content_changed
 from app.services.llm import MockOpenAIAnalyzer
 from app.services.orchestrator import (
+    _scores_by_company,
     execute_research_run,
     refresh_overall_swot,
     trigger_overall_swot_refresh,
@@ -133,6 +134,32 @@ def test_mock_compare():
     assert result["scores"] == [
         {"company_name": "Vanta", "feature": "Evidence collection", "score": 7}
     ]
+
+
+def test_scores_by_company_drops_invalid_items():
+    raw = [
+        {"company_name": "Vanta", "feature": " Audits ", "score": 6},
+        {"company_name": "Vanta", "feature": "", "score": 5},
+        {"company_name": "Vanta", "feature": "Too high", "score": 11},
+        {"company_name": "Vanta", "feature": "Not a number", "score": "high"},
+        {"company_name": "Drata", "feature": "Flag", "score": True},
+        {"feature": "No company", "score": 4},
+        "not a dict",
+    ]
+    assert _scores_by_company(raw) == {"Vanta": [{"feature": "Audits", "score": 6}]}
+    assert _scores_by_company(None) == {}
+
+
+class EmptyScoresAnalyzer(MockOpenAIAnalyzer):
+    """Compares normally but returns no usable feature scores."""
+
+    def __init__(self, scores):
+        super().__init__()
+        self.scores = scores
+
+    async def compare(self, baseline_context, competitors):
+        result = await super().compare(baseline_context, competitors)
+        return {**result, "scores": self.scores}
 
 
 def test_trigger_overall_swot_refresh():
@@ -280,6 +307,24 @@ if test_url:
         assert finished_run.status == ResearchStatus.COMPLETED
         assert len(get_latest_swot(db, competitor.id)) > 0
         assert get_overall_swot(db) == []
+
+    @pytest.mark.parametrize("bad_scores", [
+        [],
+        [{"company_name": "Someone else", "feature": "Audits", "score": 5}],
+        [{"company_name": "Vanta", "feature": "Audits", "score": 42}],
+    ])
+    def test_refresh_overall_swot_keeps_scores_when_comparison_has_none(
+        db, competitor, bad_scores
+    ):
+        run = create_research_run(db, competitor.id)
+        asyncio.run(execute_research_run(
+            db, run.id, MockCrawl4AICrawler(), MockOpenAIAnalyzer()
+        ))
+        scores = get_research_run(db, run.id).analysis_result["scores"]
+        assert scores
+
+        asyncio.run(refresh_overall_swot(db, EmptyScoresAnalyzer(bad_scores)))
+        assert get_research_run(db, run.id).analysis_result["scores"] == scores
 
     def test_refresh_overall_swot_clears_after_last_competitor_deleted(db, competitor):
         run = create_research_run(db, competitor.id)

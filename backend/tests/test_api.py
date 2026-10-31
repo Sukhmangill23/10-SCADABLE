@@ -273,6 +273,18 @@ def test_profile_reused_run_keeps_scores_and_counts_only_changes(client, store):
     assert activity[-2:] == [{"label": "Oct 19", "value": 1}, {"label": "Oct 26", "value": 0}]
 
 
+def test_profile_keeps_previous_scores_when_latest_run_has_none(client, store):
+    drata = store.add_competitor("Drata", "https://drata.com")
+    store.add_run(drata, ResearchStatus.COMPLETED, analysis={
+        "summary": "old", "scores": [{"feature": "Audits", "score": 6}]})
+    # New content analyzed, but the comparison that scores it failed or returned nothing
+    store.add_run(drata, ResearchStatus.COMPLETED, analysis={"summary": "new", "scores": []})
+    body = client.get(f"/competitors/{drata.id}").json()
+    assert body["summary"] == "new"
+    assert body["chartSeries"]["scores"] == [
+        {"label": "Audits", "competitor": 6, "scadable": None}]
+
+
 @pytest.mark.parametrize("path,status", [("/competitors/999", 404), ("/competitors/abc", 422),
                                          ("/competitors/0", 422)])
 def test_get_competitor_errors(client, path, status):
