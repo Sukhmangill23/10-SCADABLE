@@ -1,4 +1,4 @@
-import { apiFetch, useMocks } from "@/lib/api/client";
+import { apiFetch, shouldUseMocks } from "@/lib/api/client";
 import type {
   AgentRun,
   CompetitorProfile,
@@ -129,7 +129,7 @@ function enqueueSuccessfulRun(summary: CompetitorSummary): AgentRun {
 }
 
 export async function listCompetitors(): Promise<CompetitorSummary[]> {
-  if (useMocks()) {
+  if (shouldUseMocks()) {
     await delay();
     // Return a new array so React Query sees a data change after mock mutations.
     return [...mockCompetitors];
@@ -138,7 +138,7 @@ export async function listCompetitors(): Promise<CompetitorSummary[]> {
 }
 
 export async function getCompetitor(id: string): Promise<CompetitorProfile> {
-  if (useMocks()) {
+  if (shouldUseMocks()) {
     await delay();
     const profile = mockProfiles[id];
     if (!profile) {
@@ -169,7 +169,7 @@ export async function getCompetitor(id: string): Promise<CompetitorProfile> {
 export async function createCompetitor(
   input: CreateCompetitorInput,
 ): Promise<CreateCompetitorResult> {
-  if (useMocks()) {
+  if (shouldUseMocks()) {
     await delay();
     const sources = input.dataSources
       .map(normalizeSourceUrl)
@@ -211,7 +211,7 @@ export async function createCompetitor(
 }
 
 export async function deleteCompetitor(id: string): Promise<void> {
-  if (useMocks()) {
+  if (shouldUseMocks()) {
     await delay();
     const index = findCompetitorIndex(id);
     if (index === -1) {
@@ -231,7 +231,7 @@ export async function deleteCompetitor(id: string): Promise<void> {
 export async function rerunCompetitorResearch(
   id: string,
 ): Promise<CompetitorProfile> {
-  if (useMocks()) {
+  if (shouldUseMocks()) {
     patchCompetitorSummary(id, { researchStatus: "running" });
     await delay(2200);
 

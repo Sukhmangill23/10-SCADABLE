@@ -18,6 +18,7 @@ from app.api.schemas import (
     ScoreSeries,
 )
 from app.db.models import Competitor, ResearchRun, ResearchStatus, SWOTEntry
+import re
 
 _STATUS_MAP: dict[ResearchStatus, ApiResearchStatus] = {
     ResearchStatus.PENDING: "pending",
@@ -28,6 +29,20 @@ _STATUS_MAP: dict[ResearchStatus, ApiResearchStatus] = {
 
 NOT_RESEARCHED_SUMMARY = "Profile not researched yet."
 ACTIVITY_WEEKS = 6
+
+SAFE_ERROR_MESSAGE = "Research failed due to an internal error."
+
+def safe_run_error(message: str | None) -> str:
+    if message == SAFE_ERROR_MESSAGE:
+        return message
+
+    if message and re.fullmatch(
+        r"Research run timed out after \d+(?:\.\d+)? seconds\.",
+        message,
+    ):
+        return message
+
+    return SAFE_ERROR_MESSAGE
 
 
 def api_status(status: ResearchStatus) -> ApiResearchStatus:
@@ -183,7 +198,7 @@ def _activity_text(run: ResearchRun) -> str:
             return "Research run completed; no website changes detected"
         return "Research run completed and findings updated"
     if run.status == ResearchStatus.FAILED:
-        return f"Research run failed: {run.error_message or 'unknown error'}"
+        return f"Research run failed: {safe_run_error(run.error_message)}"
     if run.status == ResearchStatus.RUNNING:
         return "Research run in progress"
     return "Research run queued"
@@ -234,5 +249,5 @@ def agent_run(run: ResearchRun, competitor_name: str) -> AgentRun:
         started_at=run.started_at or run.created_at,
         finished_at=run.completed_at,
         steps=steps,
-        error_message=run.error_message,
+        error_message=safe_run_error(run.error_message) if run.status == ResearchStatus.FAILED else None,
     )

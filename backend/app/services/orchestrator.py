@@ -278,14 +278,13 @@ async def execute_research_run(
             error_message=error_msg,
         )
 
-    except Exception as exc:
-        error_msg = str(exc) or exc.__class__.__name__
-        logger.exception("Run %s failed with unexpected error: %s", run_id, error_msg)
+    except Exception:
+        logger.exception("Research run %s failed unexpectedly", run_id)
         return update_research_run_status(
             db,
             run_id,
             ResearchStatus.FAILED,
-            error_message=error_msg,
+            error_message="Research failed due to an internal error.",
         )
 
 

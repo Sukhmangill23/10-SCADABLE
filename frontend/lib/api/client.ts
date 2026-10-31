@@ -1,6 +1,6 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export function useMocks(): boolean {
+export function shouldUseMocks(): boolean {
   return process.env.NEXT_PUBLIC_USE_MOCKS !== "false";
 }
 

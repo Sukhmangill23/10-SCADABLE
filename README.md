@@ -189,6 +189,20 @@ and SWOT analysis
 
 Non-technical users should access the deployed application. Local setup is intended for developers.
 
+### Running Tests
+
+From the repository root:
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m pytest tests/test_api.py tests/test_orchestrator.py -q
+```
+
+The suite covers API endpoints, validation, research orchestration,
+caching, and security. PostgreSQL integration tests run in CI
+using an isolated test database.
+
 ### Requirements
 
 - Python 3.12
@@ -315,8 +329,7 @@ D3 non-functional goals: Lighthouse accessibility **> 80**, keyboard-usable core
 | Secrets not in client or API responses | Browser only receives `NEXT_PUBLIC_*` values and the Clerk publishable key. `CLERK_SECRET_KEY`, database URLs, and OpenAI keys stay in server env. Response schemas do not return credentials. |
 | Backend errors without stack traces | Unexpected exceptions return `{"detail": "Internal server error."}` (`backend/app/api/errors.py`). Evidence: `test_unexpected_error_returns_clean_500` in `backend/tests/test_api.py`. |
 | Frontend does not show raw server internals | API 5xx bodies are not passed into UI copy; list/profile/runs errors use safe user-facing messages (`frontend/lib/errors.ts`, `frontend/lib/api/client.ts`). |
-
-**Backend follow-up (team):** sanitize persisted research-run `errorMessage` so failed runs do not store/return raw `str(exc)` to `GET /runs`.
+| Research-run error sanitization | Unexpected research failures are logged server-side, while only generic errors are persisted. API serializers also sanitize previously stored errors in `/runs` and competitor activity. Covered by `test_failed_run_does_not_expose_sensitive_errors` and the orchestrator failure tests. |
 
 ## License
 
