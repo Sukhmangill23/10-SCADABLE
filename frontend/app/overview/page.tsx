@@ -99,8 +99,11 @@ export default function OverviewPage() {
       <header>
         <h1 className={styles.title}>SWOT overview</h1>
         <p className={styles.sub}>
-          Findings across all tracked competitors · last updated{" "}
-          {data.updatedAt ? formatDate(data.updatedAt) : "Not yet"}
+          {data.isStale
+            ? "Overall SWOT needs refreshing"
+            : `Findings across all tracked competitors · last updated ${
+                data.updatedAt ? formatDate(data.updatedAt) : "Not yet"
+              }`}
         </p>
       </header>
 

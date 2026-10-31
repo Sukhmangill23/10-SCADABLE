@@ -33,7 +33,7 @@ def _overview(db: Session) -> SwotOverview:
     """Return only published current overall findings, never stale fallback data."""
     if not repo.is_overall_swot_current(db):
         # An empty new installation has no outdated findings to warn about.
-        has_prior_data = bool(repo.get_overall_swot(db) or repo.list_competitors(db, limit=1))
+        has_prior_data = bool(repo.get_overall_swot(db) or repo.has_completed_research(db))
         return _group([], is_stale=has_prior_data)
     return _group([
         serializers.finding_from_entry(entry, None)

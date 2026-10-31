@@ -108,6 +108,9 @@ class FakeStore:
     def is_overall_swot_current(self, db):
         return self.overall_current
 
+    def has_completed_research(self, db):
+        return any(run.status == ResearchStatus.COMPLETED for run in self.runs.values())
+
     def get_research_run(self, db, rid):
         return self.runs.get(rid)
 
@@ -131,7 +134,7 @@ def store(monkeypatch):
     for name in (
         "get_competitor", "list_competitors", "create_competitor", "delete_competitor",
         "get_latest_research_run", "get_latest_swot", "get_overall_swot",
-        "is_overall_swot_current", "get_research_run",
+        "is_overall_swot_current", "has_completed_research", "get_research_run",
     ):
         monkeypatch.setattr(repo, name, getattr(fake, name))
     monkeypatch.setattr(runs_routes, "query_runs", fake.query_runs)
