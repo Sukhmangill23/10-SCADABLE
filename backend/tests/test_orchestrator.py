@@ -18,6 +18,9 @@ from app.db.repository import (
     get_latest_swot,
     get_overall_swot,
     get_research_run,
+    save_analysis_result,
+    save_swot_entries,
+    update_research_run_status,
 )
 from app.services.crawler import MockCrawl4AICrawler
 from app.services.diff import compute_content_hash, has_content_changed
@@ -336,6 +339,64 @@ if test_url:
         delete_competitor(db, competitor.id)
         asyncio.run(refresh_overall_swot(db, MockOpenAIAnalyzer()))
         assert get_overall_swot(db) == []
+
+    def _completed_run(db, competitor, analysis, entries):
+        run = create_research_run(db, competitor.id)
+        save_analysis_result(db, run.id, analysis)
+        save_swot_entries(db, run.id, entries)
+        update_research_run_status(db, run.id, ResearchStatus.RUNNING)
+        return update_research_run_status(db, run.id, ResearchStatus.COMPLETED)
+
+    def test_refresh_overall_swot_scores_competitor_without_strengths_or_weaknesses(
+        db, competitor
+    ):
+        # Analysis found features but no strengths/weaknesses (only template opportunity/threat)
+        run = _completed_run(
+            db,
+            competitor,
+            {"summary": "Vanta automates compliance.", "features": ["Evidence collection"]},
+            [
+                {"category": "opportunity", "content": "O", "source_url": "https://vanta.com"},
+                {"category": "threat", "content": "T", "source_url": "https://vanta.com"},
+            ],
+        )
+
+        asyncio.run(refresh_overall_swot(db, MockOpenAIAnalyzer()))
+
+        assert get_research_run(db, run.id).analysis_result["scores"] == [
+            {"feature": "Evidence collection", "score": 7}
+        ]
+        assert any("Vanta" in e.content for e in get_overall_swot(db))
+
+    def test_refresh_overall_swot_scores_competitor_without_any_swot_entries(db, competitor):
+        # Analysis found features but saved no SWOT rows at all
+        run = _completed_run(
+            db,
+            competitor,
+            {"summary": "Vanta automates compliance.", "features": ["Evidence collection"]},
+            [],
+        )
+
+        asyncio.run(refresh_overall_swot(db, MockOpenAIAnalyzer()))
+
+        assert get_research_run(db, run.id).analysis_result["scores"] == [
+            {"feature": "Evidence collection", "score": 7}
+        ]
+
+    def test_refresh_overall_swot_keeps_scores_of_runs_without_features(db, competitor):
+        # Run saved before features were stored: it is compared but its scores are kept
+        old_scores = [{"feature": "Integrations", "score": 5}]
+        run = _completed_run(
+            db,
+            competitor,
+            {"summary": "Vanta automates compliance.", "scores": old_scores},
+            [{"category": "strength", "content": "S", "source_url": "https://vanta.com/f"}],
+        )
+
+        asyncio.run(refresh_overall_swot(db, MockOpenAIAnalyzer()))
+
+        assert get_research_run(db, run.id).analysis_result["scores"] == old_scores
+        assert get_overall_swot(db)
 
     def test_execute_research_run_crawler_failure(db, competitor, caplog):
         run = create_research_run(db, competitor.id)
