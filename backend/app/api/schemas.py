@@ -112,12 +112,26 @@ class CompetitorSummary(ApiModel):
     recent_change_summary: str | None
 
 
+class ConflictClaimSide(ApiModel):
+    text: str
+    source_label: str
+    source_url: str | None = None
+
+
+class DataConflict(ApiModel):
+    id: str
+    claim: ConflictClaimSide
+    conflicts_with: ConflictClaimSide
+
+
 class CompetitorProfile(CompetitorSummary):
     summary: str
     findings: list[Finding]
     recent_activity: list[ActivityItem]
     open_roles: int | None = None
     next_refresh_at: datetime | None = None
+    # Empty until the research pipeline detects disagreeing claims.
+    conflicting_data: list[DataConflict] = Field(default_factory=list)
     chart_series: ChartSeries = ChartSeries()
 
 
