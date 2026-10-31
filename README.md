@@ -189,6 +189,20 @@ and SWOT analysis
 
 Non-technical users should access the deployed application. Local setup is intended for developers.
 
+### Running Tests
+
+From the repository root:
+
+```bash
+cd backend
+source .venv/bin/activate
+python -m pytest tests/test_api.py tests/test_orchestrator.py -q
+```
+
+The suite covers API endpoints, validation, research orchestration,
+caching, and security. PostgreSQL integration tests run in CI
+using an isolated test database.
+
 ### Requirements
 
 - Python 3.12
