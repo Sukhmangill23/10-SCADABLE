@@ -45,13 +45,14 @@ export type ConflictClaimSide = {
 };
 
 /**
- * Two disagreeing claims from different pages/sources.
+ * A claim and one or more disagreeing statements from other pages/sources.
  * Shown on competitor profiles only when the list is non-empty.
  */
 export type DataConflict = {
   id: string;
   claim: ConflictClaimSide;
-  conflictsWith: ConflictClaimSide;
+  /** One or more conflicting statements; UI bullets when length > 1. */
+  conflictsWith: ConflictClaimSide[];
 };
 
 export type CompetitorSummary = {

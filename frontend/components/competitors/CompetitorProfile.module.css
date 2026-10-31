@@ -209,6 +209,16 @@
   text-underline-offset: 2px;
 }
 
+.conflictList {
+  margin: 0;
+  padding-left: 1.15em;
+  list-style: disc;
+}
+
+.conflictList li + li {
+  margin-top: 6px;
+}
+
 .featureRow {
   display: flex;
   justify-content: space-between;

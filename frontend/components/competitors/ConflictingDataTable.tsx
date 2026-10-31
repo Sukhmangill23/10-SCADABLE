@@ -1,31 +1,41 @@
-import type { DataConflict } from "@/lib/api";
+import type { ConflictClaimSide, DataConflict } from "@/lib/api";
 import styles from "./CompetitorProfile.module.css";
 
 type Props = {
   conflicts: DataConflict[];
 };
 
-function ClaimCell({
-  text,
-  sourceLabel,
-  sourceUrl,
-}: {
-  text: string;
-  sourceLabel: string;
-  sourceUrl?: string;
-}) {
-  const source = sourceUrl ? (
-    <a href={sourceUrl} target="_blank" rel="noreferrer">
-      {sourceLabel}
+function ClaimText({ side }: { side: ConflictClaimSide }) {
+  const source = side.sourceUrl ? (
+    <a href={side.sourceUrl} target="_blank" rel="noreferrer">
+      {side.sourceLabel}
     </a>
   ) : (
-    sourceLabel
+    side.sourceLabel
   );
 
   return (
     <>
-      {text} <span className={styles.conflictSource}>({source})</span>
+      {side.text} <span className={styles.conflictSource}>({source})</span>
     </>
+  );
+}
+
+function ConflictsWithCell({ sides }: { sides: ConflictClaimSide[] }) {
+  if (sides.length === 0) return null;
+
+  if (sides.length === 1) {
+    return <ClaimText side={sides[0]} />;
+  }
+
+  return (
+    <ul className={styles.conflictList}>
+      {sides.map((side, index) => (
+        <li key={`${side.sourceLabel}-${index}`}>
+          <ClaimText side={side} />
+        </li>
+      ))}
+    </ul>
   );
 }
 
@@ -48,18 +58,10 @@ export function ConflictingDataTable({ conflicts }: Props) {
             {conflicts.map((row) => (
               <tr key={row.id}>
                 <td>
-                  <ClaimCell
-                    text={row.claim.text}
-                    sourceLabel={row.claim.sourceLabel}
-                    sourceUrl={row.claim.sourceUrl}
-                  />
+                  <ClaimText side={row.claim} />
                 </td>
                 <td>
-                  <ClaimCell
-                    text={row.conflictsWith.text}
-                    sourceLabel={row.conflictsWith.sourceLabel}
-                    sourceUrl={row.conflictsWith.sourceUrl}
-                  />
+                  <ConflictsWithCell sides={row.conflictsWith} />
                 </td>
               </tr>
             ))}

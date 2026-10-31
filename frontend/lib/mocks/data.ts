@@ -103,11 +103,18 @@ export const mockProfiles: Record<string, CompetitorProfile> = {
           sourceLabel: "Pricing page",
           sourceUrl: "https://northstarlabs.example/pricing",
         },
-        conflictsWith: {
-          text: "Enterprise plans from $99/user/month",
-          sourceLabel: "Sales FAQ",
-          sourceUrl: "https://northstarlabs.example/faq",
-        },
+        conflictsWith: [
+          {
+            text: "Enterprise plans from $99/user/month",
+            sourceLabel: "Sales FAQ",
+            sourceUrl: "https://northstarlabs.example/faq",
+          },
+          {
+            text: "Blog mentions free tier with no per-seat fee",
+            sourceLabel: "Product blog",
+            sourceUrl: "https://northstarlabs.example/blog/pricing",
+          },
+        ],
       },
       {
         id: "northstar-conflict-roles",
@@ -116,11 +123,13 @@ export const mockProfiles: Record<string, CompetitorProfile> = {
           sourceLabel: "Careers",
           sourceUrl: "https://northstarlabs.example/careers",
         },
-        conflictsWith: {
-          text: "Team page lists 2 open roles",
-          sourceLabel: "Team page",
-          sourceUrl: "https://northstarlabs.example/team",
-        },
+        conflictsWith: [
+          {
+            text: "Team page lists 2 open roles",
+            sourceLabel: "Team page",
+            sourceUrl: "https://northstarlabs.example/team",
+          },
+        ],
       },
     ],
     recentActivity: [
