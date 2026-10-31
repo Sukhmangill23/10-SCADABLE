@@ -64,23 +64,6 @@ def _get_previous_completed_run(
     return db.scalars(stmt).first()
 
 
-def _scores_by_company(raw_scores: Any) -> dict[str, list[dict[str, Any]]]:
-    """Group compare() scores by company, dropping malformed or out-of-range items."""
-    grouped: dict[str, list[dict[str, Any]]] = {}
-    if not isinstance(raw_scores, list):
-        return grouped
-    for score in raw_scores:
-        if not isinstance(score, dict):
-            continue
-        name, feature, value = score.get("company_name"), score.get("feature"), score.get("score")
-        if not isinstance(name, str) or not isinstance(feature, str) or not feature.strip():
-            continue
-        if isinstance(value, bool) or not isinstance(value, (int, float)) or not 0 <= value <= 10:
-            continue
-        grouped.setdefault(name, []).append({"feature": feature.strip(), "score": value})
-    return grouped
-
-
 async def refresh_overall_swot(
     db: Session,
     analyzer: AnalyzerProtocol,
@@ -146,16 +129,17 @@ async def refresh_overall_swot(
         if overall_entries:
             replace_overall_swot(db, overall_entries)
 
-        scores_by_company = _scores_by_company(comparison.get("scores"))
-        for name, run in latest_runs.items():
-            # Only overwrite with valid new scores; an empty or partial comparison
-            # keeps the competitor's previous scores
-            if not scores_by_company.get(name):
-                continue
-            analysis = run.analysis_result if isinstance(run.analysis_result, dict) else {}
-            save_analysis_result(
-                db, run.id, {**analysis, "scores": scores_by_company[name]}
-            )
+        if "scores" in comparison:
+            scores_by_company: dict[str, list[dict[str, Any]]] = {}
+            for score in comparison["scores"]:
+                scores_by_company.setdefault(score["company_name"], []).append(
+                    {"feature": score["feature"], "score": score["score"]}
+                )
+            for name, run in latest_runs.items():
+                analysis = run.analysis_result if isinstance(run.analysis_result, dict) else {}
+                save_analysis_result(
+                    db, run.id, {**analysis, "scores": scores_by_company.get(name, [])}
+                )
 
     except Exception:
         db.rollback()

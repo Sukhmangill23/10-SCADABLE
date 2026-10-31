@@ -137,7 +137,7 @@ def competitor_profile(
         findings=[finding_from_entry(e, competitor) for e in swot_entries],
         recent_activity=activity,
         chart_series=ChartSeries(
-            scores=_scores(analysis) or _previous_scores(competitor.research_runs),
+            scores=_scores(analysis),
             activity_over_time=_activity_over_time(competitor.research_runs),
         ),
     )
@@ -161,22 +161,6 @@ def _scores(analysis: dict[str, Any]) -> list[ScoreSeries]:
             ScoreSeries(label=label.strip(), competitor=min(max(score, 0), 10), scadable=None)
         )
     return series
-
-
-def _previous_scores(runs: Iterable[ResearchRun]) -> list[ScoreSeries]:
-    """Scores from the newest completed run that has valid ones.
-
-    Covers a latest run whose comparison failed or returned nothing usable.
-    """
-    completed = sorted(
-        (r for r in runs if r.status == ResearchStatus.COMPLETED),
-        key=lambda r: (r.completed_at or r.created_at, r.id),
-        reverse=True,
-    )
-    for run in completed:
-        if series := _scores(_analysis(run)):
-            return series
-    return []
 
 
 def _activity_over_time(runs: Iterable[ResearchRun]) -> list[ChartPoint]:
