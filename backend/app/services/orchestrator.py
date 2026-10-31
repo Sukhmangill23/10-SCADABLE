@@ -64,6 +64,20 @@ def _get_previous_completed_run(
     return db.scalars(stmt).first()
 
 
+def _get_latest_completed_run(db: Session, competitor_id: int) -> ResearchRun | None:
+    """Retrieve the competitor's most recent successful run."""
+    stmt = (
+        select(ResearchRun)
+        .where(
+            ResearchRun.competitor_id == competitor_id,
+            ResearchRun.status == ResearchStatus.COMPLETED,
+        )
+        .order_by(ResearchRun.completed_at.desc(), ResearchRun.id.desc())
+        .limit(1)
+    )
+    return db.scalars(stmt).first()
+
+
 def _scores_by_company(raw_scores: Any) -> dict[str, list[dict[str, Any]]]:
     """Group compare() scores by company, dropping malformed or out-of-range items."""
     grouped: dict[str, list[dict[str, Any]]] = {}
@@ -105,7 +119,9 @@ async def refresh_overall_swot(
         profiles = []
         latest_runs: dict[str, ResearchRun] = {}
         for competitor in list_competitors(db, limit=500):
-            entries = get_latest_swot(db, competitor.id)
+            latest_run = _get_latest_completed_run(db, competitor.id)
+            if latest_run is None:
+                continue
             # Opportunities and threats are SCADABLE-relative templates, not competitor facts
             claims = [
                 {
@@ -113,12 +129,9 @@ async def refresh_overall_swot(
                     "content": entry.content,
                     "source_url": entry.source_url,
                 }
-                for entry in entries
+                for entry in get_latest_swot(db, competitor.id)
                 if entry.category in (SWOTCategory.STRENGTH, SWOTCategory.WEAKNESS)
             ]
-            if not entries:
-                continue
-            latest_run = entries[0].research_run
             analysis = (
                 latest_run.analysis_result
                 if isinstance(latest_run.analysis_result, dict)

@@ -368,6 +368,21 @@ if test_url:
         ]
         assert any("Vanta" in e.content for e in get_overall_swot(db))
 
+    def test_refresh_overall_swot_scores_competitor_without_any_swot_entries(db, competitor):
+        # Analysis found features but saved no SWOT rows at all
+        run = _completed_run(
+            db,
+            competitor,
+            {"summary": "Vanta automates compliance.", "features": ["Evidence collection"]},
+            [],
+        )
+
+        asyncio.run(refresh_overall_swot(db, MockOpenAIAnalyzer()))
+
+        assert get_research_run(db, run.id).analysis_result["scores"] == [
+            {"feature": "Evidence collection", "score": 7}
+        ]
+
     def test_refresh_overall_swot_keeps_scores_of_runs_without_features(db, competitor):
         # Run saved before features were stored: it is compared but its scores are kept
         old_scores = [{"feature": "Integrations", "score": 5}]
