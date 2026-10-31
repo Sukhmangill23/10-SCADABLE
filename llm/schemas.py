@@ -134,9 +134,9 @@ class PartialExtractedInformation(BaseModel):
 
 class PartialExtractedInformationByIndex(PartialExtractedInformation):
     """Used for the LLM output schema (lower chances of made-up links)."""
+    summary_page_indexes: list[int]
     job_postings: list[JobCitedByIndex]
     claims_cited: list[ClaimCitedByIndex]
-    summary_page_indexes: list[int]
 
     def claims_in(self, category: Category) -> list[str]:
         return [c.claim for c in self.claims_cited if c.category == category]
