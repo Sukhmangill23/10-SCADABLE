@@ -292,7 +292,7 @@ if test_url:
         asyncio.run(refresh_overall_swot(db, MockOpenAIAnalyzer()))
         assert get_overall_swot(db) == []
 
-    def test_execute_research_run_crawler_failure(db, competitor):
+    def test_execute_research_run_crawler_failure(db, competitor, caplog):
         run = create_research_run(db, competitor.id)
         failing_crawler = MockCrawl4AICrawler(should_fail=True)
 
@@ -303,7 +303,9 @@ if test_url:
         ))
 
         assert failed_run.status == ResearchStatus.FAILED
-        assert "simulated failure" in failed_run.error_message
+        assert failed_run.error_message == "Research failed due to an internal error."
+        assert "simulated failure" in caplog.text
+        assert "simulated failure" not in failed_run.error_message
 
     def test_execute_research_run_analyzer_failure(db, competitor):
         run = create_research_run(db, competitor.id)
@@ -318,7 +320,7 @@ if test_url:
         ))
 
         assert failed_run.status == ResearchStatus.FAILED
-        assert "simulated failure" in failed_run.error_message
+        assert failed_run.error_message == "Research failed due to an internal error."
         # Scraped data must remain preserved even if LLM fails
         assert failed_run.scraped_data is not None
 

@@ -376,7 +376,7 @@ def test_list_and_get_runs(client, researched, store):
     detail = client.get(f"/runs/{failed.id}").json()
     assert detail["status"] == "failed"
     assert detail["competitorName"] == "Vanta"
-    assert detail["errorMessage"] == "LLM timed out"
+    assert detail["errorMessage"] == "Research failed due to an internal error."
     assert [s["status"] for s in detail["steps"]] == ["success", "failed", "pending"]
     assert detail["stepCount"] == 3
 
@@ -384,6 +384,30 @@ def test_list_and_get_runs(client, researched, store):
     assert ok["status"] == "success"
     assert [s["status"] for s in ok["steps"]] == ["success", "success", "success"]
     assert ok["cacheMisses"] == 1 and ok["cacheHits"] == 0
+
+def test_failed_run_does_not_expose_sensitive_errors(client, researched, store):
+    secret = "postgresql://admin:password123@internal-db"
+    run = store.add_run(
+        researched,
+        ResearchStatus.FAILED,
+        error=f"Database connection failed: {secret}",
+    )
+
+    # Individual run endpoint
+    detail = client.get(f"/runs/{run.id}").json()
+    assert detail["errorMessage"] == "Research failed due to an internal error."
+    assert secret not in str(detail)
+
+    # Runs listing endpoint
+    runs = client.get("/runs").json()
+    assert secret not in str(runs)
+
+    # Competitor activity endpoint
+    profile = client.get(f"/competitors/{researched.id}").json()
+    assert secret not in str(profile)
+    assert profile["recentActivity"][0]["text"] == (
+        "Research run failed: Research failed due to an internal error."
+    )
 
 
 def test_run_skipped_llm_counts_as_cache_hit(client, researched, store):
