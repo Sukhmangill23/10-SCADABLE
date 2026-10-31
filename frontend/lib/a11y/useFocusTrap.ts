@@ -15,8 +15,11 @@ export function useFocusTrap(
   onEscape?: () => void,
 ) {
   const onEscapeRef = useRef(onEscape);
-  onEscapeRef.current = onEscape;
   const previousFocus = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    onEscapeRef.current = onEscape;
+  }, [onEscape]);
 
   useEffect(() => {
     if (!active) return;
