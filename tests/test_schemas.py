@@ -10,8 +10,10 @@ from llm.schemas import (
     ClaimCitedByURL,
     CompanyAnalysis,
     ExtractedInformationByURL,
+    JobFamily,
     PartialCompanyAnalysisByIndex,
     PartialExtractedInformationByIndex,
+    SWOTEntry
 )
 
 
@@ -69,6 +71,40 @@ def test_partial_analysis_schema_only_asks_the_model_for_new_data():
     schema = PartialCompanyAnalysisByIndex.model_json_schema()
     assert set(schema["properties"]) == {"claims_cited"}
     assert set(schema["required"]) == {"claims_cited"}
+
+def test_claim_citation_rejects_invalid_categrories():
+    # The ClaimCitedByIndex rejects if the "category" of claim is 
+    # not a strength, weakness, workforce_improvement, or workforce_decline
+    with pytest.raises(ValidationError) as test_error_info:
+        ClaimCitedByIndex(category="not_real_category", claim="not_real_claim", claim_page_index=0)
+
+    errors = test_error_info.value.errors()
+    assert len(errors) == 1
+    assert errors[0]["type"] == "literal_error"
+    assert errors[0]["loc"] == ("category",)
+    assert errors[0]["input"] == "not_real_category"
+
+def test_job_family_rejects_invalid_families():
+    # Tests if JobFamily construction raises an error if an invalid job family is used for construction 
+    # (not in the "Family" literals)
+    with pytest.raises(ValidationError) as test_error_info:
+        JobFamily(job_family="trainee", count=10)
+    errors = test_error_info.value.errors()
+    assert len(errors) == 1
+    assert errors[0]["type"] == "literal_error"
+    assert errors[0]["loc"] == ("job_family",)
+    assert errors[0]["input"] == "trainee"
+
+def test_swot_component_rejects_invalid_families():
+    # Tests if SWOTEntry construction raises an error if an invalid component is used for construction 
+    # (not in the "SWOTComponent" literals)
+    with pytest.raises(ValidationError) as test_error_info:
+        SWOTEntry(component="invalid-component", what="invalid entry")
+    errors = test_error_info.value.errors()
+    assert len(errors) == 1
+    assert errors[0]["type"] == "literal_error"
+    assert errors[0]["loc"] == ("component",)
+    assert errors[0]["input"] == "invalid-component"
 
 
 def test_full_analysis_schema_keeps_every_field():
