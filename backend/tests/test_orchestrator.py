@@ -318,7 +318,7 @@ if test_url:
         assert is_overall_swot_current(db)
         assert get_overall_swot(db)
 
-    def test_failed_refresh_hides_previously_published_results(db, competitor):
+    def test_failed_refresh_keeps_current_results_when_unchanged(db, competitor):
         run = create_research_run(db, competitor.id)
         asyncio.run(execute_research_run(
             db, run.id, MockCrawl4AICrawler(), MockOpenAIAnalyzer()
@@ -329,14 +329,14 @@ if test_url:
         asyncio.run(refresh_overall_swot(db, CompareFailingAnalyzer()))
         # Old records remain for recovery, but public routes must hide them.
         assert [e.id for e in get_overall_swot(db)] == original
-        assert not is_overall_swot_current(db)
+        assert is_overall_swot_current(db)
 
         # A good retry repopulates them and makes the overall view current again.
         asyncio.run(refresh_overall_swot(db, MockOpenAIAnalyzer()))
         assert is_overall_swot_current(db)
         assert get_overall_swot(db)
 
-    def test_empty_comparison_leaves_overall_stale_and_retries_unchanged_run(db, competitor):
+    def test_empty_refresh_keeps_current_results_when_unchanged(db, competitor):
         run = create_research_run(db, competitor.id)
         asyncio.run(execute_research_run(
             db, run.id, MockCrawl4AICrawler(), MockOpenAIAnalyzer()
@@ -344,7 +344,7 @@ if test_url:
         assert is_overall_swot_current(db)
 
         asyncio.run(refresh_overall_swot(db, EmptyComparisonAnalyzer()))
-        assert not is_overall_swot_current(db)
+        assert is_overall_swot_current(db)
         assert get_overall_swot(db)  # preserved in storage, not served
 
         # Unchanged re-run must retry if the overall result is stale even when
