@@ -62,6 +62,7 @@ export type CompetitorProfile = CompetitorSummary & {
 };
 
 export type SwotOverview = {
+  isStale?: boolean;
   updatedAt: string | null;
   strengths: Finding[];
   weaknesses: Finding[];

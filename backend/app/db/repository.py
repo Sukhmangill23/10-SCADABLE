@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.db.models import (
     Competitor,
+    OverallSwotState,
     ResearchRun,
     ResearchStatus,
     SWOTCategory,
@@ -182,6 +183,8 @@ def create_competitor(
 
         raise
 
+    # Adding a competitor changes the tracked set; old overall findings are stale.
+    mark_overall_swot_stale(db, commit=False)
     _finish(db, commit, competitor)
     return competitor
 
@@ -232,6 +235,7 @@ def delete_competitor(
         return False
 
     db.delete(competitor)
+    mark_overall_swot_stale(db, commit=False)
     _finish(db, commit)
 
     return True
@@ -476,3 +480,44 @@ def get_overall_swot(db: Session) -> list[SWOTEntry]:
     )
 
     return list(db.scalars(stmt).all())
+
+
+# A single state row tracks whether the persisted overall SWOT was generated
+# for the current competitor data. Missing state (e.g. during an upgrade) is
+# deliberately treated as stale rather than trusting historical rows.
+def is_overall_swot_current(db: Session) -> bool:
+    state = db.get(OverallSwotState, 1)
+    return state is not None and state.published_revision == state.input_revision
+
+
+def mark_overall_swot_stale(db: Session, commit: bool = True) -> int:
+    """Invalidate overall results; return the revision to compare against."""
+    state = db.get(OverallSwotState, 1, with_for_update=True)
+    if state is None:
+        state = OverallSwotState(id=1, input_revision=1, published_revision=-1)
+        db.add(state)
+    else:
+        state.input_revision += 1
+    _finish(db, commit)
+    return state.input_revision
+
+
+def publish_overall_swot(
+    db: Session,
+    entries: Iterable[Mapping[str, Any]],
+    expected_revision: int,
+) -> bool:
+    """Atomically publish findings only if inputs have not changed meanwhile.
+
+    Also commits any pending per-competitor feature score updates. If a newer
+    research run or deletion invalidated the revision, discard this comparison.
+    """
+    state = db.get(OverallSwotState, 1, with_for_update=True)
+    if state is None or state.input_revision != expected_revision:
+        db.rollback()
+        return False
+
+    replace_overall_swot(db, entries, commit=False)
+    state.published_revision = expected_revision
+    _finish(db, True)
+    return True

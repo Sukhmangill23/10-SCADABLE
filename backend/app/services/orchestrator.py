@@ -30,9 +30,11 @@ from app.db.repository import (
     get_competitor,
     get_latest_swot,
     get_overall_swot,
+    is_overall_swot_current,
+    mark_overall_swot_stale,
+    publish_overall_swot,
     get_research_run,
     list_competitors,
-    replace_overall_swot,
     save_analysis_result,
     save_scraped_data,
     save_swot_entries,
@@ -107,15 +109,17 @@ async def refresh_overall_swot(
     one LLM call and never re-crawls. The comparison also scores each competitor's
     features, including competitors whose analysis found no strengths or
     weaknesses; those scores are saved on the competitor's latest run, where the
-    competitor profile reads them. If no competitor has findings left (e.g. the
-    last one was deleted), the overall SWOT is cleared. A failure is logged and
-    keeps the previous overall SWOT; it never fails the competitor run that
-    triggered it.
+    competitor profile reads them. If no researched competitors remain, the
+    overall SWOT is cleared. Failed/empty comparisons leave historical rows
+    stored but invalid; the API never serves them as current findings.
     """
     try:
-        if only_if_missing and get_overall_swot(db):
+        if only_if_missing and is_overall_swot_current(db) and get_overall_swot(db):
             return
 
+        # Invalidate before calling the LLM: a failure or empty response must
+        # never leave previously published findings looking current.
+        revision = mark_overall_swot_stale(db)
         profiles = []
         latest_runs: dict[str, ResearchRun] = {}
         for competitor in list_competitors(db, limit=500):
@@ -152,7 +156,7 @@ async def refresh_overall_swot(
 
         if not profiles:
             # Nothing left to compare, so don't keep findings about deleted competitors
-            replace_overall_swot(db, [])
+            publish_overall_swot(db, [], revision)
             return
 
         logger.info("Comparing SCADABLE against %d competitors", len(profiles))
@@ -161,8 +165,9 @@ async def refresh_overall_swot(
             timeout=timeout_seconds,
         )
         overall_entries = comparison.get("swot_entries", [])
-        if overall_entries:
-            replace_overall_swot(db, overall_entries)
+        if not isinstance(overall_entries, list) or not overall_entries:
+            logger.warning("Overall SWOT comparison returned no findings; results remain stale.")
+            return
 
         scores_by_company = _scores_by_company(comparison.get("scores"))
         for name, run in latest_runs.items():
@@ -172,12 +177,15 @@ async def refresh_overall_swot(
                 continue
             analysis = run.analysis_result if isinstance(run.analysis_result, dict) else {}
             save_analysis_result(
-                db, run.id, {**analysis, "scores": scores_by_company[name]}
+                db, run.id, {**analysis, "scores": scores_by_company[name]}, commit=False
             )
+
+        if not publish_overall_swot(db, overall_entries, revision):
+            logger.warning("Overall SWOT comparison superseded by newer competitor data.")
 
     except Exception:
         db.rollback()
-        logger.exception("Overall SWOT comparison failed; keeping the previous overall SWOT.")
+        logger.exception("Overall SWOT comparison failed; overall results remain stale.")
 
 
 async def execute_research_run(
@@ -293,6 +301,9 @@ async def execute_research_run(
         raw_entries = analysis_result.get("swot_entries", [])
         if raw_entries:
             save_swot_entries(db, run_id, raw_entries)
+
+        # Persist the stale marker before making the new analysis visible.
+        mark_overall_swot_stale(db)
 
         # Step 8: Mark task status as COMPLETED
         updated_run = update_research_run_status(db, run_id, ResearchStatus.COMPLETED)
