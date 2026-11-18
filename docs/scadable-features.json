@@ -19,7 +19,7 @@
     "Multi-cloud support (AWS, Azure, GCP) and source control (GitHub, GitLab)"
   ],
   "differentiators": [
-    "Native tracking for European regulatory frameworks like the EU CRA",
+    "Native tracking for European regulatory frameworks, including the EU CRA",
     "Direct code-level remediation rather than passive configuration checks",
     "Lower total cost of ownership compared to legacy compliance platforms"
   ]
