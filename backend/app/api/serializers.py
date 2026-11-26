@@ -34,6 +34,7 @@ _STATUS_MAP: dict[ResearchStatus, ApiResearchStatus] = {
     ResearchStatus.RUNNING: "running",
     ResearchStatus.COMPLETED: "success",
     ResearchStatus.FAILED: "failed",
+    ResearchStatus.CANCELLED: "cancelled",
 }
 
 NOT_RESEARCHED_SUMMARY = "Profile not researched yet."
@@ -68,7 +69,10 @@ def source_label(url: str | None) -> str:
     return f"{host}{path}" or url
 
 
-def finding_from_entry(entry: SWOTEntry, competitor: Competitor | None) -> Finding:
+def finding_from_entry(
+    entry: SWOTEntry, competitor: Competitor | None,
+    sources: list[dict[str, str | None]] | None = None,
+) -> Finding:
     return Finding(
         id=str(entry.id),
         competitor_id=str(competitor.id) if competitor else "",
@@ -78,6 +82,7 @@ def finding_from_entry(entry: SWOTEntry, competitor: Competitor | None) -> Findi
         source_url=entry.source_url or "",
         source_label=source_label(entry.source_url),
         detected_at=entry.created_at,
+        sources=sources,
     )
 
 
@@ -380,6 +385,8 @@ def _activity_text(run: ResearchRun) -> str:
         return "Research run completed and findings updated"
     if run.status == ResearchStatus.FAILED:
         return f"Research run failed: {safe_run_error(run.error_message)}"
+    if run.status == ResearchStatus.CANCELLED:
+        return "Research run cancelled"
     if run.status == ResearchStatus.RUNNING:
         return "Research run in progress"
     return "Research run queued"
@@ -397,6 +404,8 @@ def _run_steps(run: ResearchRun) -> list[RunStep]:
             return RunStep(name=name, result=ok_text, status="success")
         if failed and reached:
             return RunStep(name=name, result="Failed", status="failed")
+        if run.status == ResearchStatus.CANCELLED and reached:
+            return RunStep(name=name, result="Cancelled", status="cancelled")
         if run.status == ResearchStatus.RUNNING and reached:
             return RunStep(name=name, result="In progress", status="running")
         return RunStep(name=name, result="Not started", status="pending")

@@ -1,4 +1,9 @@
-export type ResearchStatus = "pending" | "running" | "success" | "failed";
+export type ResearchStatus =
+  | "pending"
+  | "running"
+  | "success"
+  | "failed"
+  | "cancelled";
 
 export type Trend = "up" | "flat" | "down";
 
@@ -15,6 +20,8 @@ export type Finding = {
   text: string;
   sourceUrl: string;
   sourceLabel: string;
+  /** Overall SWOT: configured SCADABLE baseline versus independently crawled competitor pages. */
+  sources?: { label: string; url: string | null; kind: "baseline" | "competitor" }[] | null;
   detectedAt: string;
   isNew?: boolean;
   isChanged?: boolean;
